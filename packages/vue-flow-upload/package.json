@@ -1,0 +1,35 @@
+{
+  "name": "vue-flow-upload",
+  "version": "0.1.0",
+  "description": "A configurable Vue 3 upload component.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./style.css": "./dist/style.css"
+  },
+  "files": ["dist", "README.md", "LICENSE"],
+  "sideEffects": ["**/*.css"],
+  "peerDependencies": {
+    "vue": "^3.5.0"
+  },
+  "scripts": {
+    "dev": "vite build --watch",
+    "build": "vite build && vue-tsc --build tsconfig.json --force --emitDeclarationOnly",
+    "typecheck": "vue-tsc --project tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.8",
+    "typescript": "~6.0.3",
+    "vite": "^8.1.5",
+    "vue": "^3.5.40",
+    "vue-tsc": "^3.3.8"
+  }
+}

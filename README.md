@@ -1,5 +1,26 @@
-# Vue 3 + TypeScript + Vite
+# vue-flow-upload workspace
 
-This template should help get you started developing with Vue 3 and TypeScript in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+Vue 3 文件上传组件库与本地 Playground。
 
-Learn more about the recommended Project Setup and IDE Support in the [Vue Docs TypeScript Guide](https://vuejs.org/guide/typescript/overview.html#project-setup).
+## 目录
+
+- `packages/vue-flow-upload`：未来发布到 npm 的组件包。
+- `playground`：本地可视化手工测试页面，不发布到 npm。
+- `docs`：设计与接入文档。
+
+## 开发
+
+```bash
+pnpm install
+pnpm dev
+```
+
+运行后访问终端输出的 Vite 地址，即可使用 Playground 手工测试组件。
+
+## 构建
+
+```bash
+pnpm build
+```
+
+组件包构建产物位于 `packages/vue-flow-upload/dist`。发布前请确认 npm 包名、版本和组织 scope，并在该目录执行 `npm publish`。

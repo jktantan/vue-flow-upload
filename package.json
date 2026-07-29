@@ -1,13 +1,16 @@
 {
-  "name": "vue-flow-upload",
+  "name": "vue-flow-upload-workspace",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vue-tsc -b && vite build",
-    "preview": "vite preview",
-    "lint": "eslint .",
+    "dev": "pnpm --filter playground dev",
+    "build": "pnpm run build:lib && pnpm run build:playground",
+    "build:lib": "pnpm --filter vue-flow-upload build",
+    "build:playground": "pnpm --filter playground build",
+    "preview": "pnpm --filter playground preview",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "eslint packages playground",
     "lint:fix": "eslint . --fix",
     "format": "prettier . --write",
     "format:check": "prettier . --check"

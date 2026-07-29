@@ -1,2 +1,6 @@
+packages:
+  - 'packages/*'
+  - 'playground'
+
 allowBuilds:
   '@parcel/watcher': true
