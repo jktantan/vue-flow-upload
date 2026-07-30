@@ -5,7 +5,22 @@ import tseslint from 'typescript-eslint'
 
 export default tseslint.config(
   {
-    ignores: ['dist', 'node_modules', 'coverage'],
+    ignores: ['**/dist/**', '**/node_modules/**', 'coverage'],
+  },
+  {
+    languageOptions: {
+      globals: {
+        AbortController: 'readonly',
+        DragEvent: 'readonly',
+        Event: 'readonly',
+        File: 'readonly',
+        FormData: 'readonly',
+        HTMLInputElement: 'readonly',
+        XMLHttpRequest: 'readonly',
+        crypto: 'readonly',
+        window: 'readonly',
+      },
+    },
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
