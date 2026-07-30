@@ -10,6 +10,7 @@
     "build:playground": "pnpm --filter playground build",
     "preview": "pnpm --filter playground preview",
     "typecheck": "pnpm -r typecheck",
+    "test": "pnpm --filter vue-flow-upload test",
     "lint": "eslint packages playground",
     "lint:fix": "eslint . --fix",
     "format": "prettier . --write",
