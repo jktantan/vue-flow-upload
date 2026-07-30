@@ -46,6 +46,7 @@ pnpm dev
 ## 3. 组件开发约束
 
 - 使用 Vue 3 Composition API、`<script setup lang="ts">` 和严格 TypeScript 类型。
+- 所有组件样式使用 Sass：Vue 单文件组件统一使用 `<style lang="scss">`（需要作用域时使用 `scoped lang="scss"`），全局样式使用 `.scss` 文件；不新增 `.css` 源文件。
 - 所有公共组件、类型、composable 和默认主题入口从 `src/index.ts` 导出。
 - Vue 必须保持为 `peerDependency`，不得打入库产物。
 - 上传任务、分片调度、哈希、请求适配放在 `core/` 或 `composables/`；视图组件不得直接耦合具体 HTTP URL 或后端 SDK。
