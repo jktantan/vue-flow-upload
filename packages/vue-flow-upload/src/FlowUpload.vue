@@ -4,6 +4,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { ChunkScheduler } from './chunk-scheduler'
 import { hashFile } from './hash-service'
 import { resolveMessages, resolveTheme } from './themes'
+import { createHttpUploadTransport } from './http-transport'
 import type {
   UploadData,
   DownloadScope,
@@ -16,13 +17,18 @@ import type {
   UploadMessages,
   UploadTheme,
   UploadTransport,
+  UploadUserFile,
 } from './types'
 
 const props = withDefaults(
   defineProps<{
-    modelValue?: UploadFileItem[]
-    defaultFileList?: UploadFileItem[]
-    transport: UploadTransport
+    modelValue?: UploadUserFile[]
+    defaultFileList?: UploadUserFile[]
+    /** Custom transport. Omit it and provide `action` for a standard XHR upload. */
+    transport?: UploadTransport
+    action?: string
+    method?: 'POST' | 'PUT'
+    withCredentials?: boolean
     downloadTransport?: DownloadTransport
     data?: UploadData
     headers?: UploadHeaders
@@ -42,7 +48,10 @@ const props = withDefaults(
     retryBaseDelay?: number
     resume?: boolean
     instantUpload?: boolean
-    listType?: 'list' | 'picture-card'
+    showFileList?: boolean
+    drag?: boolean
+    directory?: boolean
+    listType?: 'list' | 'picture' | 'picture-card'
     preview?: boolean
     selectable?: boolean
     archivePollingInterval?: number
@@ -55,6 +64,7 @@ const props = withDefaults(
     disabled?: boolean
     permissions?: UploadPermissions
     beforeUpload?: (file: File) => boolean | Promise<boolean>
+    beforeRemove?: (file: UploadFileItem, files: UploadFileItem[]) => boolean | Promise<boolean>
   }>(),
   {
     defaultFileList: () => [],
@@ -62,6 +72,8 @@ const props = withDefaults(
     dataFieldName: 'data',
     maxCount: Number.POSITIVE_INFINITY,
     multiple: true,
+    method: 'POST',
+    withCredentials: false,
     autoUpload: true,
     normalUploadThreshold: 10 * 1024 * 1024,
     chunkSize: 5 * 1024 * 1024,
@@ -73,6 +85,9 @@ const props = withDefaults(
     resume: true,
     instantUpload: true,
     listType: 'list',
+    showFileList: true,
+    drag: false,
+    directory: false,
     preview: true,
     selectable: false,
     archivePollingInterval: 2_000,
@@ -103,7 +118,9 @@ const emit = defineEmits<{
 
 const input = ref<HTMLInputElement>()
 const dragActive = ref(false)
-const internalFiles = ref<UploadFileItem[]>([...(props.modelValue ?? props.defaultFileList)])
+const internalFiles = ref<UploadFileItem[]>(
+  normalizeFileList(props.modelValue ?? props.defaultFileList),
+)
 const controllers = new Map<string, Set<AbortController>>()
 const objectUrls = new Map<string, string>()
 const selected = ref(new Set<string>())
@@ -118,7 +135,7 @@ const scheduler = new ChunkScheduler({
 watch(
   () => props.modelValue,
   (value) => {
-    if (value !== undefined) internalFiles.value = [...value]
+    if (value !== undefined) internalFiles.value = normalizeFileList(value)
   },
 )
 
@@ -140,6 +157,17 @@ const canDownloadAll = computed(() => canDownload.value && props.permissions.dow
 const resolvedTheme = computed(() => resolveTheme(props.theme))
 const text = computed(() => resolveMessages(props.locale, props.messages))
 const themeStyle = computed(() => resolvedTheme.value.variables ?? {})
+const uploadTransport = computed(
+  () =>
+    props.transport ??
+    (props.action
+      ? createHttpUploadTransport({
+          url: props.action,
+          method: props.method,
+          credentials: props.withCredentials ? 'include' : 'same-origin',
+        })
+      : undefined),
+)
 
 function updateFiles(next: UploadFileItem[], changed?: UploadFileItem) {
   internalFiles.value = next
@@ -220,10 +248,11 @@ async function upload(uid: string) {
   if (!uploading) return
 
   try {
+    const transport = requireTransport()
     const data = await resolveData()
     const isMultipart = target.file.size > props.normalUploadThreshold
     const needsHash =
-      (props.instantUpload && !!props.transport.checkFile) || (isMultipart && props.resume)
+      (props.instantUpload && !!transport.checkFile) || (isMultipart && props.resume)
     let sha256: string | undefined
     if (needsHash) {
       const controller = trackController(uid)
@@ -238,9 +267,9 @@ async function upload(uid: string) {
       }
       updateFile(uid, { sha256, percent: 0 })
     }
-    if (sha256 && props.instantUpload && props.transport.checkFile) {
+    if (sha256 && props.instantUpload && transport.checkFile) {
       updateFile(uid, { status: 'checking' })
-      const check = await props.transport.checkFile(
+      const check = await transport.checkFile(
         fileMeta(target.file, sha256),
         requestMeta(data, await resolveHeaders()),
       )
@@ -286,7 +315,7 @@ async function uploadNormal(uid: string, file: File, data: Record<string, unknow
     const current = updateFile(uid, { status: 'uploading' })
     if (current) emit('progress', current, 0)
     try {
-      return await props.transport.uploadFile(
+      return await requireTransport().uploadFile(
         { file, data },
         requestContext(data, await resolveHeaders(), controller, (loaded, total) =>
           updateProgress(uid, loaded, total),
@@ -304,7 +333,7 @@ async function uploadMultipart(
   data: Record<string, unknown>,
   sha256?: string,
 ) {
-  const { initMultipart, uploadChunk, completeMultipart } = props.transport
+  const { initMultipart, uploadChunk, completeMultipart } = requireTransport()
   if (!initMultipart || !uploadChunk || !completeMultipart) {
     throw makeError('MULTIPART_NOT_SUPPORTED', '当前传输适配器不支持分片上传', false)
   }
@@ -627,18 +656,24 @@ function delay(milliseconds: number, signal: globalThis.AbortSignal) {
   })
 }
 
-function remove(uid: string) {
+async function remove(uid: string) {
   const target = files.value.find((file) => file.uid === uid)
-  if (!target || !canRemove.value) return
+  if (!target || !canRemove.value) return false
+  try {
+    if (props.beforeRemove && !(await props.beforeRemove(target, files.value))) return false
+  } catch {
+    return false
+  }
   const objectUrl = objectUrls.get(uid)
   if (objectUrl) window.URL.revokeObjectURL(objectUrl)
   objectUrls.delete(uid)
   selected.value.delete(uid)
   scheduler.cancel(uid)
   controllers.get(uid)?.forEach((controller) => controller.abort())
-  if (target.uploadId && props.transport.cancelMultipart) {
+  const transport = uploadTransport.value
+  if (target.uploadId && transport?.cancelMultipart) {
     void Promise.all([resolveData(), resolveHeaders()]).then(([data, headers]) =>
-      props.transport.cancelMultipart?.(target.uploadId!, {
+      transport.cancelMultipart?.(target.uploadId!, {
         data,
         headers,
         fileFieldName: props.fileFieldName,
@@ -651,6 +686,24 @@ function remove(uid: string) {
     target,
   )
   emit('remove', target)
+  return true
+}
+
+function abort(file?: string | UploadFileItem) {
+  if (file) {
+    const uid = typeof file === 'string' ? file : file.uid
+    pause(uid)
+    return
+  }
+  for (const file of files.value) pause(file.uid)
+}
+
+function handleStart(file: File) {
+  return addFiles([file])
+}
+
+function handleRemove(file: string | UploadFileItem) {
+  return remove(typeof file === 'string' ? file : file.uid)
 }
 
 function clear() {
@@ -665,6 +718,27 @@ function clear() {
   for (const controller of archiveControllers.values()) controller.abort()
   archiveControllers.clear()
   updateFiles([])
+}
+
+function requireTransport() {
+  const transport = uploadTransport.value
+  if (!transport) throw makeError('TRANSPORT_REQUIRED', '请提供 transport 或 action', false)
+  return transport
+}
+
+function normalizeFileList(fileList: UploadUserFile[]): UploadFileItem[] {
+  return fileList.map((file) => {
+    const status = file.status ?? (file.file ? 'idle' : 'success')
+    return {
+      ...file,
+      uid: file.uid ?? createUid(),
+      name: file.name,
+      size: file.size ?? file.file?.size ?? 0,
+      type: file.type ?? file.file?.type ?? '',
+      status,
+      percent: file.percent ?? (status === 'success' ? 100 : 0),
+    }
+  })
 }
 
 async function resolveData() {
@@ -735,11 +809,15 @@ onBeforeUnmount(clear)
 
 defineExpose({
   submit,
+  abort,
   pause,
   resume: resumeUpload,
   retry,
   remove,
   clear,
+  clearFiles: clear,
+  handleStart,
+  handleRemove,
   download,
   downloadSelected,
   downloadAll,
@@ -755,6 +833,7 @@ defineExpose({
     :aria-label="text.selectFile"
   >
     <div
+      v-if="drag"
       class="vfu-dropzone"
       :class="{ 'is-active': dragActive, 'is-disabled': !canSelect }"
       role="button"
@@ -773,12 +852,45 @@ defineExpose({
         :accept="acceptValue"
         :multiple="multiple"
         :disabled="!canSelect"
+        :webkitdirectory="directory || undefined"
+        :directory="directory || undefined"
         @change="onSelect"
       />
-      <span class="vfu-dropzone__mark">↥</span>
-      <strong>{{ text.selectFile }}</strong>
-      <span>{{ text.dragHint }}</span>
+      <slot>
+        <span class="vfu-dropzone__mark">↥</span>
+        <strong>{{ text.selectFile }}</strong>
+        <span>{{ text.dragHint }}</span>
+      </slot>
     </div>
+
+    <div
+      v-else
+      class="vfu-trigger"
+      role="button"
+      tabindex="0"
+      @click="browse"
+      @keydown.enter.prevent="browse"
+      @keydown.space.prevent="browse"
+    >
+      <input
+        ref="input"
+        type="file"
+        :accept="acceptValue"
+        :multiple="multiple"
+        :disabled="!canSelect"
+        :webkitdirectory="directory || undefined"
+        :directory="directory || undefined"
+        @change="onSelect"
+      />
+      <slot name="trigger">
+        <slot>
+          <button class="vfu-button" type="button" :disabled="!canSelect">
+            {{ text.selectFile }}
+          </button>
+        </slot>
+      </slot>
+    </div>
+    <slot name="tip" />
 
     <div v-if="!autoUpload && files.some((file) => file.status === 'idle')" class="vfu-toolbar">
       <span>{{ files.filter((file) => file.status === 'idle').length }} 个文件等待上传</span>
@@ -809,105 +921,117 @@ defineExpose({
     </div>
 
     <ul
-      v-if="files.length"
+      v-if="showFileList && files.length"
       class="vfu-list"
       :class="{ 'is-picture-card': listType === 'picture-card' }"
       aria-live="polite"
     >
       <li v-for="file in files" :key="file.uid" class="vfu-file" :class="`is-${file.status}`">
-        <label v-if="selectable && file.fileId" class="vfu-select" @click.stop>
-          <input
-            :checked="selected.has(file.uid)"
-            type="checkbox"
-            @change="toggleSelected(file.uid)"
-          />
-        </label>
-        <button
-          v-if="listType === 'picture-card' && isImage(file)"
-          class="vfu-thumbnail"
-          type="button"
-          :disabled="!canPreview"
-          @click="previewFile(file)"
+        <slot
+          name="file"
+          :file="file"
+          :remove="remove"
+          :preview="previewFile"
+          :download="download"
+          :pause="pause"
+          :resume="resumeUpload"
+          :retry="retry"
         >
-          <img :src="imageUrl(file)" :alt="file.name" />
-        </button>
-        <span class="vfu-file__glyph">{{ file.type.startsWith('image/') ? '▧' : '▤' }}</span>
-        <div class="vfu-file__body">
-          <div class="vfu-file__headline">
-            <strong>{{ file.name }}</strong
-            ><span>{{ formatSize(file.size) }}</span>
-          </div>
-          <div
-            v-if="['uploading', 'queued', 'merging'].includes(file.status)"
-            class="vfu-progress"
-            role="progressbar"
-            :aria-label="`${file.name} ${file.percent}%`"
-            :aria-valuenow="file.percent"
-            aria-valuemin="0"
-            aria-valuemax="100"
+          <label v-if="selectable && file.fileId" class="vfu-select" @click.stop>
+            <input
+              :checked="selected.has(file.uid)"
+              type="checkbox"
+              @change="toggleSelected(file.uid)"
+            />
+          </label>
+          <button
+            v-if="listType !== 'list' && isImage(file)"
+            class="vfu-thumbnail"
+            type="button"
+            :disabled="!canPreview"
+            @click="previewFile(file)"
           >
-            <i :style="{ width: `${file.percent}%` }" />
+            <img :src="imageUrl(file)" :alt="file.name" />
+          </button>
+          <span class="vfu-file__glyph">{{ file.type.startsWith('image/') ? '▧' : '▤' }}</span>
+          <div class="vfu-file__body">
+            <div class="vfu-file__headline">
+              <strong>{{ file.name }}</strong
+              ><span>{{ formatSize(file.size) }}</span>
+            </div>
+            <div
+              v-if="['uploading', 'queued', 'merging'].includes(file.status)"
+              class="vfu-progress"
+              role="progressbar"
+              :aria-label="`${file.name} ${file.percent}%`"
+              :aria-valuenow="file.percent"
+              aria-valuemin="0"
+              aria-valuemax="100"
+            >
+              <i :style="{ width: `${file.percent}%` }" />
+            </div>
+            <small
+              :class="{ 'is-error': file.status === 'failed' || file.status === 'rejected' }"
+              >{{ file.error?.message ?? statusText(file.status) }}</small
+            >
           </div>
-          <small :class="{ 'is-error': file.status === 'failed' || file.status === 'rejected' }">{{
-            file.error?.message ?? statusText(file.status)
-          }}</small>
-        </div>
-        <span
-          v-if="['uploading', 'queued', 'merging'].includes(file.status)"
-          class="vfu-file__percent"
-          >{{ file.percent }}%</span
-        >
-        <button
-          v-if="
-            ['hashing', 'checking', 'queued', 'uploading', 'preparing'].includes(file.status) &&
-            canUpload
-          "
-          class="vfu-action"
-          type="button"
-          @click="pause(file.uid)"
-        >
-          {{ text.pause }}
-        </button>
-        <button
-          v-if="file.status === 'paused' && canUpload"
-          class="vfu-action"
-          type="button"
-          @click="resumeUpload(file.uid)"
-        >
-          {{ text.resume }}
-        </button>
-        <button
-          v-if="file.status === 'failed' && canRetry"
-          class="vfu-action"
-          type="button"
-          @click="retry(file.uid)"
-        >
-          {{ text.retry }}
-        </button>
-        <button
-          v-if="file.status === 'success' && canPreview"
-          class="vfu-action"
-          type="button"
-          @click="previewFile(file)"
-        >
-          {{ text.preview }}
-        </button>
-        <button
-          v-if="file.status === 'success' && file.fileId && canDownload"
-          class="vfu-action"
-          type="button"
-          @click="download(file.uid)"
-        >
-          {{ text.download }}
-        </button>
-        <button
-          v-if="canRemove"
-          class="vfu-action is-danger"
-          type="button"
-          @click="remove(file.uid)"
-        >
-          {{ text.remove }}
-        </button>
+          <span
+            v-if="['uploading', 'queued', 'merging'].includes(file.status)"
+            class="vfu-file__percent"
+            >{{ file.percent }}%</span
+          >
+          <button
+            v-if="
+              ['hashing', 'checking', 'queued', 'uploading', 'preparing'].includes(file.status) &&
+              canUpload
+            "
+            class="vfu-action"
+            type="button"
+            @click="pause(file.uid)"
+          >
+            {{ text.pause }}
+          </button>
+          <button
+            v-if="file.status === 'paused' && canUpload"
+            class="vfu-action"
+            type="button"
+            @click="resumeUpload(file.uid)"
+          >
+            {{ text.resume }}
+          </button>
+          <button
+            v-if="file.status === 'failed' && canRetry"
+            class="vfu-action"
+            type="button"
+            @click="retry(file.uid)"
+          >
+            {{ text.retry }}
+          </button>
+          <button
+            v-if="file.status === 'success' && canPreview"
+            class="vfu-action"
+            type="button"
+            @click="previewFile(file)"
+          >
+            {{ text.preview }}
+          </button>
+          <button
+            v-if="file.status === 'success' && file.fileId && canDownload"
+            class="vfu-action"
+            type="button"
+            @click="download(file.uid)"
+          >
+            {{ text.download }}
+          </button>
+          <button
+            v-if="canRemove"
+            class="vfu-action is-danger"
+            type="button"
+            @click="remove(file.uid)"
+          >
+            {{ text.remove }}
+          </button>
+        </slot>
       </li>
     </ul>
     <div
@@ -975,6 +1099,18 @@ defineExpose({
 }
 .vfu-dropzone input {
   display: none;
+}
+.vfu-trigger {
+  display: inline-flex;
+  align-items: center;
+}
+.vfu-trigger input {
+  display: none;
+}
+.vfu-trigger:focus-visible,
+.vfu-dropzone:focus-visible {
+  outline: 2px solid var(--vfu-signal);
+  outline-offset: 3px;
 }
 .vfu-dropzone strong {
   font-size: 15px;

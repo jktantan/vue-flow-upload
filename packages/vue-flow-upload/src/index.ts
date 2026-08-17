@@ -26,6 +26,7 @@ export type {
   UploadStatus,
   UploadSuccessResult,
   UploadTransport,
+  UploadUserFile,
   UploadMessages,
   UploadTheme,
   ThemeAdapter,

@@ -1,21 +1,40 @@
 # vue-flow-upload
 
-Vue 3 文件上传组件库。当前已实现普通上传、M2 大文件分片调度、M3 的增量 SHA-256/秒传/续传、M4 图片预览和下载，以及 M5 主题和无障碍基础能力。
+面向 Vue 3 的上传组件：普通文件上传开箱即用，并为大文件提供分片、断点续传、SHA-256 秒传、并发调度、失败重试和下载归档。
 
-```vue
-<FlowUpload
-  :transport="transport"
-  :normal-upload-threshold="10 * 1024 * 1024"
-  :chunk-size="5 * 1024 * 1024"
-  :concurrency="3"
-  :max-concurrent-files="2"
-  :max-concurrent-requests="6"
-/>
+## 安装与最小使用
+
+```bash
+pnpm add vue-flow-upload
 ```
 
-大于 `normalUploadThreshold` 的文件需要传入实现了 `initMultipart`、`uploadChunk` 与 `completeMultipart` 的 `UploadTransport`。可使用 `createHttpUploadTransport()` 配置默认 XHR 适配器：
+```vue
+<script setup lang="ts">
+import { ref } from 'vue'
+import { FlowUpload, type UploadFileItem } from 'vue-flow-upload'
+import 'vue-flow-upload/style.css'
+
+const files = ref<UploadFileItem[]>([])
+</script>
+
+<template>
+  <FlowUpload
+    v-model="files"
+    action="/api/files"
+    drag
+    accept="image/*,.pdf"
+    :max-size="20 * 1024 * 1024"
+  >
+    <template #tip>单个文件不超过 20 MB</template>
+  </FlowUpload>
+</template>
+```
+
+`action` 使用内置 XHR（支持 `method`、`with-credentials`、`headers`、`data`）；需要秒传、分片或自定义协议时传入 `transport`。两者同时提供时优先使用 `transport`。
 
 ```ts
+import { createHttpUploadTransport } from 'vue-flow-upload'
+
 const transport = createHttpUploadTransport({
   url: '/uploads/file',
   checkUrl: '/uploads/check',
@@ -28,10 +47,32 @@ const transport = createHttpUploadTransport({
 })
 ```
 
-当 `instantUpload` 或大文件的 `resume` 启用时，组件使用 Worker 分块计算 SHA-256；Worker 不可用时会在主线程分批让出事件循环。重新选择相同文件时，适配器的 `initMultipart` 可按哈希返回 `uploadedChunks`，组件仅提交缺失分片。
+## 常用属性
 
-传入 `downloadTransport` 后，成功文件会显示下载操作；设置 `selectable` 可打包下载勾选文件，`downloadAll()` 可请求当前列表或 `allDownloadScope` 指定的服务端范围。`listType="picture-card"` 提供图片墙和内置预览。
+| 属性 | 说明 | 默认值 |
+| --- | --- | --- |
+| `action` / `transport` | 简单上传地址 / 自定义上传协议（二选一） | — |
+| `v-model`、`default-file-list` | 文件列表；回显只需 `{ name, url?, fileId? }` | `[]` |
+| `multiple`、`max-count`、`max-size`、`accept` | 选择和校验限制 | `true`、无限制、无限制、全部 |
+| `auto-upload` | 选择后立刻上传；关闭后调用实例 `submit()` | `true` |
+| `drag`、`directory` | 拖拽区域、浏览器支持的目录选择 | `false`、`false` |
+| `show-file-list` | 是否渲染内置列表 | `true` |
+| `list-type` | `list`、`picture`、`picture-card` | `list` |
+| `data`、`headers` | 对象或返回对象的异步函数 | `{}` |
+| `normal-upload-threshold`、`chunk-size` | 超过阈值时走分片；需 transport 支持分片 | 10 MiB、5 MiB |
+| `concurrency`、`max-concurrent-files`、`max-concurrent-requests` | 分片/文件/请求并发限制 | 3、2、6 |
+| `resume`、`instant-upload` | 续传和 SHA-256 秒传 | `true`、`true` |
+| `before-upload`、`before-remove` | 返回 `false` 或 reject 可阻止上传/删除 | — |
 
-`theme` 支持 `default`、`element-plus`、`ant-design-vue` 或自定义 `ThemeAdapter`。内置主题仅映射设计令牌，不打包或要求安装第三方 UI 库；`locale="zh-CN" | "en-US"` 与 `messages` 可替换默认文案。
+## 事件、插槽与实例
 
-实例方法包含 `submit()`、`pause(uid)`、`resume(uid)`、`retry(uid)`、`remove(uid)` 和 `clear()`。完整接入协议见仓库根目录 `docs/`。
+事件：`change(file, files)`、`progress(file, percent)`、`success(file, response)`、`error(file, error)`、`remove(file)`、`exceed(files)`；下载归档还会发出 `download-*` 与 `archive-*` 事件。
+
+- `#default`：替换默认触发内容或拖拽区内容。
+- `#trigger`：只替换非拖拽模式的触发器。
+- `#tip`：紧跟选择区的说明。
+- `#file="{ file, remove, preview, download, pause, resume, retry }"`：替换单个文件条目。
+
+通过 `ref` 可调用 `submit()`、`abort(file?)`、`pause(uid)`、`resume(uid)`、`retry(uid)`、`remove(uid)`、`clear()`/`clearFiles()`、`handleStart(file)`、`handleRemove(file)`；此外还提供下载与归档方法。
+
+完整后端分片协议见仓库根目录的 [`docs/backend-api.md`](../../docs/backend-api.md)。

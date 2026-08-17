@@ -48,6 +48,11 @@ export interface UploadFileItem {
   error?: UploadError
 }
 
+/** A lightweight file entry accepted by `v-model` and `defaultFileList`.
+ * Missing runtime fields are filled by FlowUpload, which makes server-side
+ * attachment replay possible without manufacturing client upload state. */
+export type UploadUserFile = Partial<UploadFileItem> & Pick<UploadFileItem, 'name'>
+
 export interface RequestContext {
   headers: Record<string, string>
   data: Record<string, unknown>
