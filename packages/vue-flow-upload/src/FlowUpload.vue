@@ -160,6 +160,25 @@ watch(
 )
 
 const files = computed(() => internalFiles.value)
+/**
+ * Keeps the server-provided order for completed files while making local upload
+ * work immediately visible. Array#sort is stable, so files in the same group
+ * retain their original order.
+ */
+const displayedFiles = computed(() =>
+  files.value
+    .map((file, index) => ({ file, index }))
+    .sort((left, right) => {
+      const priority = (file: UploadFileItem) => {
+        if (file.status === 'uploading' || file.status === 'merging') return 0
+        if (['failed', 'rejected', 'canceled'].includes(file.status)) return 2
+        if (file.status === 'success') return 3
+        return 1
+      }
+      return priority(left.file) - priority(right.file) || left.index - right.index
+    })
+    .map(({ file }) => file),
+)
 const canSelect = computed(() => !props.disabled && props.permissions.select !== false)
 const canUpload = computed(() => !props.disabled && props.permissions.upload !== false)
 const canRemove = computed(() => !props.disabled && props.permissions.remove !== false)
@@ -553,7 +572,7 @@ defineExpose({
     />
 
     <UploadFileList
-      :files="files"
+      :files="displayedFiles"
       :show="showFileList"
       :list-type="listType"
       :selectable="selectable"
