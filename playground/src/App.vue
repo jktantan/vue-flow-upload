@@ -7,7 +7,26 @@ import {
   type UploadTransport,
 } from 'vue-flow-upload'
 
-const files = ref<UploadFileItem[]>([])
+const files = ref<UploadFileItem[]>([
+  {
+    uid: 'sample-contract',
+    name: '产品合作协议.pdf',
+    size: 2.4 * 1024 * 1024,
+    type: 'application/pdf',
+    status: 'success',
+    percent: 100,
+    fileId: 'sample-contract',
+  },
+  {
+    uid: 'sample-cover',
+    name: '本地上传封面.png',
+    size: 684 * 1024,
+    type: 'image/png',
+    status: 'success',
+    percent: 100,
+    fileId: 'sample-cover',
+  },
+])
 const autoUpload = ref(true)
 const eventLog = ref<string[]>([])
 
@@ -105,13 +124,13 @@ const downloadTransport: DownloadTransport = {
 
 <template>
   <main>
-    <p class="eyebrow">PLAYGROUND</p>
-    <h1>Vue Flow Upload</h1>
-    <p class="intro">
-      M4 手工测试：支持图片墙预览、单文件下载和勾选打包下载；文件会增量计算 SHA-256，以 instant-
-      开头的文件名模拟秒传命中。超过 1 MiB 的文件进入可恢复分片队列。
-    </p>
-    <label class="switch"><input v-model="autoUpload" type="checkbox" /> 选择后自动上传</label>
+    <header class="demo-header">
+      <div>
+        <p class="eyebrow">上传组件</p>
+        <h1>列表模式</h1>
+      </div>
+      <label class="switch"><input v-model="autoUpload" type="checkbox" /> 选择后自动上传</label>
+    </header>
     <FlowUpload
       v-model="files"
       :transport="transport"
@@ -126,11 +145,10 @@ const downloadTransport: DownloadTransport = {
       :concurrency="2"
       :max-concurrent-files="2"
       :max-concurrent-requests="3"
-      list-type="picture-card"
+      list-type="list"
       selectable
       @error="(_, error) => eventLog.unshift(`错误：${error.message}`)"
     />
-    <p class="count">当前队列 {{ files.length }} 个文件</p>
     <aside v-if="eventLog.length" class="log">
       <strong>事件记录</strong>
       <p v-for="entry in eventLog.slice(0, 4)" :key="entry">{{ entry }}</p>
@@ -140,56 +158,65 @@ const downloadTransport: DownloadTransport = {
 
 <style scoped lang="scss">
 main {
-  width: min(720px, calc(100% - 32px));
-  margin: 72px auto;
-  padding: 36px;
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  background: var(--bg);
-  box-shadow: var(--shadow);
+  width: min(896px, calc(100% - 32px));
+  margin: 64px auto;
+  padding: 32px;
+  background: #f7f8fa;
 }
 
+.demo-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 18px;
+  text-align: left;
+}
 .eyebrow {
   margin: 0;
-  color: var(--accent);
+  color: #748094;
   font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
+  font-weight: 500;
 }
 h1 {
-  margin: 8px 0 12px;
-}
-.intro {
-  margin: 0 0 28px;
-  color: var(--text);
-  line-height: 1.7;
-}
-.count {
-  margin: 16px 0 0;
-  color: var(--text);
-  font-size: 13px;
+  margin: 3px 0 0;
+  color: #202938;
+  font-size: 18px;
+  font-weight: 600;
 }
 .switch {
   display: inline-flex;
   gap: 8px;
   align-items: center;
-  margin: 0 0 14px;
-  color: var(--text);
+  color: #748094;
   font-size: 13px;
   cursor: pointer;
 }
 .log {
   margin-top: 20px;
   padding: 14px;
-  border-left: 3px solid var(--accent);
-  background: var(--social-bg);
-  color: var(--text);
+  border-left: 3px solid #2f6bff;
+  background: #fff;
+  color: #748094;
   font-size: 12px;
 }
 .log strong {
-  color: var(--text-h);
+  color: #202938;
 }
 .log p {
   margin: 5px 0 0;
+}
+
+@media (max-width: 560px) {
+  main {
+    width: auto;
+    margin: 0;
+    padding: 20px 16px;
+  }
+  .demo-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+  }
 }
 </style>

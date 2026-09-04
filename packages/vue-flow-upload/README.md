@@ -56,6 +56,7 @@ const transport = createHttpUploadTransport({
 | `multiple`、`max-count`、`max-size`、`accept` | 选择和校验限制 | `true`、无限制、无限制、全部 |
 | `auto-upload` | 选择后立刻上传；关闭后调用实例 `submit()` | `true` |
 | `drag`、`directory` | 拖拽区域、浏览器支持的目录选择 | `false`、`false` |
+| `width`、`height` | 上传组件的 CSS 尺寸；数字按 px 处理。`height="auto"` 会填满具有明确高度的父容器 | `auto`、`300px` |
 | `show-file-list` | 是否渲染内置列表 | `true` |
 | `list-type` | `list`、`picture`、`picture-card` | `list` |
 | `data`、`headers` | 对象或返回对象的异步函数 | `{}` |

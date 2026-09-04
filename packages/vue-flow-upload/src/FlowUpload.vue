@@ -54,6 +54,10 @@ const props = withDefaults(
     listType?: 'list' | 'picture' | 'picture-card'
     preview?: boolean
     selectable?: boolean
+    /** CSS width. Numbers are treated as pixels. */
+    width?: string | number
+    /** CSS height. Use `auto` to fill a parent with an explicit height. */
+    height?: string | number
     archivePollingInterval?: number
     archivePollingTimeout?: number
     allDownloadScope?: DownloadScope
@@ -90,6 +94,8 @@ const props = withDefaults(
     directory: false,
     preview: true,
     selectable: false,
+    width: 'auto',
+    height: '300px',
     archivePollingInterval: 2_000,
     archivePollingTimeout: 10 * 60_000,
     theme: 'default',
@@ -154,9 +160,21 @@ const canDownload = computed(
   () => !props.disabled && !!props.downloadTransport && props.permissions.download !== false,
 )
 const canDownloadAll = computed(() => canDownload.value && props.permissions.downloadAll !== false)
+const selectableFiles = computed(() => files.value.filter((file) => file.fileId))
+const allSelectableFilesSelected = computed(
+  () =>
+    selectableFiles.value.length > 0 &&
+    selectableFiles.value.every((file) => selected.value.has(file.uid)),
+)
 const resolvedTheme = computed(() => resolveTheme(props.theme))
 const text = computed(() => resolveMessages(props.locale, props.messages))
 const themeStyle = computed(() => resolvedTheme.value.variables ?? {})
+const layoutStyle = computed(() => ({
+  width: toCssSize(props.width),
+  // CSS `auto` sizes to content. For this component, it intentionally means
+  // "use the containing component's height" instead.
+  height: props.height === 'auto' ? '100%' : toCssSize(props.height),
+}))
 const uploadTransport = computed(
   () =>
     props.transport ??
@@ -512,6 +530,16 @@ function toggleSelected(uid: string) {
   selected.value = next
 }
 
+function toggleAllSelected() {
+  selected.value = allSelectableFilesSelected.value
+    ? new Set()
+    : new Set(selectableFiles.value.map((file) => file.uid))
+}
+
+async function removeSelected() {
+  await Promise.all([...selected.value].map((uid) => remove(uid)))
+}
+
 async function previewFile(file: UploadFileItem) {
   if (!canPreview.value) return
   if (!isImage(file)) {
@@ -787,6 +815,17 @@ function formatSize(size: number) {
   return `${(size / (1024 * 1024)).toFixed(1)} MB`
 }
 
+function fileTypeLabel(file: UploadFileItem) {
+  if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) return 'PDF'
+  if (file.type.startsWith('image/')) return file.type.slice(6, 9).toUpperCase()
+  const extension = file.name.split('.').pop()
+  return extension ? extension.slice(0, 3).toUpperCase() : 'FILE'
+}
+
+function toCssSize(value: string | number) {
+  return typeof value === 'number' ? `${value}px` : value
+}
+
 function statusText(status: UploadFileItem['status']) {
   return {
     idle: text.value.waiting,
@@ -829,7 +868,7 @@ defineExpose({
   <section
     class="vfu-upload"
     :class="resolvedTheme.className"
-    :style="themeStyle"
+    :style="[themeStyle, layoutStyle]"
     :aria-label="text.selectFile"
   >
     <div
@@ -857,7 +896,7 @@ defineExpose({
         @change="onSelect"
       />
       <slot>
-        <span class="vfu-dropzone__mark">↥</span>
+        <span class="vfu-dropzone__mark" aria-hidden="true">⌃</span>
         <strong>{{ text.selectFile }}</strong>
         <span>{{ text.dragHint }}</span>
       </slot>
@@ -903,8 +942,20 @@ defineExpose({
       v-if="selectable || (canDownloadAll && files.some((file) => file.fileId))"
       class="vfu-toolbar"
     >
-      <span v-if="selectable">已选择 {{ selected.size }} 个文件</span>
-      <span v-else />
+      <span class="vfu-toolbar__selection">
+        <label v-if="selectable && selectableFiles.length" class="vfu-select vfu-select--all">
+          <input
+            :checked="allSelectableFilesSelected"
+            type="checkbox"
+            @change="toggleAllSelected"
+          />
+          <span>全选</span>
+        </label>
+        <span v-else>文件操作</span>
+        <span v-if="selectable && selected.size" class="vfu-toolbar__count"
+          >已选 {{ selected.size }} 项</span
+        >
+      </span>
       <span class="vfu-toolbar__actions">
         <button
           v-if="selectable && canDownloadAll && selected.size"
@@ -916,6 +967,14 @@ defineExpose({
         </button>
         <button v-if="canDownloadAll" class="vfu-button" type="button" @click="downloadAll()">
           {{ text.downloadAll }}
+        </button>
+        <button
+          v-if="selectable && selected.size && canRemove"
+          class="vfu-button is-danger"
+          type="button"
+          @click="removeSelected"
+        >
+          删除
         </button>
       </span>
     </div>
@@ -953,7 +1012,7 @@ defineExpose({
           >
             <img :src="imageUrl(file)" :alt="file.name" />
           </button>
-          <span class="vfu-file__glyph">{{ file.type.startsWith('image/') ? '▧' : '▤' }}</span>
+          <span class="vfu-file__glyph">{{ fileTypeLabel(file) }}</span>
           <div class="vfu-file__body">
             <div class="vfu-file__headline">
               <strong>{{ file.name }}</strong
@@ -1034,6 +1093,9 @@ defineExpose({
         </slot>
       </li>
     </ul>
+    <footer v-if="showFileList && files.length && listType === 'list'" class="vfu-list-footer">
+      共 {{ files.length }} 个文件
+    </footer>
     <div
       v-if="previewing"
       class="vfu-preview"
@@ -1058,13 +1120,17 @@ defineExpose({
 
 <style lang="scss">
 .vfu-upload {
-  --vfu-ink: #172033;
-  --vfu-muted: #687389;
-  --vfu-line: #dce2ee;
-  --vfu-signal: #4f46e5;
-  --vfu-danger: #c53b4c;
-  --vfu-radius: 10px;
+  --vfu-ink: #202938;
+  --vfu-muted: #748094;
+  --vfu-line: #d9dee7;
+  --vfu-signal: #2f6bff;
+  --vfu-danger: #e85757;
+  --vfu-radius: 6px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
   color: var(--vfu-ink);
+  text-align: left;
   font:
     14px/1.45 Inter,
     ui-sans-serif,
@@ -1073,25 +1139,24 @@ defineExpose({
 }
 .vfu-dropzone {
   display: grid;
+  flex: 1 1 auto;
   place-items: center;
   gap: 5px;
-  min-height: 178px;
+  min-height: 0;
   padding: 24px;
-  border: 1px dashed #a5b0c6;
-  border-radius: calc(var(--vfu-radius) + 4px);
-  background: linear-gradient(135deg, #fbfcff, #f5f7ff);
+  border: 1px dashed #d9ecff;
+  border-radius: var(--vfu-radius);
+  background: #fbfdff;
   cursor: pointer;
   text-align: center;
   transition:
     border-color 0.2s,
-    background 0.2s,
-    transform 0.2s;
+    background 0.2s;
 }
 .vfu-dropzone:hover,
 .vfu-dropzone.is-active {
   border-color: var(--vfu-signal);
-  background: #f0f2ff;
-  transform: translateY(-1px);
+  background: #f0f9ff;
 }
 .vfu-dropzone.is-disabled {
   cursor: not-allowed;
@@ -1103,6 +1168,7 @@ defineExpose({
 .vfu-trigger {
   display: inline-flex;
   align-items: center;
+  margin-bottom: 12px;
 }
 .vfu-trigger input {
   display: none;
@@ -1114,7 +1180,7 @@ defineExpose({
 }
 .vfu-dropzone strong {
   font-size: 15px;
-  letter-spacing: -0.01em;
+  font-weight: 400;
 }
 .vfu-dropzone > span:last-child {
   color: var(--vfu-muted);
@@ -1122,13 +1188,12 @@ defineExpose({
 }
 .vfu-dropzone__mark {
   display: grid;
-  width: 34px;
-  height: 34px;
+  width: 42px;
+  height: 42px;
   place-items: center;
-  border-radius: 11px;
-  background: var(--vfu-signal);
-  color: white;
-  font-size: 24px;
+  color: #c0c4cc;
+  font-size: 42px;
+  font-weight: 200;
   line-height: 1;
 }
 .vfu-toolbar {
@@ -1136,23 +1201,54 @@ defineExpose({
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin: 12px 0;
+  min-height: 50px;
+  margin: 0;
+  padding: 0 16px;
+  border: 1px solid var(--vfu-line);
+  border-bottom: 0;
+  background: #fff;
   color: var(--vfu-muted);
   font-size: 12px;
+}
+.vfu-toolbar + .vfu-toolbar {
+  border-top: 1px solid var(--vfu-line);
+}
+.vfu-toolbar__selection {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.vfu-toolbar__count {
+  color: var(--vfu-muted);
 }
 .vfu-toolbar__actions {
   display: inline-flex;
   gap: 8px;
 }
 .vfu-button {
-  border: 0;
+  border: 1px solid var(--vfu-signal);
   border-radius: var(--vfu-radius);
-  padding: 8px 12px;
+  padding: 8px 11px;
   background: var(--vfu-signal);
   color: white;
   cursor: pointer;
   font: inherit;
-  font-weight: 650;
+  font-weight: 400;
+  line-height: 1;
+  transition: background-color 0.2s;
+}
+.vfu-button:hover:not(:disabled) {
+  border-color: #5e8cff;
+  background: #5e8cff;
+}
+.vfu-button.is-danger {
+  border-color: #fff2f2;
+  background: #fff2f2;
+  color: var(--vfu-danger);
+}
+.vfu-button.is-danger:hover:not(:disabled) {
+  border-color: #ffdada;
+  background: #ffe6e6;
 }
 .vfu-button:disabled {
   cursor: not-allowed;
@@ -1160,20 +1256,29 @@ defineExpose({
 }
 .vfu-list {
   display: grid;
-  gap: 8px;
-  margin: 12px 0 0;
+  gap: 0;
+  margin: 0;
   padding: 0;
+  border: 1px solid var(--vfu-line);
   list-style: none;
 }
 .vfu-file {
   display: flex;
   align-items: center;
   gap: 11px;
-  min-height: 66px;
-  padding: 10px 12px;
-  border: 1px solid var(--vfu-line);
-  border-radius: var(--vfu-radius);
+  min-height: 52px;
+  padding: 8px 16px;
+  border: 0;
+  border-bottom: 1px solid #edf0f4;
+  border-radius: 0;
   background: white;
+  transition: background-color 0.2s;
+}
+.vfu-file:hover {
+  background: #f8faff;
+}
+.vfu-file:last-child {
+  border-bottom: 0;
 }
 .vfu-list.is-picture-card {
   grid-template-columns: repeat(auto-fill, minmax(164px, 1fr));
@@ -1183,7 +1288,8 @@ defineExpose({
   display: grid;
   grid-template-columns: 1fr;
   gap: 7px;
-  min-height: 180px;
+  min-height: 152px;
+  border-color: var(--vfu-line);
 }
 .vfu-list.is-picture-card .vfu-file__glyph {
   display: none;
@@ -1198,6 +1304,20 @@ defineExpose({
   z-index: 1;
   align-self: start;
 }
+.vfu-select--all {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  align-self: center;
+  color: var(--vfu-ink);
+  cursor: pointer;
+}
+.vfu-select input {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: var(--vfu-signal);
+}
 .vfu-list.is-picture-card .vfu-select {
   position: absolute;
   top: 9px;
@@ -1208,9 +1328,9 @@ defineExpose({
   height: 104px;
   overflow: hidden;
   border: 0;
-  border-radius: 7px;
+  border-radius: 2px;
   padding: 0;
-  background: #eef1ff;
+  background: #f5f7fa;
   cursor: zoom-in;
 }
 .vfu-thumbnail:disabled {
@@ -1227,21 +1347,22 @@ defineExpose({
   object-fit: cover;
 }
 .vfu-file.is-success {
-  border-color: #bfe2d1;
+  border-color: transparent;
 }
 .vfu-file.is-failed,
 .vfu-file.is-rejected {
-  border-color: #f1c5cb;
+  border-color: #fbc4c4;
 }
 .vfu-file__glyph {
   display: grid;
-  width: 31px;
-  height: 31px;
+  width: 26px;
+  height: 26px;
   place-items: center;
-  border-radius: 8px;
-  background: #eef1ff;
-  color: var(--vfu-signal);
-  font-size: 17px;
+  border-radius: 4px;
+  background: #eef3ff;
+  color: #2f6bff;
+  font-size: 8px;
+  font-weight: 700;
 }
 .vfu-file__body {
   min-width: 0;
@@ -1270,7 +1391,7 @@ defineExpose({
   overflow: hidden;
   margin: 6px 0 3px;
   border-radius: 99px;
-  background: #e8ebf4;
+  background: #ebeef5;
 }
 .vfu-progress i {
   display: block;
@@ -1286,15 +1407,32 @@ defineExpose({
 }
 .vfu-action {
   border: 0;
-  padding: 4px;
+  padding: 4px 5px;
   background: transparent;
-  color: var(--vfu-signal);
+  color: var(--vfu-muted);
   cursor: pointer;
   font: inherit;
   font-size: 12px;
 }
 .vfu-action.is-danger {
+  color: var(--vfu-muted);
+}
+.vfu-action:hover:not(:disabled) {
+  color: var(--vfu-signal);
+}
+.vfu-action.is-danger:hover:not(:disabled) {
   color: var(--vfu-danger);
+}
+.vfu-list-footer {
+  display: flex;
+  align-items: center;
+  min-height: 46px;
+  padding: 0 16px;
+  border: 1px solid var(--vfu-line);
+  border-top: 0;
+  background: #fff;
+  color: var(--vfu-muted);
+  font-size: 11px;
 }
 .vfu-preview {
   position: fixed;
@@ -1339,6 +1477,33 @@ defineExpose({
   .vfu-dropzone,
   .vfu-progress i {
     transition: none;
+  }
+}
+@media (max-width: 560px) {
+  .vfu-toolbar {
+    min-height: 0;
+    flex-wrap: wrap;
+    padding: 10px 12px;
+  }
+  .vfu-toolbar__actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  .vfu-file {
+    gap: 8px;
+    padding: 8px 12px;
+  }
+  .vfu-file__headline {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0;
+  }
+  .vfu-file__body small {
+    display: none;
+  }
+  .vfu-action {
+    padding: 4px 2px;
+    font-size: 11px;
   }
 }
 </style>
