@@ -12,8 +12,8 @@ export default defineConfig({
       fileName: (format) => `index.${format === 'es' ? 'js' : 'cjs'}`,
     },
     rollupOptions: {
-      external: ['vue'],
-      output: { globals: { vue: 'Vue' } },
+      external: ['vue', 'vue-i18n-lite'],
+      output: { globals: { vue: 'Vue', 'vue-i18n-lite': 'VueI18nLite' } },
     },
   },
 })

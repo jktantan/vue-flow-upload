@@ -6,7 +6,7 @@ import type {
   UploadRequestContext,
   UploadSuccessResult,
   UploadTransport,
-} from './types'
+} from '../types'
 
 export interface HttpUploadTransportOptions {
   url: string

@@ -47,23 +47,49 @@ const transport = createHttpUploadTransport({
 })
 ```
 
+## 国际化
+
+内置语言文件位于 `src/i18n/lang`，文案统一使用 `VueFlowUpload.*` 命名空间。为多个组件统一语言时，在宿主应用安装一个实例：
+
+```ts
+import { createApp } from 'vue'
+import { createFlowUploadI18n } from 'vue-flow-upload'
+
+createApp(App).use(createFlowUploadI18n({ locale: 'en-US' }))
+```
+
+组件会优先复用宿主的 i18n 实例。需要某个组件独立覆盖时传入 `i18n`：
+
+```vue
+<FlowUpload
+  :i18n="{
+    locale: 'en-US',
+    messages: {
+      'en-US': { VueFlowUpload: { selectFile: 'Choose attachments' } },
+    },
+  }"
+/>
+```
+
+旧的 `locale` 与扁平 `messages` 属性继续可用，但建议迁移到 `i18n`。
+
 ## 常用属性
 
-| 属性 | 说明 | 默认值 |
-| --- | --- | --- |
-| `action` / `transport` | 简单上传地址 / 自定义上传协议（二选一） | — |
-| `v-model`、`default-file-list` | 文件列表；回显只需 `{ name, url?, fileId? }` | `[]` |
-| `multiple`、`max-count`、`max-size`、`accept` | 选择和校验限制 | `true`、无限制、无限制、全部 |
-| `auto-upload` | 选择后立刻上传；关闭后调用实例 `submit()` | `true` |
-| `drag`、`directory` | 拖拽区域、浏览器支持的目录选择 | `false`、`false` |
-| `width`、`height` | 上传组件的 CSS 尺寸；数字按 px 处理。`height="auto"` 会填满具有明确高度的父容器 | `auto`、`300px` |
-| `show-file-list` | 是否渲染内置列表 | `true` |
-| `list-type` | `list`、`picture`、`picture-card` | `list` |
-| `data`、`headers` | 对象或返回对象的异步函数 | `{}` |
-| `normal-upload-threshold`、`chunk-size` | 超过阈值时走分片；需 transport 支持分片 | 10 MiB、5 MiB |
-| `concurrency`、`max-concurrent-files`、`max-concurrent-requests` | 分片/文件/请求并发限制 | 3、2、6 |
-| `resume`、`instant-upload` | 续传和 SHA-256 秒传 | `true`、`true` |
-| `before-upload`、`before-remove` | 返回 `false` 或 reject 可阻止上传/删除 | — |
+| 属性                                                             | 说明                                                                            | 默认值                       |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------- | ---------------------------- |
+| `action` / `transport`                                           | 简单上传地址 / 自定义上传协议（二选一）                                         | —                            |
+| `v-model`、`default-file-list`                                   | 文件列表；回显只需 `{ name, url?, fileId? }`                                    | `[]`                         |
+| `multiple`、`max-count`、`max-size`、`accept`                    | 选择和校验限制                                                                  | `true`、无限制、无限制、全部 |
+| `auto-upload`                                                    | 选择后立刻上传；关闭后调用实例 `submit()`                                       | `true`                       |
+| `drag`、`directory`                                              | 拖拽区域、浏览器支持的目录选择                                                  | `false`、`false`             |
+| `width`、`height`                                                | 上传组件的 CSS 尺寸；数字按 px 处理。`height="auto"` 会填满具有明确高度的父容器 | `auto`、`300px`              |
+| `show-file-list`                                                 | 是否渲染内置列表                                                                | `true`                       |
+| `list-type`                                                      | `list`、`picture`、`picture-card`                                               | `list`                       |
+| `data`、`headers`                                                | 对象或返回对象的异步函数                                                        | `{}`                         |
+| `normal-upload-threshold`、`chunk-size`                          | 超过阈值时走分片；需 transport 支持分片                                         | 10 MiB、5 MiB                |
+| `concurrency`、`max-concurrent-files`、`max-concurrent-requests` | 分片/文件/请求并发限制                                                          | 3、2、6                      |
+| `resume`、`instant-upload`                                       | 续传和 SHA-256 秒传                                                             | `true`、`true`               |
+| `before-upload`、`before-remove`                                 | 返回 `false` 或 reject 可阻止上传/删除                                          | —                            |
 
 ## 事件、插槽与实例
 

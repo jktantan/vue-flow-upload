@@ -1,12 +1,19 @@
 import FlowUpload from './FlowUpload.vue'
 
 export { FlowUpload }
-export { createHttpUploadTransport } from './http-transport'
-export { ChunkScheduler } from './chunk-scheduler'
-export { hashFile } from './hash-service'
-export { resolveMessages, resolveTheme } from './themes'
-export type { HttpUploadTransportOptions } from './http-transport'
-export type { ChunkSchedulerOptions } from './chunk-scheduler'
+export { createHttpUploadTransport } from './core/http-transport'
+export { ChunkScheduler } from './core/chunk-scheduler'
+export { hashFile } from './core/hash-service'
+export {
+  createFlowUploadI18n,
+  getBuiltInMessages,
+  getUploadMessages,
+  mergeLocaleMessages,
+  resolveMessages,
+} from './i18n'
+export { resolveTheme } from './themes'
+export type { HttpUploadTransportOptions } from './core/http-transport'
+export type { ChunkSchedulerOptions } from './core/chunk-scheduler'
 export type {
   ArchiveTask,
   DownloadResource,
@@ -31,3 +38,4 @@ export type {
   UploadTheme,
   ThemeAdapter,
 } from './types'
+export type { FlowUploadI18nOptions, LocaleMessage, LocaleMessages } from './i18n'
