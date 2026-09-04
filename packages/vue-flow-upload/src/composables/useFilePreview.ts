@@ -1,4 +1,5 @@
-import { ref, type ComputedRef } from 'vue'
+import type { ComputedRef } from 'vue'
+import { api as viewerApi } from 'v-viewer'
 import type { UploadFileItem } from '../types'
 import { isImage } from '../utils/file'
 
@@ -9,7 +10,6 @@ interface FilePreviewOptions {
 
 /** Manages image preview state and the object URLs created for local files. */
 export function useFilePreview(options: FilePreviewOptions) {
-  const previewing = ref<UploadFileItem>()
   const objectUrls = new Map<string, string>()
 
   function imageUrl(file: UploadFileItem) {
@@ -26,7 +26,10 @@ export function useFilePreview(options: FilePreviewOptions) {
     if (!options.canPreview.value) return
     if (!isImage(file)) return options.onPreview?.(file)
     if (options.onPreview) await options.onPreview(file)
-    else previewing.value = file
+    else {
+      const url = imageUrl(file)
+      if (url) viewerApi({ images: [url] })
+    }
   }
 
   function revoke(uid: string) {
@@ -38,8 +41,7 @@ export function useFilePreview(options: FilePreviewOptions) {
   function clear() {
     for (const url of objectUrls.values()) window.URL.revokeObjectURL(url)
     objectUrls.clear()
-    previewing.value = undefined
   }
 
-  return { previewing, imageUrl, previewFile, revoke, clear }
+  return { imageUrl, previewFile, revoke, clear }
 }

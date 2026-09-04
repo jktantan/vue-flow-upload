@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { UploadFileItem, UploadMessages } from '../types'
-import { fileTypeLabel, formatSize, isImage } from '../utils/file'
+import { fileIconUrl, formatSize, isImage } from '../utils/file'
 
 defineProps<{
   files: UploadFileItem[]
@@ -53,7 +53,7 @@ defineProps<{
           />
         </label>
         <button
-          v-if="listType !== 'list' && isImage(file)"
+          v-if="isImage(file) && imageUrl(file)"
           class="vfu-thumbnail"
           type="button"
           :disabled="!canPreview"
@@ -61,7 +61,7 @@ defineProps<{
         >
           <img :src="imageUrl(file)" :alt="file.name" />
         </button>
-        <span class="vfu-file__glyph">{{ fileTypeLabel(file) }}</span>
+        <img v-else class="vfu-file__glyph vfu-file__icon" :src="fileIconUrl(file)" alt="" />
         <div class="vfu-file__body">
           <div class="vfu-file__headline">
             <strong>{{ file.name }}</strong

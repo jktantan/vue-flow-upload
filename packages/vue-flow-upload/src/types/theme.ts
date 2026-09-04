@@ -1,6 +1,8 @@
 export interface UploadMessages {
   selectFile: string
+  chooseFile: string
   dragHint: string
+  dragUpload: string
   startUpload: string
   pause: string
   resume: string

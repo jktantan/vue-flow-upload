@@ -6,7 +6,7 @@ import { ChunkScheduler } from './core/chunk-scheduler'
 import { createFlowUploadI18n, getUploadMessages, type FlowUploadI18nOptions } from './i18n'
 import { resolveTheme } from './themes'
 import { createHttpUploadTransport } from './core/http-transport'
-import UploadPreviewDialog from './components/UploadPreviewDialog.vue'
+import 'viewerjs/dist/viewer.css'
 import UploadFileList from './components/UploadFileList.vue'
 import UploadToolbars from './components/UploadToolbars.vue'
 import UploadTrigger from './components/UploadTrigger.vue'
@@ -140,6 +140,7 @@ const emit = defineEmits<{
 const internalFiles = ref<UploadFileItem[]>(
   normalizeFileList(props.modelValue ?? props.defaultFileList),
 )
+const uploadTrigger = ref<{ browse: () => void }>()
 const scheduler = new ChunkScheduler({
   concurrency: props.concurrency,
   maxConcurrentFiles: props.maxConcurrentFiles,
@@ -270,7 +271,6 @@ const {
   onArchiveError: (taskId, error) => emit('archive-error', taskId, error),
 })
 const {
-  previewing,
   imageUrl,
   previewFile,
   revoke: revokePreviewUrl,
@@ -439,13 +439,13 @@ defineExpose({
     :aria-label="text.selectFile"
   >
     <UploadTrigger
+      ref="uploadTrigger"
       :drag="drag"
       :directory="directory"
       :multiple="multiple"
       :accept="accept"
       :can-select="canSelect"
       :text="text"
-      :t="t"
       @files="addFiles"
     >
       <template v-if="$slots.default" #default><slot /></template>
@@ -455,17 +455,15 @@ defineExpose({
 
     <UploadToolbars
       :files="files"
-      :auto-upload="autoUpload"
       :selectable="selectable"
       :selected="selected"
       :selectable-count="selectableFiles.length"
       :all-selected="allSelectableFilesSelected"
-      :can-upload="canUpload"
+      :can-select="canSelect"
       :can-remove="canRemove"
       :can-download-all="canDownloadAll"
       :text="text"
-      :t="t"
-      @submit="submit"
+      @select="uploadTrigger?.browse()"
       @toggle-all="toggleAllSelected"
       @download-selected="downloadSelected"
       @download-all="downloadAll"
@@ -499,12 +497,6 @@ defineExpose({
         <slot name="file" v-bind="slotProps" />
       </template>
     </UploadFileList>
-    <UploadPreviewDialog
-      :file="previewing"
-      :close-label="text.closePreview"
-      :image-url="imageUrl"
-      @close="previewing = undefined"
-    />
   </section>
 </template>
 

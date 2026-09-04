@@ -1,4 +1,15 @@
 import type { FileMeta, UploadFileItem, UploadUserFile } from '../types'
+import audioIcon from '../assets/file-icons/audio.svg?url'
+import documentIcon from '../assets/file-icons/document.svg?url'
+import fileIcon from '../assets/file-icons/file.svg?url'
+import imageIcon from '../assets/file-icons/image.svg?url'
+import jsonIcon from '../assets/file-icons/json.svg?url'
+import excelIcon from '../assets/file-icons/microsoft-excel.svg?url'
+import powerpointIcon from '../assets/file-icons/microsoft-powerpoint.svg?url'
+import wordIcon from '../assets/file-icons/microsoft-word.svg?url'
+import pdfIcon from '../assets/file-icons/pdf.svg?url'
+import videoIcon from '../assets/file-icons/video.svg?url'
+import zipIcon from '../assets/file-icons/zip.svg?url'
 
 export function createUid() {
   return typeof globalThis.crypto?.randomUUID === 'function'
@@ -60,6 +71,52 @@ export function fileTypeLabel(file: UploadFileItem) {
   if (file.type.startsWith('image/')) return file.type.slice(6, 9).toUpperCase()
   const extension = file.name.split('.').pop()
   return extension ? extension.slice(0, 3).toUpperCase() : 'FILE'
+}
+
+/** Resolves a local, colorful SVG using MIME type first and extension as a fallback. */
+export function fileIconUrl(file: UploadFileItem) {
+  const extension = file.name.split('.').pop()?.toLowerCase() ?? ''
+  const type = file.type.toLowerCase()
+  if (type === 'application/pdf' || extension === 'pdf') return pdfIcon
+  if (type.includes('word') || ['doc', 'docx', 'dot', 'dotx', 'odt', 'rtf'].includes(extension))
+    return wordIcon
+  if (
+    type.includes('excel') ||
+    type.includes('spreadsheet') ||
+    ['xls', 'xlsx', 'xlsm', 'csv', 'ods'].includes(extension)
+  )
+    return excelIcon
+  if (
+    type.includes('powerpoint') ||
+    type.includes('presentation') ||
+    ['ppt', 'pptx', 'pps', 'ppsx', 'odp'].includes(extension)
+  )
+    return powerpointIcon
+  if (type.startsWith('audio/') || ['mp3', 'wav', 'ogg', 'm4a', 'flac', 'aac'].includes(extension))
+    return audioIcon
+  if (type.startsWith('video/') || ['mp4', 'mov', 'avi', 'mkv', 'webm', 'mpeg'].includes(extension))
+    return videoIcon
+  if (
+    type.startsWith('image/') ||
+    ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'tiff'].includes(extension)
+  )
+    return imageIcon
+  if (
+    type.includes('zip') ||
+    type.includes('compressed') ||
+    ['zip', 'rar', '7z', 'tar', 'gz', 'tgz'].includes(extension)
+  )
+    return zipIcon
+  if (
+    type.includes('json') ||
+    ['json', 'xml', 'yaml', 'yml', 'js', 'ts', 'tsx', 'jsx', 'html', 'css', 'md'].includes(
+      extension,
+    )
+  )
+    return jsonIcon
+  if (type.startsWith('text/') || ['txt', 'log', 'ini', 'cfg'].includes(extension))
+    return documentIcon
+  return fileIcon
 }
 
 export function toCssSize(value: string | number) {

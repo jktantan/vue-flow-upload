@@ -1,70 +1,76 @@
 <script setup lang="ts">
-import { computed } from 'vue'
 import type { UploadFileItem, UploadMessages } from '../types'
 
 const props = defineProps<{
   files: UploadFileItem[]
-  autoUpload: boolean
   selectable: boolean
   selected: Set<string>
   selectableCount: number
   allSelected: boolean
-  canUpload: boolean
+  canSelect: boolean
   canRemove: boolean
   canDownloadAll: boolean
   text: UploadMessages
-  t: (key: string, values?: Record<string, string | number>) => string
 }>()
 
 const emit = defineEmits<{
-  submit: []
+  select: []
   toggleAll: []
   downloadSelected: [uids: string[]]
   downloadAll: []
   removeSelected: []
 }>()
-
-const pendingCount = computed(() => props.files.filter((file) => file.status === 'idle').length)
-const hasDownloadableFile = computed(() => props.files.some((file) => file.fileId))
 </script>
 
 <template>
-  <div v-if="!autoUpload && pendingCount" class="vfu-toolbar">
-    <span>{{ t('pendingFiles', { count: pendingCount }) }}</span>
-    <button class="vfu-button" type="button" :disabled="!canUpload" @click="emit('submit')">
-      {{ text.startUpload }}
-    </button>
-  </div>
-  <div v-if="selectable || (canDownloadAll && hasDownloadableFile)" class="vfu-toolbar">
-    <span class="vfu-toolbar__selection">
+  <div class="vfu-toolbar">
+    <span class="vfu-toolbar__left">
       <label v-if="selectable && selectableCount" class="vfu-select vfu-select--all">
-        <input :checked="allSelected" type="checkbox" @change="emit('toggleAll')" />
-        <span>{{ text.selectAll }}</span>
+        <input
+          :checked="allSelected"
+          :aria-label="text.selectAll"
+          type="checkbox"
+          @change="emit('toggleAll')"
+        />
       </label>
-      <span v-else>{{ text.fileActions }}</span>
-      <span v-if="selectable && selected.size" class="vfu-toolbar__count">{{
-        t('selectedFiles', { count: selected.size })
-      }}</span>
-    </span>
-    <span class="vfu-toolbar__actions">
       <button
-        v-if="selectable && canDownloadAll && selected.size"
-        class="vfu-button"
+        v-if="selectable && canDownloadAll"
+        class="vfu-button is-primary"
         type="button"
+        :disabled="!selected.size"
         @click="emit('downloadSelected', [...selected])"
       >
         {{ text.downloadSelected }}
       </button>
-      <button v-if="canDownloadAll" class="vfu-button" type="button" @click="emit('downloadAll')">
+      <button
+        v-if="canDownloadAll"
+        class="vfu-button is-info"
+        type="button"
+        @click="emit('downloadAll')"
+      >
         {{ text.downloadAll }}
       </button>
       <button
-        v-if="selectable && selected.size && canRemove"
+        v-if="selectable && canRemove"
         class="vfu-button is-danger"
         type="button"
+        :disabled="!selected.size"
         @click="emit('removeSelected')"
       >
         {{ text.removeSelected }}
+      </button>
+    </span>
+    <span class="vfu-toolbar__center">
+      <span class="vfu-toolbar__drag">{{ text.dragUpload }}</span>
+    </span>
+    <span class="vfu-toolbar__right">
+      <button
+        class="vfu-button is-success"
+        type="button"
+        :disabled="!canSelect"
+        @click="emit('select')"
+      >
+        {{ text.chooseFile }}
       </button>
     </span>
   </div>

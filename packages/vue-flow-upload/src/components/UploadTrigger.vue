@@ -19,6 +19,8 @@ const { input, dragActive, acceptValue, browse, onSelect, onDrop } = useFileSele
   addFiles: (files) => emit('files', files),
 })
 void input
+
+defineExpose({ browse })
 </script>
 
 <template>

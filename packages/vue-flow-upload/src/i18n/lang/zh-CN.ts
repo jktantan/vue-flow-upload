@@ -3,7 +3,9 @@ import type { UploadMessages } from '../../types'
 export default {
   VueFlowUpload: {
     selectFile: '选择文件或拖拽到这里',
+    chooseFile: '选择文件',
     dragHint: '支持普通上传；可配置文件类型、大小和业务参数。',
+    dragUpload: '可拖拽上传文件',
     startUpload: '开始上传',
     pause: '暂停',
     resume: '继续',

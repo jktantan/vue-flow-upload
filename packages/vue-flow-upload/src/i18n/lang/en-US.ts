@@ -3,7 +3,9 @@ import type { UploadMessages } from '../../types'
 export default {
   VueFlowUpload: {
     selectFile: 'Select files or drop them here',
+    chooseFile: 'Choose files',
     dragHint: 'Configure accepted types, size limits, and request data.',
+    dragUpload: 'Drop files here to upload',
     startUpload: 'Start upload',
     pause: 'Pause',
     resume: 'Resume',
