@@ -9,7 +9,6 @@ interface FileSelectionOptions {
 /** Owns DOM-only file-input and drag/drop state, leaving validation to the upload queue. */
 export function useFileSelection(options: FileSelectionOptions) {
   const input = ref<HTMLInputElement>()
-  const dragActive = ref(false)
   const acceptValue = computed(() =>
     Array.isArray(options.accept.value) ? options.accept.value.join(',') : options.accept.value,
   )
@@ -23,11 +22,5 @@ export function useFileSelection(options: FileSelectionOptions) {
     if (input.value) input.value.value = ''
   }
 
-  function onDrop(event: DragEvent) {
-    event.preventDefault()
-    dragActive.value = false
-    if (options.canSelect.value) void options.addFiles(Array.from(event.dataTransfer?.files ?? []))
-  }
-
-  return { input, dragActive, acceptValue, browse, onSelect, onDrop }
+  return { input, acceptValue, browse, onSelect }
 }

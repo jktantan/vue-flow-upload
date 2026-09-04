@@ -28,13 +28,19 @@ defineProps<{
 </script>
 
 <template>
+  <!-- Lucide Icons v1.40.0, ISC License. Copyright Lucide Icons and Contributors. -->
   <ul
     v-if="show && files.length"
     class="vfu-list"
     :class="{ 'is-picture-card': listType === 'picture-card' }"
     aria-live="polite"
   >
-    <li v-for="file in files" :key="file.uid" class="vfu-file" :class="`is-${file.status}`">
+    <li
+      v-for="file in files"
+      :key="file.uid"
+      class="vfu-file"
+      :class="[`is-${file.status}`, { 'has-select': selectable }]"
+    >
       <slot
         name="file"
         :file="file"
@@ -45,23 +51,26 @@ defineProps<{
         :resume="resume"
         :retry="retry"
       >
-        <label v-if="selectable && file.fileId" class="vfu-select" @click.stop>
+        <label v-if="selectable" class="vfu-select" @click.stop>
           <input
-            :checked="selected.has(file.uid)"
+            :checked="file.status === 'success' && selected.has(file.uid)"
+            :disabled="file.status !== 'success' || !file.fileId"
             type="checkbox"
             @change="toggleSelected(file.uid)"
           />
         </label>
-        <button
-          v-if="isImage(file) && imageUrl(file)"
-          class="vfu-thumbnail"
-          type="button"
-          :disabled="!canPreview"
-          @click="preview(file)"
-        >
-          <img :src="imageUrl(file)" :alt="file.name" />
-        </button>
-        <img v-else class="vfu-file__glyph vfu-file__icon" :src="fileIconUrl(file)" alt="" />
+        <div class="vfu-file__visual">
+          <button
+            v-if="isImage(file) && imageUrl(file)"
+            class="vfu-thumbnail"
+            type="button"
+            :disabled="!canPreview"
+            @click="preview(file)"
+          >
+            <img :src="imageUrl(file)" :alt="file.name" />
+          </button>
+          <img v-else class="vfu-file__glyph vfu-file__icon" :src="fileIconUrl(file)" alt="" />
+        </div>
         <div class="vfu-file__body">
           <div class="vfu-file__headline">
             <strong>{{ file.name }}</strong
@@ -78,66 +87,77 @@ defineProps<{
           >
             <i :style="{ width: `${file.percent}%` }" />
           </div>
-          <small :class="{ 'is-error': file.status === 'failed' || file.status === 'rejected' }">{{
-            file.error?.message ?? statusText(file.status)
-          }}</small>
+          <div class="vfu-file__status">
+            <small :class="{ 'is-error': file.status === 'failed' || file.status === 'rejected' }">{{
+              file.error?.message ?? statusText(file.status)
+            }}</small>
+            <span
+              v-if="['uploading', 'queued', 'merging'].includes(file.status)"
+              class="vfu-file__percent"
+              >{{ file.percent }}%</span
+            >
+          </div>
         </div>
-        <span
-          v-if="['uploading', 'queued', 'merging'].includes(file.status)"
-          class="vfu-file__percent"
-          >{{ file.percent }}%</span
-        >
-        <button
-          v-if="
-            ['hashing', 'checking', 'queued', 'uploading', 'preparing'].includes(file.status) &&
-            canUpload
-          "
-          class="vfu-action"
-          type="button"
-          @click="pause(file.uid)"
-        >
-          {{ text.pause }}
-        </button>
-        <button
-          v-if="file.status === 'paused' && canUpload"
-          class="vfu-action"
-          type="button"
-          @click="resume(file.uid)"
-        >
-          {{ text.resume }}
-        </button>
-        <button
-          v-if="file.status === 'failed' && canRetry"
-          class="vfu-action"
-          type="button"
-          @click="retry(file.uid)"
-        >
-          {{ text.retry }}
-        </button>
-        <button
-          v-if="file.status === 'success' && canPreview"
-          class="vfu-action"
-          type="button"
-          @click="preview(file)"
-        >
-          {{ text.preview }}
-        </button>
-        <button
-          v-if="file.status === 'success' && file.fileId && canDownload"
-          class="vfu-action"
-          type="button"
-          @click="download(file.uid)"
-        >
-          {{ text.download }}
-        </button>
-        <button
-          v-if="canRemove"
-          class="vfu-action is-danger"
-          type="button"
-          @click="remove(file.uid)"
-        >
-          {{ text.remove }}
-        </button>
+        <div class="vfu-file__actions">
+          <button
+            v-if="isImage(file) && imageUrl(file) && canPreview"
+            class="vfu-action"
+            type="button"
+            :aria-label="text.preview"
+            :data-tooltip="text.preview"
+            @click="preview(file)"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+          </button>
+          <button
+            v-if="file.status === 'success' && file.fileId && canDownload"
+            class="vfu-action"
+            type="button"
+            :aria-label="text.download"
+            :data-tooltip="text.download"
+            @click="download(file.uid)"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 15V3" />
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <path d="m7 10 5 5 5-5" />
+            </svg>
+          </button>
+          <button
+            v-if="file.status === 'failed' && canRetry"
+            class="vfu-action"
+            type="button"
+            :aria-label="text.retry"
+            :data-tooltip="text.retry"
+            @click="retry(file.uid)"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+              <path d="M21 3v5h-5" />
+              <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+              <path d="M8 16H3v5" />
+            </svg>
+          </button>
+          <button
+            v-if="canRemove"
+            class="vfu-action is-danger"
+            type="button"
+            :aria-label="text.remove"
+            :data-tooltip="text.remove"
+            @click="remove(file.uid)"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M10 11v6" />
+              <path d="M14 11v6" />
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+              <path d="M3 6h18" />
+              <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+            </svg>
+          </button>
+        </div>
       </slot>
     </li>
   </ul>

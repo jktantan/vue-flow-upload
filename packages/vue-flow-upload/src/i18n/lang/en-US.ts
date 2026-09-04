@@ -4,8 +4,12 @@ export default {
   VueFlowUpload: {
     selectFile: 'Select files or drop them here',
     chooseFile: 'Choose files',
+    uploadLimits: 'Accepted: {accept}; maximum file size: {maxSize}',
+    allFileTypes: 'all file types',
+    unlimited: 'unlimited',
     dragHint: 'Configure accepted types, size limits, and request data.',
     dragUpload: 'Drop files here to upload',
+    dropToUpload: 'Release to upload',
     startUpload: 'Start upload',
     pause: 'Pause',
     resume: 'Resume',
@@ -35,5 +39,10 @@ export default {
     selectedFiles: '{count} selected',
     removeSelected: 'Remove selected',
     fileCount: '{count} files total',
+    removeConfirmTitle: 'Delete file?',
+    removeConfirmMessage: 'Deleting {count} file(s) ({names}) also removes server-side upload data and cannot be undone.',
+    removeConfirmProcessing: 'Deleting…',
+    cancel: 'Cancel',
+    removeCleanupFailed: 'Server cleanup failed. Please try again.',
   } satisfies UploadMessages,
 }

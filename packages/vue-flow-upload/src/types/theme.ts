@@ -1,8 +1,12 @@
 export interface UploadMessages {
   selectFile: string
   chooseFile: string
+  uploadLimits: string
+  allFileTypes: string
+  unlimited: string
   dragHint: string
   dragUpload: string
+  dropToUpload: string
   startUpload: string
   pause: string
   resume: string
@@ -32,6 +36,11 @@ export interface UploadMessages {
   selectedFiles: string
   removeSelected: string
   fileCount: string
+  removeConfirmTitle: string
+  removeConfirmMessage: string
+  removeConfirmProcessing: string
+  cancel: string
+  removeCleanupFailed: string
 }
 export interface ThemeAdapter {
   name: string

@@ -38,6 +38,8 @@ export interface UploadFileItem {
   percent: number
   file?: File
   fileId?: string
+  /** Whether the server-side file record has been created for this upload. */
+  remoteCreated?: boolean
   uploadId?: string
   sha256?: string
   url?: string

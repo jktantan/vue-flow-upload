@@ -8,6 +8,7 @@ import { resolveTheme } from './themes'
 import { createHttpUploadTransport } from './core/http-transport'
 import 'viewerjs/dist/viewer.css'
 import UploadFileList from './components/UploadFileList.vue'
+import UploadRemoveDialog from './components/UploadRemoveDialog.vue'
 import UploadToolbars from './components/UploadToolbars.vue'
 import UploadTrigger from './components/UploadTrigger.vue'
 import { useDownloadManager } from './composables/useDownloadManager'
@@ -38,6 +39,10 @@ const props = withDefaults(
     /** Custom transport. Omit it and provide `action` for a standard XHR upload. */
     transport?: UploadTransport
     action?: string
+    /** Optional endpoint that pre-creates a server file record and returns its fileId. */
+    createAction?: string
+    /** Endpoint that idempotently deletes a file and all of its upload sessions by fileId. */
+    deleteAction?: string
     method?: 'POST' | 'PUT'
     withCredentials?: boolean
     downloadTransport?: DownloadTransport
@@ -105,12 +110,12 @@ const props = withDefaults(
     instantUpload: true,
     listType: 'list',
     showFileList: true,
-    drag: false,
+    drag: true,
     directory: false,
     preview: true,
     selectable: false,
     width: 'auto',
-    height: '300px',
+    height: '600px',
     archivePollingInterval: 2_000,
     archivePollingTimeout: 10 * 60_000,
     theme: 'default',
@@ -184,6 +189,10 @@ const text = computed(() => getUploadMessages(i18n.value))
 const t = (key: string, values?: Record<string, string | number>) =>
   i18n.value.t(`VueFlowUpload.${key}`, values)
 const themeStyle = computed(() => resolvedTheme.value.variables ?? {})
+const dragActive = ref(false)
+const pendingRemoval = ref<UploadFileItem[]>([])
+const removalBusy = ref(false)
+const removalError = ref('')
 const layoutStyle = computed(() => ({
   width: toCssSize(props.width),
   // CSS `auto` sizes to content. For this component, it intentionally means
@@ -196,6 +205,8 @@ const uploadTransport = computed(
     (props.action
       ? createHttpUploadTransport({
           url: props.action,
+          createUrl: props.createAction,
+          deleteUrl: props.deleteAction,
           method: props.method,
           credentials: props.withCredentials ? 'include' : 'same-origin',
         })
@@ -275,7 +286,7 @@ const {
   previewFile,
   revoke: revokePreviewUrl,
   clear: clearPreviews,
-} = useFilePreview({ canPreview, onPreview: props.onPreview })
+} = useFilePreview({ files, canPreview, onPreview: props.onPreview })
 const {
   selected,
   selectableFiles,
@@ -296,6 +307,7 @@ async function addFiles(selected: File[]) {
   for (const file of accepted) {
     const item: UploadFileItem = {
       uid: createUid(),
+      fileId: createUid(),
       name: file.name,
       size: file.size,
       type: file.type,
@@ -336,33 +348,71 @@ async function validate(file: File): Promise<UploadError | undefined> {
 }
 
 async function removeSelected() {
-  await Promise.all([...selected.value].map((uid) => remove(uid)))
+  const targets = files.value.filter((file) => selected.value.has(file.uid))
+  const direct = targets.filter((file) => !requiresRemovalConfirmation(file))
+  for (const file of direct) await removeImmediately(file)
+  const confirmed = targets.filter(requiresRemovalConfirmation)
+  if (confirmed.length) openRemovalConfirmation(confirmed)
 }
 
 async function remove(uid: string) {
   const target = files.value.find((file) => file.uid === uid)
   if (!target || !canRemove.value) return false
+  if (requiresRemovalConfirmation(target)) {
+    openRemovalConfirmation([target])
+    return false
+  }
+  return removeImmediately(target)
+}
+
+function requiresRemovalConfirmation(file: UploadFileItem) {
+  return !['idle', 'validating', 'rejected'].includes(file.status)
+}
+
+function openRemovalConfirmation(targets: UploadFileItem[]) {
+  pendingRemoval.value = targets
+  removalError.value = ''
+}
+
+function closeRemovalConfirmation() {
+  if (removalBusy.value) return
+  pendingRemoval.value = []
+  removalError.value = ''
+}
+
+async function confirmRemoval() {
+  removalBusy.value = true
+  removalError.value = ''
+  try {
+    for (const file of pendingRemoval.value) await removeImmediately(file)
+    pendingRemoval.value = []
+  } catch {
+    removalError.value = text.value.removeCleanupFailed
+  } finally {
+    removalBusy.value = false
+  }
+}
+
+async function removeImmediately(target: UploadFileItem) {
   try {
     if (props.beforeRemove && !(await props.beforeRemove(target, files.value))) return false
   } catch {
     return false
   }
-  revokePreviewUrl(uid)
-  removeSelection(uid)
-  uploadQueue.abort(uid)
-  const transport = uploadTransport.value
-  if (target.uploadId && transport?.cancelMultipart) {
-    void Promise.all([resolveData(), resolveHeaders()]).then(([data, headers]) =>
-      transport.cancelMultipart?.(target.uploadId!, {
-        data,
-        headers,
-        fileFieldName: props.fileFieldName,
-        dataFieldName: props.dataFieldName,
-      }),
+  const cleanupRequired = requiresRemovalConfirmation(target)
+  if (cleanupRequired) {
+    if (!target.fileId || !uploadTransport.value?.deleteFile)
+      throw new Error('DELETE_FILE_NOT_CONFIGURED')
+    uploadQueue.abort(target.uid)
+    await uploadTransport.value.deleteFile(
+      target.fileId,
+      requestMeta(await resolveData(), await resolveHeaders()),
     )
   }
+  revokePreviewUrl(target.uid)
+  removeSelection(target.uid)
   updateFiles(
-    files.value.filter((file) => file.uid !== uid),
+    files.value.filter((file) => file.uid !== target.uid),
     target,
   )
   emit('remove', target)
@@ -411,6 +461,36 @@ function statusText(status: UploadFileItem['status']) {
   }[status]
 }
 
+function isFileDrag(event: DragEvent) {
+  const transfer = event.dataTransfer
+  return !!transfer && (transfer.files.length > 0 || Array.from(transfer.types).includes('Files'))
+}
+
+function onDragEnter(event: DragEvent) {
+  if (!props.drag || !canSelect.value || !isFileDrag(event)) return
+  event.preventDefault()
+  dragActive.value = true
+}
+
+function onDragOver(event: DragEvent) {
+  if (!props.drag || !canSelect.value || !isFileDrag(event)) return
+  event.preventDefault()
+}
+
+function onDragLeave(event: DragEvent) {
+  if (!props.drag || !dragActive.value) return
+  const container = event.currentTarget as HTMLElement | null
+  const nextTarget = event.relatedTarget as Node | null
+  if (!nextTarget || !container?.contains(nextTarget)) dragActive.value = false
+}
+
+function onDrop(event: DragEvent) {
+  if (!props.drag || !canSelect.value || !isFileDrag(event)) return
+  event.preventDefault()
+  dragActive.value = false
+  void addFiles(Array.from(event.dataTransfer?.files ?? []))
+}
+
 onBeforeUnmount(clear)
 
 defineExpose({
@@ -437,20 +517,19 @@ defineExpose({
     :class="resolvedTheme.className"
     :style="[themeStyle, layoutStyle]"
     :aria-label="text.selectFile"
+    @dragenter="onDragEnter"
+    @dragover="onDragOver"
+    @dragleave="onDragLeave"
+    @drop="onDrop"
   >
     <UploadTrigger
       ref="uploadTrigger"
-      :drag="drag"
       :directory="directory"
       :multiple="multiple"
       :accept="accept"
       :can-select="canSelect"
-      :text="text"
       @files="addFiles"
-    >
-      <template v-if="$slots.default" #default><slot /></template>
-      <template v-if="$slots.trigger" #trigger><slot name="trigger" /></template>
-    </UploadTrigger>
+    />
     <slot name="tip" />
 
     <UploadToolbars
@@ -462,6 +541,9 @@ defineExpose({
       :can-select="canSelect"
       :can-remove="canRemove"
       :can-download-all="canDownloadAll"
+      :drag="drag"
+      :accept="accept"
+      :max-size="maxSize"
       :text="text"
       @select="uploadTrigger?.browse()"
       @toggle-all="toggleAllSelected"
@@ -497,6 +579,23 @@ defineExpose({
         <slot name="file" v-bind="slotProps" />
       </template>
     </UploadFileList>
+
+    <UploadRemoveDialog
+      :files="pendingRemoval"
+      :busy="removalBusy"
+      :error="removalError"
+      :title="text.removeConfirmTitle"
+      :message="text.removeConfirmMessage"
+      :cancel-text="text.cancel"
+      :confirm-text="text.remove"
+      :processing-text="text.removeConfirmProcessing"
+      @cancel="closeRemovalConfirmation"
+      @confirm="confirmRemoval"
+    />
+
+    <div v-if="drag && dragActive" class="vfu-upload__drop-mask" aria-live="polite">
+      <span class="vfu-upload__drop-message">{{ text.dropToUpload }}</span>
+    </div>
   </section>
 </template>
 

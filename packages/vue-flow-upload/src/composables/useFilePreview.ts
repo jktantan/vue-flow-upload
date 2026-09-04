@@ -4,6 +4,7 @@ import type { UploadFileItem } from '../types'
 import { isImage } from '../utils/file'
 
 interface FilePreviewOptions {
+  files: ComputedRef<UploadFileItem[]>
   canPreview: ComputedRef<boolean>
   onPreview?: (file: UploadFileItem) => void | Promise<void>
 }
@@ -27,8 +28,21 @@ export function useFilePreview(options: FilePreviewOptions) {
     if (!isImage(file)) return options.onPreview?.(file)
     if (options.onPreview) await options.onPreview(file)
     else {
-      const url = imageUrl(file)
-      if (url) viewerApi({ images: [url] })
+      const imageFiles = options.files.value
+        .filter(isImage)
+        .map((item) => ({ file: item, url: imageUrl(item) }))
+        .filter((item): item is { file: UploadFileItem; url: string } => !!item.url)
+      const initialViewIndex = imageFiles.findIndex((item) => item.file.uid === file.uid)
+      if (initialViewIndex >= 0) {
+        const fileNames = new Map(imageFiles.map((item) => [item.url, item.file.name]))
+        viewerApi({
+          images: imageFiles.map((item) => item.url),
+          options: {
+            initialViewIndex,
+            title: (image) => fileNames.get(image.src) ?? file.name,
+          },
+        })
+      }
     }
   }
 

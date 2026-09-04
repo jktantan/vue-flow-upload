@@ -11,6 +11,7 @@ export interface UploadRequestContext extends RequestContext {
   onProgress: (loaded: number, total: number) => void
 }
 export interface FileMeta {
+  fileId?: string
   name: string
   size: number
   mimeType: string
@@ -35,8 +36,10 @@ export interface UploadChunkInput {
   file: FileMeta
 }
 export interface UploadTransport {
+  /** Creates or confirms the server-side file record before bytes are uploaded. */
+  createFile?(input: FileMeta, context: RequestContext): Promise<{ fileId: string }>
   uploadFile(
-    input: { file: File; data: Record<string, unknown> },
+    input: { file: File; fileId: string; data: Record<string, unknown> },
     context: UploadRequestContext,
   ): Promise<UploadSuccessResult>
   checkFile?(
@@ -47,8 +50,10 @@ export interface UploadTransport {
   uploadChunk?(input: UploadChunkInput, context: UploadRequestContext): Promise<void>
   completeMultipart?(
     uploadId: string,
-    input: { sha256?: string; data: Record<string, unknown> },
+    input: { fileId?: string; sha256?: string; data: Record<string, unknown> },
     context: RequestContext,
   ): Promise<UploadSuccessResult>
   cancelMultipart?(uploadId: string, context: RequestContext): Promise<void>
+  /** Idempotently removes a file and every temporary upload session associated with it. */
+  deleteFile?(fileId: string, context: RequestContext): Promise<void>
 }

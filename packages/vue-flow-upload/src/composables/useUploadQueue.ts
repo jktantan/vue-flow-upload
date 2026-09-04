@@ -99,7 +99,8 @@ export function useUploadQueue(options: UploadQueueOptions) {
     const success = options.updateFile(uid, {
       status: 'success',
       percent: 100,
-      fileId: response.fileId,
+      fileId: response.fileId ?? options.files.value.find((file) => file.uid === uid)?.fileId,
+      remoteCreated: true,
       url: response.url,
       thumbnailUrl: response.thumbnailUrl,
       response,
@@ -110,14 +111,31 @@ export function useUploadQueue(options: UploadQueueOptions) {
     }
   }
 
-  async function uploadNormal(uid: string, file: File, data: Record<string, unknown>) {
+  async function prepareFile(
+    uid: string,
+    file: UploadFileItem,
+    data: Record<string, unknown>,
+  ) {
+    const transport = requireTransport()
+    if (file.remoteCreated) return file
+    options.updateFile(uid, { status: 'preparing' })
+    const created = transport.createFile
+      ? await transport.createFile(
+          fileMeta(file.file!, undefined, file.fileId),
+          requestMeta(data, await options.resolveHeaders()),
+        )
+      : { fileId: file.fileId! }
+    return options.updateFile(uid, { fileId: created.fileId, remoteCreated: true })
+  }
+
+  async function uploadNormal(uid: string, file: File, fileId: string, data: Record<string, unknown>) {
     return options.scheduler.schedule(uid, async () => {
       const controller = trackController(uid)
       const current = options.updateFile(uid, { status: 'uploading' })
       if (current) options.onProgress(current, 0)
       try {
         return await requireTransport().uploadFile(
-          { file, data },
+          { file, fileId, data },
           requestContext(data, await options.resolveHeaders(), controller, (loaded, total) =>
             updateProgress(uid, loaded, total),
           ),
@@ -133,6 +151,7 @@ export function useUploadQueue(options: UploadQueueOptions) {
     file: File,
     data: Record<string, unknown>,
     sha256?: string,
+    fileId?: string,
   ) {
     const { initMultipart, uploadChunk, completeMultipart } = requireTransport()
     if (!initMultipart || !uploadChunk || !completeMultipart) {
@@ -142,7 +161,7 @@ export function useUploadQueue(options: UploadQueueOptions) {
     const totalChunks = Math.ceil(file.size / chunkSize)
     options.updateFile(uid, { status: 'preparing' })
     const session = await initMultipart(
-      { ...fileMeta(file, sha256), chunkSize, totalChunks, data },
+      { ...fileMeta(file, sha256, fileId), chunkSize, totalChunks, data },
       requestMeta(data, await options.resolveHeaders()),
     )
     ensureTaskActive(uid)
@@ -170,7 +189,7 @@ export function useUploadQueue(options: UploadQueueOptions) {
                   totalChunks,
                   chunk,
                   chunkSize,
-                  file: fileMeta(file, sha256),
+                  file: fileMeta(file, sha256, fileId),
                 },
                 requestContext(data, await options.resolveHeaders(), controller, (loaded) => {
                   progress[index] = Math.min(chunk.size, loaded)
@@ -197,19 +216,21 @@ export function useUploadQueue(options: UploadQueueOptions) {
     options.updateFile(uid, { status: 'merging', percent: 99 })
     return completeMultipart(
       session.uploadId,
-      { sha256, data },
+      { fileId, sha256, data },
       requestMeta(data, await options.resolveHeaders()),
     )
   }
 
   async function upload(uid: string) {
     if (!options.canUpload.value) return
-    const target = options.files.value.find((file) => file.uid === uid)
+    let target = options.files.value.find((file) => file.uid === uid)
     if (!target?.file || target.status === 'uploading') return
     if (!options.updateFile(uid, { status: 'queued', percent: 0, error: undefined })) return
     try {
       const transport = requireTransport()
       const data = await options.resolveData()
+      target = await prepareFile(uid, target, data)
+      if (!target?.file || !target.fileId) return
       const isMultipart = target.file.size > options.normalUploadThreshold
       const needsHash =
         (options.instantUpload && !!transport.checkFile) || (isMultipart && options.resume)
@@ -230,7 +251,7 @@ export function useUploadQueue(options: UploadQueueOptions) {
       if (sha256 && options.instantUpload && transport.checkFile) {
         options.updateFile(uid, { status: 'checking' })
         const check = await transport.checkFile(
-          fileMeta(target.file, sha256),
+          fileMeta(target.file, sha256, target.fileId),
           requestMeta(data, await options.resolveHeaders()),
         )
         if (check.exists) {
@@ -243,8 +264,8 @@ export function useUploadQueue(options: UploadQueueOptions) {
       finishSuccess(
         uid,
         isMultipart
-          ? await uploadMultipart(uid, target.file, data, sha256)
-          : await uploadNormal(uid, target.file, data),
+          ? await uploadMultipart(uid, target.file, data, sha256, target.fileId)
+          : await uploadNormal(uid, target.file, target.fileId, data),
       )
     } catch (cause) {
       if (isAbortError(cause)) return

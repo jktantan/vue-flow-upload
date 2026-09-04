@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { UploadFileItem, UploadMessages } from '../types'
+import { formatSize } from '../utils/file'
 
 const props = defineProps<{
   files: UploadFileItem[]
@@ -10,8 +12,19 @@ const props = defineProps<{
   canSelect: boolean
   canRemove: boolean
   canDownloadAll: boolean
+  drag: boolean
+  accept?: string | string[]
+  maxSize?: number
   text: UploadMessages
 }>()
+
+const selectFileTooltip = computed(() => {
+  const accept = Array.isArray(props.accept) ? props.accept.join(', ') : props.accept
+  const maxSize = props.maxSize && Number.isFinite(props.maxSize) ? formatSize(props.maxSize) : props.text.unlimited
+  return props.text.uploadLimits
+    .replace('{accept}', accept || props.text.allFileTypes)
+    .replace('{maxSize}', maxSize)
+})
 
 const emit = defineEmits<{
   select: []
@@ -40,6 +53,11 @@ const emit = defineEmits<{
         :disabled="!selected.size"
         @click="emit('downloadSelected', [...selected])"
       >
+        <svg class="vfu-button__icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 15V3" />
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+          <path d="m7 10 5 5 5-5" />
+        </svg>
         {{ text.downloadSelected }}
       </button>
       <button
@@ -48,6 +66,11 @@ const emit = defineEmits<{
         type="button"
         @click="emit('downloadAll')"
       >
+        <svg class="vfu-button__icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 15V3" />
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+          <path d="m7 10 5 5 5-5" />
+        </svg>
         {{ text.downloadAll }}
       </button>
       <button
@@ -57,19 +80,33 @@ const emit = defineEmits<{
         :disabled="!selected.size"
         @click="emit('removeSelected')"
       >
+        <svg class="vfu-button__icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M10 11v6" />
+          <path d="M14 11v6" />
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+          <path d="M3 6h18" />
+          <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+        </svg>
         {{ text.removeSelected }}
       </button>
     </span>
-    <span class="vfu-toolbar__center">
+    <span v-if="drag" class="vfu-toolbar__center">
       <span class="vfu-toolbar__drag">{{ text.dragUpload }}</span>
     </span>
     <span class="vfu-toolbar__right">
       <button
-        class="vfu-button is-success"
+        class="vfu-button is-success vfu-button--tooltip"
         type="button"
         :disabled="!canSelect"
+        :data-tooltip="selectFileTooltip"
+        :title="selectFileTooltip"
         @click="emit('select')"
       >
+        <svg class="vfu-button__icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 16V4" />
+          <path d="m7 9 5-5 5 5" />
+          <path d="M20 16v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3" />
+        </svg>
         {{ text.chooseFile }}
       </button>
     </span>

@@ -14,6 +14,8 @@ export interface HttpUploadTransportOptions {
   credentials?: RequestCredentials
   timeout?: number
   parseResponse?: (response: XMLHttpRequest) => UploadSuccessResult
+  createUrl?: string
+  deleteUrl?: string | ((fileId: string) => string)
   checkUrl?: string
   multipart?: {
     initUrl: string
@@ -26,7 +28,7 @@ export interface HttpUploadTransportOptions {
 /** Creates the default XHR transport for normal and optional multipart uploads. */
 export function createHttpUploadTransport(options: HttpUploadTransportOptions): UploadTransport {
   const transport: UploadTransport = {
-    uploadFile({ file, data }, context) {
+    uploadFile({ file, fileId, data }, context) {
       return new Promise<UploadSuccessResult>((resolve, reject) => {
         if (context.signal.aborted) {
           reject(toError('ABORTED', '上传已取消', false))
@@ -37,6 +39,7 @@ export function createHttpUploadTransport(options: HttpUploadTransportOptions): 
         const method = options.method ?? 'POST'
 
         formData.append(context.fileFieldName, file)
+        formData.append('fileId', fileId)
         formData.append(context.dataFieldName, JSON.stringify(data))
         request.open(method, options.url)
         request.timeout = options.timeout ?? 60_000
@@ -75,6 +78,21 @@ export function createHttpUploadTransport(options: HttpUploadTransportOptions): 
         request.send(formData)
       })
     },
+  }
+  if (options.createUrl) {
+    transport.createFile = (input, context) =>
+      sendJson<{ fileId: string }>(options, options.createUrl!, 'POST', input, context)
+  }
+  if (options.deleteUrl) {
+    transport.deleteFile = (fileId, context) =>
+      request<void>(
+        options,
+        resolveFileUrl(options.deleteUrl!, fileId),
+        'DELETE',
+        null,
+        context,
+        'application/json',
+      )
   }
   if (options.checkUrl) {
     transport.checkFile = (input, context) =>
@@ -155,6 +173,7 @@ function sendChunk(
       'X-Chunk-Size': String(input.chunkSize),
       'X-File-Name': encodeURIComponent(input.file.name),
       'X-File-Size': String(input.file.size),
+      ...(input.file.fileId ? { 'X-File-Id': input.file.fileId } : {}),
       ...(input.file.sha256 ? { 'X-File-Sha256': input.file.sha256 } : {}),
     },
   )
@@ -212,6 +231,12 @@ function resolveUrl(value: string | ((uploadId: string) => string), uploadId: st
   return typeof value === 'function'
     ? value(uploadId)
     : value.replace('{uploadId}', encodeURIComponent(uploadId))
+}
+
+function resolveFileUrl(value: string | ((fileId: string) => string), fileId: string) {
+  return typeof value === 'function'
+    ? value(fileId)
+    : value.replace('{fileId}', encodeURIComponent(fileId))
 }
 
 function resolveChunkUrl(

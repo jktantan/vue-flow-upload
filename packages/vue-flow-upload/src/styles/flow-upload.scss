@@ -8,6 +8,7 @@
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
+  position: relative;
   color: var(--vfu-ink);
   text-align: left;
   font:
@@ -16,64 +17,105 @@
     system-ui,
     sans-serif;
 }
-.vfu-dropzone {
+.vfu-upload__drop-mask {
+  position: absolute;
+  z-index: 10;
+  inset: 0;
   display: grid;
-  flex: 1 1 auto;
   place-items: center;
-  gap: 5px;
-  min-height: 0;
-  padding: 24px;
-  border: 1px dashed #d9ecff;
+  box-sizing: border-box;
+  border: 2px dashed #409eff;
   border-radius: var(--vfu-radius);
-  background: #fbfdff;
-  cursor: pointer;
-  text-align: center;
-  transition:
-    border-color 0.2s,
-    background 0.2s;
+  background: rgb(64 158 255 / 18%);
+  color: #409eff;
+  pointer-events: none;
 }
-.vfu-dropzone:hover,
-.vfu-dropzone.is-active {
-  border-color: var(--vfu-signal);
-  background: #f0f9ff;
-}
-.vfu-dropzone.is-disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
-}
-.vfu-dropzone input {
-  display: none;
-}
-.vfu-trigger {
-  display: inline-flex;
-  align-items: center;
-  margin-bottom: 12px;
-}
-.vfu-trigger input {
-  display: none;
-}
-.vfu-trigger:focus-visible,
-.vfu-dropzone:focus-visible {
-  outline: 2px solid var(--vfu-signal);
-  outline-offset: 3px;
-}
-.vfu-dropzone strong {
+.vfu-upload__drop-message {
+  padding: 10px 18px;
+  border-radius: var(--vfu-radius);
+  background: rgb(255 255 255 / 92%);
+  box-shadow: 0 2px 12px rgb(0 0 0 / 8%);
   font-size: 15px;
-  font-weight: 400;
+  font-weight: 500;
 }
-.vfu-dropzone > span:last-child {
-  color: var(--vfu-muted);
-  font-size: 12px;
-}
-.vfu-dropzone__mark {
+.vfu-confirm {
+  position: fixed;
+  z-index: 3000;
+  inset: 0;
   display: grid;
-  width: 42px;
-  height: 42px;
   place-items: center;
-  color: #c0c4cc;
-  font-size: 42px;
-  font-weight: 200;
-  line-height: 1;
+  padding: 20px;
+}
+.vfu-confirm__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgb(0 0 0 / 45%);
+}
+.vfu-confirm__dialog {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  width: min(420px, 100%);
+  gap: 14px;
+  border-radius: 8px;
+  padding: 22px;
+  background: #fff;
+  box-shadow: 0 16px 48px rgb(0 0 0 / 20%);
+}
+.vfu-confirm__icon {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 50%;
+  background: #fdf6ec;
+  color: #e6a23c;
+  font-weight: 700;
+}
+.vfu-confirm__content h3,
+.vfu-confirm__content p {
+  margin: 0;
+}
+.vfu-confirm__content h3 {
+  color: #303133;
+  font-size: 16px;
+}
+.vfu-confirm__content p {
+  margin-top: 8px;
+  color: #606266;
+  font-size: 13px;
+}
+.vfu-confirm__content .vfu-confirm__error {
+  color: #f56c6c;
+}
+.vfu-confirm__dialog footer {
+  grid-column: 2;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+.vfu-confirm__dialog footer button {
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  padding: 8px 13px;
+  background: #fff;
+  color: #606266;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+}
+.vfu-confirm__dialog footer button.is-danger {
+  border-color: #f56c6c;
+  background: #f56c6c;
+  color: #fff;
+}
+.vfu-confirm__dialog footer button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.vfu-file-input {
+  display: none;
 }
 .vfu-toolbar {
   display: flex;
@@ -120,6 +162,17 @@
   line-height: 1;
   transition: background-color 0.2s;
 }
+.vfu-button__icon {
+  width: 15px;
+  height: 15px;
+  margin-right: 5px;
+  vertical-align: -2px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
 .vfu-button:hover:not(:disabled) {
   border-color: #5e8cff;
   background: #5e8cff;
@@ -155,8 +208,42 @@
   cursor: not-allowed;
   opacity: 0.5;
 }
+.vfu-button--tooltip {
+  position: relative;
+}
+.vfu-button--tooltip::after {
+  position: absolute;
+  z-index: 12;
+  bottom: calc(100% + 7px);
+  left: 50%;
+  width: max-content;
+  max-width: min(320px, calc(100vw - 32px));
+  border-radius: 4px;
+  padding: 6px 8px;
+  background: #303133;
+  color: #fff;
+  content: attr(data-tooltip);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.35;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 2px);
+  transition: opacity 0.16s, transform 0.16s;
+  white-space: nowrap;
+}
+.vfu-button--tooltip:hover::after,
+.vfu-button--tooltip:focus-visible::after {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
 .vfu-list {
   display: grid;
+  flex: 1 1 auto;
+  min-height: 0;
+  align-content: start;
+  overflow-x: hidden;
+  overflow-y: auto;
   gap: 0;
   margin: 0;
   padding: 0;
@@ -167,6 +254,7 @@
   display: flex;
   align-items: center;
   gap: 11px;
+  min-width: 0;
   min-height: 52px;
   padding: 8px 16px;
   border: 0;
@@ -180,6 +268,13 @@
 }
 .vfu-file:last-child {
   border-bottom: 0;
+}
+.vfu-list:not(.is-picture-card) .vfu-file {
+  display: grid;
+  grid-template-columns: 41px minmax(0, 1fr) 104px;
+}
+.vfu-list:not(.is-picture-card) .vfu-file.has-select {
+  grid-template-columns: 24px 41px minmax(0, 1fr) 104px;
 }
 .vfu-list.is-picture-card {
   grid-template-columns: repeat(auto-fill, minmax(164px, 1fr));
@@ -207,6 +302,7 @@
 .vfu-select {
   z-index: 1;
   align-self: center;
+  cursor: pointer;
 }
 .vfu-select--all {
   display: inline-flex;
@@ -221,6 +317,14 @@
   height: 15px;
   margin: 0;
   accent-color: var(--vfu-signal);
+  cursor: pointer;
+}
+.vfu-select input:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.vfu-select:has(input:disabled) {
+  cursor: not-allowed;
 }
 .vfu-list.is-picture-card .vfu-select {
   position: absolute;
@@ -255,12 +359,41 @@
   flex: 0 0 41px;
   border-radius: 4px;
 }
+.vfu-list:not(.is-picture-card) .vfu-file__visual {
+  display: flex;
+  width: 41px;
+  height: 41px;
+  align-items: center;
+  justify-content: center;
+}
 .vfu-file.is-success {
   border-color: transparent;
 }
 .vfu-file.is-failed,
 .vfu-file.is-rejected {
-  border-color: #fbc4c4;
+  border: 1px solid #f56c6c;
+  background: rgb(245 108 108 / 8%);
+}
+.vfu-file.is-idle .vfu-file__body small,
+.vfu-file.is-queued .vfu-file__body small,
+.vfu-file.is-paused .vfu-file__body small,
+.vfu-file.is-canceled .vfu-file__body small {
+  color: #909399;
+}
+.vfu-file.is-validating .vfu-file__body small,
+.vfu-file.is-hashing .vfu-file__body small,
+.vfu-file.is-checking .vfu-file__body small,
+.vfu-file.is-preparing .vfu-file__body small,
+.vfu-file.is-uploading .vfu-file__body small,
+.vfu-file.is-merging .vfu-file__body small {
+  color: #409eff;
+}
+.vfu-file.is-success .vfu-file__body small {
+  color: #67c23a;
+}
+.vfu-file.is-failed .vfu-file__body small,
+.vfu-file.is-rejected .vfu-file__body small {
+  color: #f56c6c;
 }
 .vfu-file__glyph {
   display: grid;
@@ -275,25 +408,47 @@
 }
 .vfu-file__body {
   min-width: 0;
-  flex: 1;
+  flex: 1 1 0;
 }
 .vfu-file__headline {
   display: flex;
+  min-width: 0;
   gap: 9px;
   align-items: baseline;
 }
 .vfu-file__headline strong {
+  width: 0;
+  min-width: 0;
+  flex: 1 1 auto;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.vfu-file__headline span,
+.vfu-file__headline span {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  color: var(--vfu-muted);
+  font-size: 12px;
+}
 .vfu-file__body small {
   color: var(--vfu-muted);
   font-size: 12px;
 }
 .vfu-file__body small.is-error {
   color: var(--vfu-danger);
+}
+.vfu-file__status {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.vfu-file__status small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .vfu-progress {
   height: 4px;
@@ -310,26 +465,80 @@
   transition: width 0.22s ease;
 }
 .vfu-file__percent {
+  flex: 0 0 auto;
   color: var(--vfu-signal);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
+.vfu-file__actions {
+  display: flex;
+  min-height: 28px;
+  min-width: 0;
+  box-sizing: border-box;
+  flex: 0 0 104px;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+}
 .vfu-action {
+  position: relative;
+  display: grid;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  place-items: center;
   border: 0;
-  padding: 4px 5px;
+  border-radius: var(--vfu-radius);
+  padding: 0;
   background: transparent;
   color: var(--vfu-muted);
   cursor: pointer;
   font: inherit;
+  font-size: 0;
+}
+.vfu-action svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+.vfu-action::after {
+  position: absolute;
+  z-index: 2;
+  top: calc(100% + 5px);
+  right: 0;
+  width: max-content;
+  max-width: 160px;
+  border-radius: 4px;
+  padding: 5px 7px;
+  background: #303133;
+  color: #fff;
+  content: attr(data-tooltip);
   font-size: 12px;
+  line-height: 1.2;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-2px);
+  transition: opacity 0.16s, transform 0.16s;
+  white-space: nowrap;
+}
+.vfu-action:hover::after,
+.vfu-action:focus-visible::after {
+  opacity: 1;
+  transform: translateY(0);
 }
 .vfu-action.is-danger {
   color: var(--vfu-muted);
 }
 .vfu-action:hover:not(:disabled) {
+  background: #ecf5ff;
   color: var(--vfu-signal);
 }
 .vfu-action.is-danger:hover:not(:disabled) {
+  background: #fef0f0;
   color: var(--vfu-danger);
 }
 .vfu-list-footer {
@@ -381,6 +590,27 @@
     gap: 8px;
     padding: 8px 12px;
   }
+  .vfu-list:not(.is-picture-card) .vfu-file,
+  .vfu-list:not(.is-picture-card) .vfu-file.has-select {
+    grid-template-columns: 41px minmax(0, 1fr);
+  }
+  .vfu-list:not(.is-picture-card) .vfu-file.has-select .vfu-select {
+    grid-row: 1 / span 2;
+  }
+  .vfu-list:not(.is-picture-card) .vfu-file.has-select .vfu-file__visual {
+    grid-column: 2;
+  }
+  .vfu-list:not(.is-picture-card) .vfu-file.has-select .vfu-file__body,
+  .vfu-list:not(.is-picture-card) .vfu-file.has-select .vfu-file__actions {
+    grid-column: 2;
+  }
+  .vfu-list:not(.is-picture-card) .vfu-file:not(.has-select) .vfu-file__actions {
+    grid-column: 2;
+  }
+  .vfu-file__actions {
+    flex-basis: auto;
+    justify-content: flex-start;
+  }
   .vfu-file__headline {
     align-items: flex-start;
     flex-direction: column;
@@ -390,7 +620,8 @@
     display: none;
   }
   .vfu-action {
-    padding: 4px 2px;
-    font-size: 11px;
+    width: 26px;
+    height: 26px;
+    flex-basis: 26px;
   }
 }

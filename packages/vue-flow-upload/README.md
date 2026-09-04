@@ -78,11 +78,12 @@ createApp(App).use(createFlowUploadI18n({ locale: 'en-US' }))
 | 属性                                                             | 说明                                                                            | 默认值                       |
 | ---------------------------------------------------------------- | ------------------------------------------------------------------------------- | ---------------------------- |
 | `action` / `transport`                                           | 简单上传地址 / 自定义上传协议（二选一）                                         | —                            |
+| `create-action`、`delete-action`                                 | 上传前创建文件记录 / 按 `fileId` 清理文件及全部上传会话                         | —                            |
 | `v-model`、`default-file-list`                                   | 文件列表；回显只需 `{ name, url?, fileId? }`                                    | `[]`                         |
 | `multiple`、`max-count`、`max-size`、`accept`                    | 选择和校验限制                                                                  | `true`、无限制、无限制、全部 |
 | `auto-upload`                                                    | 选择后立刻上传；关闭后调用实例 `submit()`                                       | `true`                       |
-| `drag`、`directory`                                              | 拖拽区域、浏览器支持的目录选择                                                  | `false`、`false`             |
-| `width`、`height`                                                | 上传组件的 CSS 尺寸；数字按 px 处理。`height="auto"` 会填满具有明确高度的父容器 | `auto`、`300px`              |
+| `drag`、`directory`                                              | 启用整组件拖拽上传及操作区提示、浏览器支持的目录选择                            | `true`、`false`              |
+| `width`、`height`                                                | 上传组件的 CSS 尺寸；数字按 px 处理。`height="auto"` 会填满具有明确高度的父容器 | `auto`、`600px`              |
 | `show-file-list`                                                 | 是否渲染内置列表                                                                | `true`                       |
 | `list-type`                                                      | `list`、`picture`、`picture-card`                                               | `list`                       |
 | `data`、`headers`                                                | 对象或返回对象的异步函数                                                        | `{}`                         |
@@ -91,12 +92,12 @@ createApp(App).use(createFlowUploadI18n({ locale: 'en-US' }))
 | `resume`、`instant-upload`                                       | 续传和 SHA-256 秒传                                                             | `true`、`true`               |
 | `before-upload`、`before-remove`                                 | 返回 `false` 或 reject 可阻止上传/删除                                          | —                            |
 
+删除规则：未上传或校验拒绝的文件会直接从列表移除；成功、上传中、失败等已进入上传流程的文件会显示内置确认框。确认后组件调用 `transport.deleteFile(fileId)`（或 `delete-action`）清理后端资源，成功后才从列表移除。上传前通过 `transport.createFile()`（或 `create-action`）可让后端确认/分配稳定 `fileId`；文件上传、重试和删除均复用该 ID。
+
 ## 事件、插槽与实例
 
 事件：`change(file, files)`、`progress(file, percent)`、`success(file, response)`、`error(file, error)`、`remove(file)`、`exceed(files)`；下载归档还会发出 `download-*` 与 `archive-*` 事件。
 
-- `#default`：替换默认触发内容或拖拽区内容。
-- `#trigger`：只替换非拖拽模式的触发器。
 - `#tip`：紧跟选择区的说明。
 - `#file="{ file, remove, preview, download, pause, resume, retry }"`：替换单个文件条目。
 

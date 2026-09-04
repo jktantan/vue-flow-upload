@@ -4,8 +4,12 @@ export default {
   VueFlowUpload: {
     selectFile: '选择文件或拖拽到这里',
     chooseFile: '选择文件',
+    uploadLimits: '支持：{accept}；单个文件不超过 {maxSize}',
+    allFileTypes: '所有文件类型',
+    unlimited: '不限',
     dragHint: '支持普通上传；可配置文件类型、大小和业务参数。',
     dragUpload: '可拖拽上传文件',
+    dropToUpload: '放下即可上传',
     startUpload: '开始上传',
     pause: '暂停',
     resume: '继续',
@@ -35,5 +39,10 @@ export default {
     selectedFiles: '已选 {count} 项',
     removeSelected: '删除',
     fileCount: '共 {count} 个文件',
+    removeConfirmTitle: '确认删除文件？',
+    removeConfirmMessage: '删除 {count} 个文件（{names}）后，将同时清理服务器中的上传数据，且无法恢复。',
+    removeConfirmProcessing: '正在删除…',
+    cancel: '取消',
+    removeCleanupFailed: '服务器清理失败，请重试。',
   } satisfies UploadMessages,
 }

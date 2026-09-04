@@ -9,8 +9,24 @@ import {
 
 const files = ref<UploadFileItem[]>([
   {
+    uid: 'sample-pending',
+    name: '待上传的产品合作协议（用于展示超长文件名在列表模式中的截断效果）.pdf',
+    size: 2.4 * 1024 * 1024,
+    type: 'application/pdf',
+    status: 'idle',
+    percent: 0,
+  },
+  {
+    uid: 'sample-uploading',
+    name: '正在上传的项目资料压缩包.zip',
+    size: 8.6 * 1024 * 1024,
+    type: 'application/zip',
+    status: 'uploading',
+    percent: 62,
+  },
+  {
     uid: 'sample-contract',
-    name: '产品合作协议.pdf',
+    name: '已上传的产品合作协议.pdf',
     size: 2.4 * 1024 * 1024,
     type: 'application/pdf',
     status: 'success',
@@ -18,19 +34,32 @@ const files = ref<UploadFileItem[]>([
     fileId: 'sample-contract',
   },
   {
-    uid: 'sample-cover',
-    name: '本地上传封面.png',
-    size: 684 * 1024,
-    type: 'image/png',
-    status: 'success',
-    percent: 100,
-    fileId: 'sample-cover',
+    uid: 'sample-failed',
+    name: '上传失败的营业执照扫描件.pdf',
+    size: 1.2 * 1024 * 1024,
+    type: 'application/pdf',
+    status: 'failed',
+    percent: 48,
+    error: {
+      code: 'NETWORK_ERROR',
+      message: '网络连接中断，请重试',
+      retriable: true,
+    },
   },
 ])
 const autoUpload = ref(true)
+const drag = ref(true)
 const eventLog = ref<string[]>([])
 
 const transport: UploadTransport = {
+  createFile({ fileId, name }) {
+    eventLog.value.unshift(`创建文件记录：${name}`)
+    return Promise.resolve({ fileId: fileId ?? `demo-file-${Date.now()}` })
+  },
+  deleteFile(fileId) {
+    eventLog.value.unshift(`清理文件及上传会话：${fileId}`)
+    return Promise.resolve()
+  },
   checkFile({ name }) {
     const exists = name.startsWith('instant-')
     eventLog.value.unshift(exists ? `秒传命中：${name}` : `秒传未命中：${name}`)
@@ -129,7 +158,10 @@ const downloadTransport: DownloadTransport = {
         <p class="eyebrow">上传组件</p>
         <h1>列表模式</h1>
       </div>
-      <label class="switch"><input v-model="autoUpload" type="checkbox" /> 选择后自动上传</label>
+      <div class="demo-controls">
+        <label class="switch"><input v-model="autoUpload" type="checkbox" /> 选择后自动上传</label>
+        <label class="switch"><input v-model="drag" type="checkbox" /> 启用拖拽上传</label>
+      </div>
     </header>
     <FlowUpload
       v-model="files"
@@ -140,6 +172,7 @@ const downloadTransport: DownloadTransport = {
       :data="{ source: 'playground', scene: 'm3' }"
       :headers="{ Authorization: 'Bearer playground-token' }"
       :auto-upload="autoUpload"
+      :drag="drag"
       :normal-upload-threshold="1024 * 1024"
       :chunk-size="256 * 1024"
       :concurrency="2"
@@ -192,6 +225,12 @@ h1 {
   font-size: 13px;
   cursor: pointer;
 }
+.demo-controls {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
+}
 .log {
   margin-top: 20px;
   padding: 14px;
@@ -217,6 +256,9 @@ h1 {
     align-items: flex-start;
     flex-direction: column;
     gap: 12px;
+  }
+  .demo-controls {
+    justify-content: flex-start;
   }
 }
 </style>

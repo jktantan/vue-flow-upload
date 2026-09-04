@@ -46,8 +46,9 @@ export function matchesAccept(file: File, accept?: string | string[]) {
   })
 }
 
-export function fileMeta(file: File, sha256?: string): FileMeta {
+export function fileMeta(file: File, sha256?: string, fileId?: string): FileMeta {
   return {
+    fileId,
     name: file.name,
     size: file.size,
     mimeType: file.type,

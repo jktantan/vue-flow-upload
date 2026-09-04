@@ -9,6 +9,8 @@
 ```ts
 const transport = createHttpUploadTransport({
   url: '/uploads/file',
+  createUrl: '/uploads/files',
+  deleteUrl: '/uploads/files/{fileId}',
   checkUrl: '/uploads/check',
   multipart: {
     initUrl: '/uploads/init',
@@ -28,7 +30,45 @@ const transport = createHttpUploadTransport({
 
 ## 2. 公共模型
 
-### 2.1 文件成功结果 `UploadSuccessResult`
+### 2.1 文件标识与生命周期
+
+`fileId` 是一次文件上传从创建到删除的唯一业务标识。前端会在文件进入列表时生成临时 ID；若配置 `createUrl`，上传前会调用创建接口，后端可返回正式 `fileId` 覆盖它。之后普通上传、秒传检查、分片初始化与合并均携带同一个 `fileId`。
+
+后端必须将一个 `fileId` 关联到该文件产生的所有 `uploadId`、临时分片、正式对象与业务记录。删除接口只接收 `fileId`，并清理全部关联资源。这样用户在上传中、失败或成功后删除时，前端不需要感知分片会话。
+
+创建与删除必须幂等：相同 `fileId` 的重复创建返回同一记录；重复删除或删除不存在资源返回 `204` 或 `2xx`，不能返回需要用户处理的错误。
+
+### 2.2 上传前创建文件记录
+
+`POST /uploads/files`
+
+```json
+{
+  "fileId": "client-generated-uuid",
+  "name": "report.pdf",
+  "size": 1048576,
+  "mimeType": "application/pdf",
+  "lastModified": 1722470400000
+}
+```
+
+服务端应完成鉴权、租户/业务归属校验及创建临时文件记录，成功时返回：
+
+```json
+{ "fileId": "file_01J..." }
+```
+
+若后端接受前端生成的 UUID，可原样返回；若需要服务端主键，可返回替换后的正式 ID。无论哪种方式，后续所有接口都必须使用响应中的 ID。
+
+### 2.3 删除文件及全部上传会话
+
+`DELETE /uploads/files/{fileId}`
+
+按当前用户和业务归属鉴权后，原子地删除/标记删除该 `fileId` 的正式文件、全部分片会话、未合并分片、临时对象和关联记录。上传中的请求可能仍在飞行，后端应让它们后续失败或忽略写入，不能重新创建已删除资源。
+
+推荐返回 `204 No Content`。前端仅在收到成功响应后才从上传列表移除文件；失败时会保留文件并提示用户重试，避免产生不可见的后台残留。
+
+### 2.4 文件成功结果 `UploadSuccessResult`
 
 以下字段直接位于响应根节点：
 
@@ -45,7 +85,7 @@ const transport = createHttpUploadTransport({
 
 `fileId` 是后续下载和业务关联使用的稳定文件标识。`url` 与 `thumbnailUrl` 可选，建议返回具备权限控制或短有效期的 URL。
 
-### 2.2 错误响应
+### 2.5 错误响应
 
 组件默认会把非 `2xx` 响应统一识别为 `HTTP_<status>`；因此至少应使用准确的 HTTP 状态码。推荐同时返回以下 JSON，供自定义适配器、日志和其他客户端使用：
 
@@ -73,11 +113,12 @@ const transport = createHttpUploadTransport({
 | 字段 | 位置 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- | --- |
 | `file` | form-data | File | 是 | 字段名可由前端 `fileFieldName` 配置，默认 `file`。 |
+| `fileId` | form-data | string | 是 | 上传前创建接口返回的稳定文件标识。 |
 | `data` | form-data | string | 是 | JSON 字符串；字段名可由 `dataFieldName` 配置，默认 `data`。 |
 
 `data` 示例：`{"bizType":"contract","recordId":"123"}`。
 
-成功响应：`200 OK` 或 `201 Created`，响应为 [文件成功结果](#21-文件成功结果-uploadsuccessresult)。服务端应完成文件校验、持久化及业务记录创建后再返回成功。
+成功响应：`200 OK` 或 `201 Created`，响应为 [文件成功结果](#24-文件成功结果-uploadsuccessresult)。服务端应完成文件校验、持久化及业务记录创建后再返回成功。
 
 ### 3.2 秒传检查
 
@@ -89,6 +130,7 @@ const transport = createHttpUploadTransport({
 
 ```json
 {
+  "fileId": "file_01J...",
   "name": "report.pdf",
   "size": 1048576,
   "mimeType": "application/pdf",
@@ -130,6 +172,7 @@ const transport = createHttpUploadTransport({
 
 ```json
 {
+  "fileId": "file_01J...",
   "name": "video.mp4",
   "size": 26214400,
   "mimeType": "video/mp4",
@@ -174,6 +217,7 @@ const transport = createHttpUploadTransport({
 | `X-Chunk-Size` | `5242880` | 前端配置的分片大小；最后一片可能小于此值。 |
 | `X-File-Name` | `video.mp4` | 使用 `encodeURIComponent` 编码，服务端读取后应 URL 解码。 |
 | `X-File-Size` | `26214400` | 原始文件总字节数。 |
+| `X-File-Id` | `file_01J...` | 上传前创建接口返回的业务文件标识。 |
 | `X-File-Sha256` | `...` | 文件完整 SHA-256；未启用哈希时可能不存在。 |
 
 成功时返回 `200 OK`、`201 Created` 或 `204 No Content`。重复提交同一索引且内容一致时必须视为成功（幂等）；内容不一致时应返回 `409 Conflict`。服务端应校验会话归属、索引范围、实际字节数以及必要的文件策略，不能仅信任请求头。
@@ -186,12 +230,13 @@ const transport = createHttpUploadTransport({
 
 ```json
 {
+  "fileId": "file_01J...",
   "sha256": "...",
   "data": { "bizType": "video", "recordId": "123" }
 }
 ```
 
-响应为 [文件成功结果](#21-文件成功结果-uploadsuccessresult)。服务端应先确认所有分片均存在，按索引顺序合并，并校验合并后的文件大小及（存在时）SHA-256；校验通过后再将文件置为可用状态。已经完成的同一会话再次调用应返回同一文件结果，保证幂等。
+响应为 [文件成功结果](#24-文件成功结果-uploadsuccessresult)。服务端应先确认所有分片均存在，按索引顺序合并，并校验合并后的文件大小及（存在时）SHA-256；校验通过后再将文件置为可用状态。已经完成的同一会话再次调用应返回同一文件结果，保证幂等。
 
 若分片缺失，推荐返回 `409 Conflict`，例如：
 
@@ -199,11 +244,11 @@ const transport = createHttpUploadTransport({
 { "code": "CHUNKS_MISSING", "message": "存在未上传的分片", "missingChunks": [3] }
 ```
 
-### 3.6 取消上传会话
+### 3.6 旧版：取消上传会话
 
 `DELETE /uploads/{uploadId}`
 
-用于用户明确取消。暂停只会中止浏览器请求，不调用该接口。成功可返回 `204 No Content`；重复取消或会话已不存在时建议仍返回成功，以简化客户端处理。后端可立即删除临时分片，或标记后由定时任务清理。
+这是兼容旧的分片取消接口。新实现删除时优先调用 [`DELETE /uploads/files/{fileId}`](#23-删除文件及全部上传会话)，由后端按 `fileId` 清理所有会话；暂停只会中止浏览器请求，不调用该接口。
 
 ## 4. 可选：查询分片会话
 
