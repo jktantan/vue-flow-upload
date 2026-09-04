@@ -28,6 +28,7 @@ interface DownloadManagerOptions {
 }
 
 function triggerDownload(url?: string, blob?: Blob, fileName = 'download') {
+  // Use a transient anchor because it works for both remote URLs and in-memory archive blobs.
   const objectUrl = blob ? window.URL.createObjectURL(blob) : url
   if (!objectUrl) throw makeUploadError('INVALID_DOWNLOAD', '下载资源为空', false)
   const anchor = window.document.createElement('a')
@@ -41,6 +42,7 @@ function triggerDownload(url?: string, blob?: Blob, fileName = 'download') {
 }
 
 function delay(milliseconds: number, signal: AbortSignal) {
+  // Make polling waits abortable so cancelling an archive stops immediately.
   return new Promise<void>((resolve, reject) => {
     const timer = window.setTimeout(resolve, milliseconds)
     signal.addEventListener(
@@ -56,15 +58,18 @@ function delay(milliseconds: number, signal: AbortSignal) {
 
 /** Handles direct downloads and the lifecycle of server-side archive jobs. */
 export function useDownloadManager(options: DownloadManagerOptions) {
+  // One controller per archive task allows independent cancellation and cleanup.
   const archiveControllers = new Map<string, AbortController>()
 
   function successfulFileIds(uids: string[]) {
+    // Archives may contain only persisted successful files; local rows have no usable server id.
     return options.files.value
       .filter((file) => uids.includes(file.uid) && file.status === 'success' && file.fileId)
       .map((file) => file.fileId!)
   }
 
   async function download(uid: string) {
+    // Direct download delegates resource creation to the transport, then triggers the browser save.
     const file = options.files.value.find((item) => item.uid === uid)
     const transport = options.transport.value
     if (!file?.fileId || !transport || !options.canDownload.value) return
@@ -82,6 +87,7 @@ export function useDownloadManager(options: DownloadManagerOptions) {
   }
 
   async function followArchive(initialTask: ArchiveTask) {
+    // Poll an asynchronous server archive until it produces a URL, fails, times out, or is cancelled.
     const transport = options.transport.value
     if (!transport) return
     const controller = new AbortController()
@@ -111,6 +117,7 @@ export function useDownloadManager(options: DownloadManagerOptions) {
   }
 
   async function createArchive(input: { fileIds?: string[]; scope?: DownloadScope }) {
+    // Start the server job and surface failures that happen before polling begins.
     const transport = options.transport.value
     if (!transport || !options.canDownloadAll.value) return
     try {
@@ -124,11 +131,13 @@ export function useDownloadManager(options: DownloadManagerOptions) {
   }
 
   async function downloadSelected(uids: string[]) {
+    // Convert selected UI ids into persisted file ids before creating the archive.
     const fileIds = successfulFileIds(uids)
     if (fileIds.length) await createArchive({ fileIds })
   }
 
   async function downloadAll(scope = options.allDownloadScope) {
+    // A server-query scope lets the backend archive files beyond the currently loaded page.
     if (!options.canDownloadAll.value) return
     if (scope?.type === 'server-query') await createArchive({ scope })
     else
@@ -138,12 +147,14 @@ export function useDownloadManager(options: DownloadManagerOptions) {
   }
 
   async function cancelArchive(taskId: string) {
+    // Abort local polling first, then request best-effort server-side cancellation when supported.
     archiveControllers.get(taskId)?.abort()
     const transport = options.transport.value
     if (transport?.cancelArchive) await transport.cancelArchive(taskId, await options.requestMeta())
   }
 
   function clear() {
+    // Teardown must stop every outstanding polling loop to prevent callbacks after unmount.
     for (const controller of archiveControllers.values()) controller.abort()
     archiveControllers.clear()
   }

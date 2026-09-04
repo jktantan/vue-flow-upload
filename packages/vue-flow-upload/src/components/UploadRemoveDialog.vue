@@ -13,6 +13,7 @@ const props = defineProps<{
   processingText: string
 }>()
 
+// 将待删除文件名汇总到确认文案，供单个和批量删除共用。 Summarize pending names for both single and batch removal copy.
 const names = computed(() => props.files.map((file) => file.name).join('、'))
 </script>
 
@@ -20,12 +21,7 @@ const names = computed(() => props.files.map((file) => file.name).join('、'))
   <Teleport to="body">
     <div v-if="files.length" class="vfu-confirm" role="presentation">
       <div class="vfu-confirm__backdrop" />
-      <section
-        class="vfu-confirm__dialog"
-        role="alertdialog"
-        aria-modal="true"
-        :aria-label="title"
-      >
+      <section class="vfu-confirm__dialog" role="alertdialog" aria-modal="true" :aria-label="title">
         <div class="vfu-confirm__icon" aria-hidden="true">!</div>
         <div class="vfu-confirm__content">
           <h3>{{ title }}</h3>

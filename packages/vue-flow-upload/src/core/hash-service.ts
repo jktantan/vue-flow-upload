@@ -6,6 +6,7 @@ export interface HashOptions {
   onProgress?: (loaded: number, total: number) => void
 }
 
+/** 分块计算文件 SHA-256，优先使用 Worker，失败时回退到主线程。 Calculates chunked SHA-256 in a Worker first, then falls back to the main thread. */
 export async function hashFile(file: File, options: HashOptions = {}) {
   const chunkSize = options.chunkSize ?? 2 * 1024 * 1024
   if (typeof Worker !== 'undefined') {
@@ -19,6 +20,7 @@ export async function hashFile(file: File, options: HashOptions = {}) {
 }
 
 function hashInWorker(file: File, chunkSize: number, options: HashOptions) {
+  // Worker 可避免大文件哈希阻塞界面，并把进度消息转发给调用方。 A Worker avoids blocking the UI and forwards progress to the caller.
   return new Promise<string>((resolve, reject) => {
     const worker = new Worker(new URL('./sha256.worker.ts', import.meta.url), { type: 'module' })
     const abort = () => {
@@ -44,6 +46,7 @@ function hashInWorker(file: File, chunkSize: number, options: HashOptions) {
 }
 
 async function hashOnMainThread(file: File, chunkSize: number, options: HashOptions) {
+  // 回退模式每块后让出事件循环，降低对交互渲染的影响。 Yield after each chunk in fallback mode to reduce UI impact.
   const hash = new IncrementalSha256()
   for (let offset = 0; offset < file.size; offset += chunkSize) {
     if (options.signal?.aborted) throw abortError()
@@ -56,5 +59,6 @@ async function hashOnMainThread(file: File, chunkSize: number, options: HashOpti
 }
 
 function abortError() {
+  // 保持与上传取消相同的错误标识，供统一错误处理识别。 Match upload cancellation's error shape for shared error handling.
   return Object.assign(new Error('Hashing canceled'), { code: 'ABORTED', name: 'AbortError' })
 }

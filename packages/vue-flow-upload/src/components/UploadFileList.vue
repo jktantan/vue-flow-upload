@@ -28,7 +28,7 @@ defineProps<{
 </script>
 
 <template>
-  <!-- Lucide Icons v1.40.0, ISC License. Copyright Lucide Icons and Contributors. -->
+  <!-- 图标来自 Lucide Icons v1.40.0（ISC）。 Icons are from Lucide Icons v1.40.0 (ISC). -->
   <ul
     v-if="show && files.length"
     class="vfu-list"
@@ -88,9 +88,10 @@ defineProps<{
             <i :style="{ width: `${file.percent}%` }" />
           </div>
           <div class="vfu-file__status">
-            <small :class="{ 'is-error': file.status === 'failed' || file.status === 'rejected' }">{{
-              file.error?.message ?? statusText(file.status)
-            }}</small>
+            <small
+              :class="{ 'is-error': file.status === 'failed' || file.status === 'rejected' }"
+              >{{ file.error?.message ?? statusText(file.status) }}</small
+            >
             <span
               v-if="['uploading', 'queued', 'merging'].includes(file.status)"
               class="vfu-file__percent"
@@ -108,7 +109,9 @@ defineProps<{
             @click="preview(file)"
           >
             <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" />
+              <path
+                d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"
+              />
               <circle cx="12" cy="12" r="3" />
             </svg>
           </button>

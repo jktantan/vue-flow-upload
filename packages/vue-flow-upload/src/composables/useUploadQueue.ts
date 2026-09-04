@@ -28,15 +28,18 @@ interface UploadQueueOptions {
 
 /** Coordinates hashing, instant upload, normal uploads and resumable multipart uploads. */
 export function useUploadQueue(options: UploadQueueOptions) {
+  // Each file can own several concurrent chunk requests, so controllers are grouped by uid.
   const controllers = new Map<string, Set<AbortController>>()
 
   function requireTransport() {
+    // Fail early with a user-facing error instead of dereferencing an absent optional transport.
     const transport = options.transport.value
     if (!transport) throw makeUploadError('TRANSPORT_REQUIRED', '请提供 transport 或 action', false)
     return transport
   }
 
   function requestMeta(data: Record<string, unknown>, headers: Record<string, string>) {
+    // Build the shared transport metadata once for normal, instant, and multipart requests.
     return {
       data,
       headers,
@@ -51,10 +54,12 @@ export function useUploadQueue(options: UploadQueueOptions) {
     controller: AbortController,
     onProgress: (loaded: number, total: number) => void,
   ) {
+    // Extend metadata with cancellation and byte-level progress for an individual request.
     return { ...requestMeta(data, headers), signal: controller.signal, onProgress }
   }
 
   function trackController(uid: string) {
+    // Register every active request so pause/clear can abort all chunks for one file.
     const controller = new AbortController()
     const current = controllers.get(uid) ?? new Set<AbortController>()
     current.add(controller)
@@ -63,23 +68,27 @@ export function useUploadQueue(options: UploadQueueOptions) {
   }
 
   function untrackController(uid: string, controller: AbortController) {
+    // Remove finished requests promptly to avoid aborting stale controllers later.
     const current = controllers.get(uid)
     current?.delete(controller)
     if (!current?.size) controllers.delete(uid)
   }
 
   function updateProgress(uid: string, loaded: number, total: number) {
+    // Reserve 100% for confirmed server completion; transfer progress never exceeds 99%.
     const percent = total > 0 ? Math.min(99, Math.round((loaded / total) * 100)) : 0
     const current = options.updateFile(uid, { percent })
     if (current) options.onProgress(current, percent)
   }
 
   function ensureTaskActive(uid: string) {
+    // Pause/removal can occur between async stages, so re-check state before continuing.
     const status = options.files.value.find((file) => file.uid === uid)?.status
     if (!status || status === 'paused') throw makeUploadError('ABORTED', '上传已取消', false)
   }
 
   async function retryOperation<T>(operation: () => Promise<T>) {
+    // Retry only transport-classified transient errors, with exponential backoff per chunk.
     let attempt = 0
     while (true) {
       try {
@@ -96,6 +105,7 @@ export function useUploadQueue(options: UploadQueueOptions) {
   }
 
   function finishSuccess(uid: string, response: UploadSuccessResult) {
+    // Commit success atomically, then emit progress before success for predictable consumer state.
     const success = options.updateFile(uid, {
       status: 'success',
       percent: 100,
@@ -111,11 +121,8 @@ export function useUploadQueue(options: UploadQueueOptions) {
     }
   }
 
-  async function prepareFile(
-    uid: string,
-    file: UploadFileItem,
-    data: Record<string, unknown>,
-  ) {
+  async function prepareFile(uid: string, file: UploadFileItem, data: Record<string, unknown>) {
+    // Optionally create the server record before bytes are sent; never create it twice on resume.
     const transport = requireTransport()
     if (file.remoteCreated) return file
     options.updateFile(uid, { status: 'preparing' })
@@ -128,7 +135,13 @@ export function useUploadQueue(options: UploadQueueOptions) {
     return options.updateFile(uid, { fileId: created.fileId, remoteCreated: true })
   }
 
-  async function uploadNormal(uid: string, file: File, fileId: string, data: Record<string, unknown>) {
+  async function uploadNormal(
+    uid: string,
+    file: File,
+    fileId: string,
+    data: Record<string, unknown>,
+  ) {
+    // Schedule a whole-file request under the same limits used by multipart chunks.
     return options.scheduler.schedule(uid, async () => {
       const controller = trackController(uid)
       const current = options.updateFile(uid, { status: 'uploading' })
@@ -153,6 +166,7 @@ export function useUploadQueue(options: UploadQueueOptions) {
     sha256?: string,
     fileId?: string,
   ) {
+    // Initialize/resume the server session, upload missing chunks, then ask the server to merge them.
     const { initMultipart, uploadChunk, completeMultipart } = requireTransport()
     if (!initMultipart || !uploadChunk || !completeMultipart) {
       throw makeUploadError('MULTIPART_NOT_SUPPORTED', '当前传输适配器不支持分片上传', false)
@@ -222,6 +236,7 @@ export function useUploadQueue(options: UploadQueueOptions) {
   }
 
   async function upload(uid: string) {
+    // Drive the full lifecycle: prepare → hash/check if needed → transfer → finalize or fail.
     if (!options.canUpload.value) return
     let target = options.files.value.find((file) => file.uid === uid)
     if (!target?.file || target.status === 'uploading') return
@@ -278,12 +293,14 @@ export function useUploadQueue(options: UploadQueueOptions) {
   }
 
   async function submit() {
+    // Manual submission starts only untouched idle files; retries are initiated explicitly.
     await Promise.all(
       options.files.value.filter((file) => file.status === 'idle').map((file) => upload(file.uid)),
     )
   }
 
   function pause(uid: string) {
+    // Cancel queued scheduler work and every active network/hash request for this file.
     const target = options.files.value.find((file) => file.uid === uid)
     if (
       !target ||
@@ -296,16 +313,19 @@ export function useUploadQueue(options: UploadQueueOptions) {
   }
 
   function resume(uid: string) {
+    // Resume uses the normal upload path so it can recreate state and continue a multipart session.
     if (options.files.value.find((file) => file.uid === uid)?.status === 'paused')
       return upload(uid)
   }
 
   function abort(file?: string | UploadFileItem) {
+    // The exposed abort API handles either a single uid/item or every current file.
     if (file) return pause(typeof file === 'string' ? file : file.uid)
     for (const item of options.files.value) pause(item.uid)
   }
 
   function clear() {
+    // Component teardown aborts all requests and drops controller references.
     for (const [uid, group] of controllers) {
       options.scheduler.cancel(uid)
       group.forEach((controller) => controller.abort())

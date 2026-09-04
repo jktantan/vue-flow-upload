@@ -19,8 +19,12 @@ const props = defineProps<{
 }>()
 
 const selectFileTooltip = computed(() => {
+  // 将选择限制组合为可访问的按钮提示文案。 Combine selection limits into an accessible button tooltip.
   const accept = Array.isArray(props.accept) ? props.accept.join(', ') : props.accept
-  const maxSize = props.maxSize && Number.isFinite(props.maxSize) ? formatSize(props.maxSize) : props.text.unlimited
+  const maxSize =
+    props.maxSize && Number.isFinite(props.maxSize)
+      ? formatSize(props.maxSize)
+      : props.text.unlimited
   return props.text.uploadLimits
     .replace('{accept}', accept || props.text.allFileTypes)
     .replace('{maxSize}', maxSize)

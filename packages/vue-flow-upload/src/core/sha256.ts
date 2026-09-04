@@ -13,6 +13,7 @@ const K = new Uint32Array([
   0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
 ])
 
+/** 可增量追加数据的 SHA-256 实现，供主线程和 Worker 共用。 Incremental SHA-256 implementation shared by the main thread and Worker. */
 export class IncrementalSha256 {
   private readonly hash = new Uint32Array(INITIAL_HASH)
   private readonly block = new Uint8Array(64)
@@ -20,6 +21,7 @@ export class IncrementalSha256 {
   private length = 0
 
   update(data: Uint8Array) {
+    // 将输入连续填满 64 字节数据块；每满一块立即执行压缩。 Fill 64-byte blocks continuously and compress each completed block.
     this.length += data.length
     for (const byte of data) {
       this.block[this.blockLength++] = byte
@@ -31,6 +33,7 @@ export class IncrementalSha256 {
   }
 
   digest() {
+    // 写入 SHA-256 填充与原始位长度，压缩最后一块后输出十六进制摘要。 Pad with bit length, compress the final block, and return a hex digest.
     const bitLengthHigh = Math.floor(this.length / 0x20000000)
     const bitLengthLow = (this.length << 3) >>> 0
     this.block[this.blockLength++] = 0x80
@@ -48,6 +51,7 @@ export class IncrementalSha256 {
   }
 
   private transform(block: Uint8Array) {
+    // 执行标准 SHA-256 的 64 轮消息扩展与状态压缩。 Perform SHA-256's standard 64-round message expansion and state compression.
     const words = new Uint32Array(64)
     const view = new DataView(block.buffer, block.byteOffset, block.byteLength)
     for (let index = 0; index < 16; index += 1) words[index] = view.getUint32(index * 4)

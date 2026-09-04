@@ -145,7 +145,9 @@ const emit = defineEmits<{
 const internalFiles = ref<UploadFileItem[]>(
   normalizeFileList(props.modelValue ?? props.defaultFileList),
 )
+// Exposes the hidden native input's file picker to toolbar buttons and consumers.
 const uploadTrigger = ref<{ browse: () => void }>()
+// Shares request slots between files so file and chunk concurrency limits both apply.
 const scheduler = new ChunkScheduler({
   concurrency: props.concurrency,
   maxConcurrentFiles: props.maxConcurrentFiles,
@@ -155,15 +157,15 @@ const scheduler = new ChunkScheduler({
 watch(
   () => props.modelValue,
   (value) => {
+    // 受控模式由外部模型覆盖本地状态，先补全可选字段。 A controlled model replaces local state; normalize optional fields first.
     if (value !== undefined) internalFiles.value = normalizeFileList(value)
   },
 )
 
 const files = computed(() => internalFiles.value)
 /**
- * Keeps the server-provided order for completed files while making local upload
- * work immediately visible. Array#sort is stable, so files in the same group
- * retain their original order.
+ * 已完成文件保持服务端顺序，本地上传任务优先显示；同组保留原始顺序。
+ * Completed files retain server order; local work appears first; order stays stable within a group.
  */
 const displayedFiles = computed(() =>
   files.value
@@ -232,12 +234,14 @@ const uploadTransport = computed(
       : undefined),
 )
 function updateFiles(next: UploadFileItem[], changed?: UploadFileItem) {
+  // 同步内部列表与 v-model，再上报引发变更的文件。 Keep internal list and v-model in sync, then report the changed file.
   internalFiles.value = next
   emit('update:modelValue', next)
   if (changed) emit('change', changed, next)
 }
 
 function updateFile(uid: string, patch: Partial<UploadFileItem>) {
+  // 使用不可变替换，确保 Vue 更新依赖此列表的所有组合逻辑和行。 Use immutable replacement so Vue updates all dependent composables and rows.
   const next = files.value.map((file) => (file.uid === uid ? { ...file, ...patch } : file))
   const changed = next.find((file) => file.uid === uid)
   if (changed) updateFiles(next, changed)
@@ -317,6 +321,7 @@ const {
 } = useFileSelectionState(files)
 
 async function addFiles(selected: File[]) {
+  // 逐个处理文件，异步校验完成后才可自动上传。 Process one file at a time so validation finishes before auto-upload.
   if (!selected.length || !canSelect.value) return
   const available = Math.max(0, props.maxCount - files.value.length)
   const accepted = selected.slice(0, available)
@@ -347,6 +352,7 @@ async function addFiles(selected: File[]) {
 }
 
 async function validate(file: File): Promise<UploadError | undefined> {
+  // 校验失败保留为 rejected 行，用户可以看到失败原因。 Keep validation failures as rejected rows so users can see why.
   if (props.maxSize !== undefined && file.size > props.maxSize) {
     return makeUploadError('FILE_TOO_LARGE', t('fileTooLarge', { name: file.name }), false)
   }
@@ -367,6 +373,7 @@ async function validate(file: File): Promise<UploadError | undefined> {
 }
 
 async function removeSelected() {
+  // 根据当前列表解析选中 id，弹窗期间文件可能已变化。 Resolve selected ids against the current list because files may change while dialog is open.
   const targets = files.value.filter((file) => selected.value.has(file.uid))
   const direct = targets.filter((file) => !requiresRemovalConfirmation(file))
   for (const file of direct) await removeImmediately(file)
@@ -375,6 +382,7 @@ async function removeSelected() {
 }
 
 async function remove(uid: string) {
+  // 已完成远端文件需要确认；本地或未完成文件可立即移除。 Completed remote files need confirmation; local/incomplete files remove immediately.
   const target = files.value.find((file) => file.uid === uid)
   if (!target || !canRemove.value) return false
   if (requiresRemovalConfirmation(target)) {
@@ -385,21 +393,25 @@ async function remove(uid: string) {
 }
 
 function requiresRemovalConfirmation(file: UploadFileItem) {
+  // 仅已持久化的成功文件可能需要确认服务端清理。 Only persisted successful files may need server cleanup confirmation.
   return !['idle', 'validating', 'rejected'].includes(file.status)
 }
 
 function openRemovalConfirmation(targets: UploadFileItem[]) {
+  // 保存删除目标快照，使弹窗内容保持稳定。 Store a target snapshot so dialog content stays stable.
   pendingRemoval.value = targets
   removalError.value = ''
 }
 
 function closeRemovalConfirmation() {
+  // 关闭不修改文件，只丢弃待确认状态。 Closing never mutates files; it only discards pending confirmation.
   if (removalBusy.value) return
   pendingRemoval.value = []
   removalError.value = ''
 }
 
 async function confirmRemoval() {
+  // 串行处理目标，使远端清理和报错顺序可预测。 Process targets serially for deterministic cleanup and errors.
   removalBusy.value = true
   removalError.value = ''
   try {
@@ -413,6 +425,7 @@ async function confirmRemoval() {
 }
 
 async function removeImmediately(target: UploadFileItem) {
+  // 本地删除前先取消进行中的任务；存在时 deleteFile 清理服务端记录。 Cancel in-flight work first; deleteFile clears the server record when present.
   try {
     if (props.beforeRemove && !(await props.beforeRemove(target, files.value))) return false
   } catch {
@@ -439,14 +452,17 @@ async function removeImmediately(target: UploadFileItem) {
 }
 
 function handleStart(file: File) {
+  // The trigger emits one file at a time, while the central add path accepts batches.
   return addFiles([file])
 }
 
 function handleRemove(file: string | UploadFileItem) {
+  // Support both the exposed uid API and slot callbacks that pass the full item.
   return remove(typeof file === 'string' ? file : file.uid)
 }
 
 function clear() {
+  // Abort background work and release selection/preview resources before emptying the model.
   clearUploads()
   clearPreviews()
   clearSelection()
@@ -455,14 +471,17 @@ function clear() {
 }
 
 async function resolveData() {
+  // Data may be static or async so callers can attach fresh credentials/metadata per request.
   return typeof props.data === 'function' ? await props.data() : (props.data ?? {})
 }
 
 async function resolveHeaders() {
+  // Resolve lazily for the same reason as request data, without exposing mutable caller objects.
   return typeof props.headers === 'function' ? await props.headers() : (props.headers ?? {})
 }
 
 function statusText(status: UploadFileItem['status']) {
+  // Centralize status-to-copy mapping so list rows and custom slots use identical language.
   return {
     idle: text.value.waiting,
     validating: text.value.validating,
@@ -481,22 +500,26 @@ function statusText(status: UploadFileItem['status']) {
 }
 
 function isFileDrag(event: DragEvent) {
+  // Ignore text/URL drags; only file payloads should activate the upload drop zone.
   const transfer = event.dataTransfer
   return !!transfer && (transfer.files.length > 0 || Array.from(transfer.types).includes('Files'))
 }
 
 function onDragEnter(event: DragEvent) {
+  // Prevent browser navigation and show the active drop affordance for file drags.
   if (!props.drag || !canSelect.value || !isFileDrag(event)) return
   event.preventDefault()
   dragActive.value = true
 }
 
 function onDragOver(event: DragEvent) {
+  // Repeating preventDefault is required for browsers to permit a subsequent drop.
   if (!props.drag || !canSelect.value || !isFileDrag(event)) return
   event.preventDefault()
 }
 
 function onDragLeave(event: DragEvent) {
+  // Reset only when leaving the component, not when moving between its children.
   if (!props.drag || !dragActive.value) return
   const container = event.currentTarget as HTMLElement | null
   const nextTarget = event.relatedTarget as Node | null
@@ -504,6 +527,7 @@ function onDragLeave(event: DragEvent) {
 }
 
 function onDrop(event: DragEvent) {
+  // Read dropped files once, clear visual state, and route them through normal validation.
   if (!props.drag || !canSelect.value || !isFileDrag(event)) return
   event.preventDefault()
   dragActive.value = false

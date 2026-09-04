@@ -10,6 +10,7 @@ export interface FlowUploadI18nOptions {
 type I18nCompatibleMessages = NonNullable<I18nOptions['messages']>
 type LocaleModule = { default?: LocaleMessage }
 
+// 阻止原型污染键进入用户语言包。 Blocks prototype-pollution keys from user locale messages.
 const dangerousMessageKeys = new Set(['__proto__', 'constructor', 'prototype'])
 const isSafeMessageKey = (key: string) => !dangerousMessageKeys.has(key)
 const isPlainObject = (value: unknown): value is LocaleMessage => {
@@ -18,6 +19,7 @@ const isPlainObject = (value: unknown): value is LocaleMessage => {
   return prototype === Object.prototype || prototype === null
 }
 
+/** 安全地深拷贝语言包对象。 Safely deep-clones a locale message object. */
 export function cloneLocaleMessage(message: LocaleMessage): LocaleMessage {
   const cloned: LocaleMessage = {}
   for (const key of Object.keys(message)) {
@@ -32,6 +34,7 @@ export function mergeLocaleMessages(
   base: LocaleMessage = {},
   override: LocaleMessage = {},
 ): LocaleMessage {
+  // 对普通对象递归合并，标量和数组由覆盖值整体替换。 Recursively merge plain objects; replace scalars and arrays wholesale.
   const merged = cloneLocaleMessage(base)
   for (const key of Object.keys(override)) {
     if (!isSafeMessageKey(key)) continue
@@ -50,6 +53,7 @@ let builtInMessagesCache: LocaleMessages | undefined
 const modules = import.meta.glob<LocaleModule>('./lang/*', { eager: true })
 
 export function getBuiltInMessages(): LocaleMessages {
+  // Vite 在构建期加载语言模块；结果缓存避免每次渲染重复合并。 Vite loads locale modules at build time; cache avoids repeat merging.
   if (builtInMessagesCache) return builtInMessagesCache
   const messages: LocaleMessages = {}
   for (const [path, module] of Object.entries(modules)) {
@@ -61,7 +65,7 @@ export function getBuiltInMessages(): LocaleMessages {
   return messages
 }
 
-/** Creates an isolated vue-i18n-lite instance for one FlowUpload tree. */
+/** 为单个 FlowUpload 组件树创建隔离的 i18n 实例。 Creates an isolated vue-i18n-lite instance for one FlowUpload tree. */
 export function createFlowUploadI18n(
   options: FlowUploadI18nOptions = {},
   legacyMessages?: Partial<UploadMessages>,
@@ -83,13 +87,14 @@ export function createFlowUploadI18n(
 }
 
 export function getUploadMessages(i18n: I18n): UploadMessages {
+  // 使用中文内置包的键集合，确保所有语言返回完整且一致的消息形状。 Use zh-CN keys so every locale returns a complete, consistent message shape.
   const keys = Object.keys(getBuiltInMessages()['zh-CN'].VueFlowUpload as UploadMessages)
   return Object.fromEntries(
     keys.map((key) => [key, i18n.t(`VueFlowUpload.${key}`)]),
   ) as unknown as UploadMessages
 }
 
-/** @deprecated Use `createFlowUploadI18n({ locale, messages })` instead. */
+/** 已废弃：请改用 `createFlowUploadI18n({ locale, messages })`。 @deprecated Use `createFlowUploadI18n({ locale, messages })` instead. */
 export function resolveMessages(locale: string, messages?: Partial<UploadMessages>) {
   return getUploadMessages(createFlowUploadI18n({ locale }, messages))
 }

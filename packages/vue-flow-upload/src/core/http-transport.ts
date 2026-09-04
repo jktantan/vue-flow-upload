@@ -25,10 +25,11 @@ export interface HttpUploadTransportOptions {
   }
 }
 
-/** Creates the default XHR transport for normal and optional multipart uploads. */
+/** 创建普通上传与可选分片上传的默认 XHR 传输适配器。 Creates the default XHR transport for normal and optional multipart uploads. */
 export function createHttpUploadTransport(options: HttpUploadTransportOptions): UploadTransport {
   const transport: UploadTransport = {
     uploadFile({ file, fileId, data }, context) {
+      // FormData 的 multipart boundary 由浏览器设置，因此不透传调用方 Content-Type。 The browser owns FormData's multipart boundary, so caller Content-Type is not forwarded.
       return new Promise<UploadSuccessResult>((resolve, reject) => {
         if (context.signal.aborted) {
           reject(toError('ABORTED', '上传已取消', false))
@@ -149,6 +150,7 @@ function sendJson<T>(
   payload: unknown,
   context: RequestContext & { signal?: AbortSignal },
 ) {
+  // 所有 JSON 控制面请求共用基础 XHR 错误、超时和取消处理。 All JSON control-plane requests share XHR error, timeout, and abort handling.
   return request<T>(options, url, method, JSON.stringify(payload), context, 'application/json')
 }
 
@@ -158,6 +160,7 @@ function sendChunk(
   input: UploadChunkInput,
   context: UploadRequestContext,
 ) {
+  // 分片字节放在请求体，重组所需元数据放在约定的请求头。 Send chunk bytes in the body and reassembly metadata in agreed headers.
   return request<void>(
     options,
     url,
@@ -189,6 +192,7 @@ function request<T>(
   onProgress?: (loaded: number, total: number) => void,
   extraHeaders: Record<string, string> = {},
 ) {
+  // 统一处理非 FormData 请求，确保所有端点错误语义一致。 Centralize non-FormData requests for consistent endpoint errors.
   return new Promise<T>((resolve, reject) => {
     const request = new XMLHttpRequest()
     request.open(method, url)
@@ -228,12 +232,14 @@ function request<T>(
 }
 
 function resolveUrl(value: string | ((uploadId: string) => string), uploadId: string) {
+  // 支持回调 URL 或 {uploadId} 模板，并对动态值编码。 Support callback URLs or {uploadId} templates and encode dynamic values.
   return typeof value === 'function'
     ? value(uploadId)
     : value.replace('{uploadId}', encodeURIComponent(uploadId))
 }
 
 function resolveFileUrl(value: string | ((fileId: string) => string), fileId: string) {
+  // 文件删除 URL 的模板替换与分片会话 URL 使用同一规则。 Apply the same template substitution rule to deletion URLs.
   return typeof value === 'function'
     ? value(fileId)
     : value.replace('{fileId}', encodeURIComponent(fileId))
@@ -244,6 +250,7 @@ function resolveChunkUrl(
   uploadId: string,
   chunkIndex: number,
 ) {
+  // 分片地址可同时依赖上传会话和分片序号。 Chunk URLs may depend on both session and chunk index.
   return typeof value === 'function'
     ? value(uploadId, chunkIndex)
     : value
@@ -252,6 +259,7 @@ function resolveChunkUrl(
 }
 
 function parseJsonResponse(request: XMLHttpRequest): UploadSuccessResult {
+  // 空成功响应视为合法，适配仅通过 HTTP 状态表示成功的服务端。 Treat empty successful bodies as valid for status-only backends.
   if (!request.responseText) return {}
   return JSON.parse(request.responseText) as UploadSuccessResult
 }
@@ -263,5 +271,6 @@ function toError(
   status?: number,
   cause?: unknown,
 ): UploadError {
+  // 保留 HTTP 状态和原始原因，调用方可据此展示或决定是否重试。 Preserve status and cause for display and retry decisions.
   return { code, message, retriable, status, cause }
 }
