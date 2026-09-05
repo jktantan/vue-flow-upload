@@ -40,7 +40,8 @@ export default {
     removeSelected: 'Remove selected',
     fileCount: '{count} files total',
     removeConfirmTitle: 'Delete file?',
-    removeConfirmMessage: 'Deleting {count} file(s) ({names}) also removes server-side upload data and cannot be undone.',
+    removeConfirmMessage:
+      'Deleting {count} file(s) ({names}) also removes server-side upload data and cannot be undone.',
     removeConfirmProcessing: 'Deleting…',
     cancel: 'Cancel',
     removeCleanupFailed: 'Server cleanup failed. Please try again.',

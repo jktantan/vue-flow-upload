@@ -40,7 +40,8 @@ export default {
     removeSelected: '删除',
     fileCount: '共 {count} 个文件',
     removeConfirmTitle: '确认删除文件？',
-    removeConfirmMessage: '删除 {count} 个文件（{names}）后，将同时清理服务器中的上传数据，且无法恢复。',
+    removeConfirmMessage:
+      '删除 {count} 个文件（{names}）后，将同时清理服务器中的上传数据，且无法恢复。',
     removeConfirmProcessing: '正在删除…',
     cancel: '取消',
     removeCleanupFailed: '服务器清理失败，请重试。',
