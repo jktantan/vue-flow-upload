@@ -16,6 +16,8 @@ const props = defineProps<{
   accept?: string | string[]
   maxSize?: number
   text: UploadMessages
+  autoUpload: boolean
+  canUpload: boolean
 }>()
 
 const selectFileTooltip = computed(() => {
@@ -32,6 +34,7 @@ const selectFileTooltip = computed(() => {
 
 const emit = defineEmits<{
   select: []
+  upload: []
   toggleAll: []
   downloadSelected: [uids: string[]]
   downloadAll: []
@@ -99,7 +102,8 @@ const emit = defineEmits<{
     </span>
     <span class="vfu-toolbar__right">
       <button
-        class="vfu-button is-success vfu-button--tooltip"
+        v-if="!autoUpload"
+        class="vfu-button is-primary vfu-button--tooltip"
         type="button"
         :disabled="!canSelect"
         :data-tooltip="selectFileTooltip"
@@ -112,6 +116,19 @@ const emit = defineEmits<{
           <path d="M20 16v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3" />
         </svg>
         {{ text.chooseFile }}
+      </button>
+      <button
+        class="vfu-button is-success"
+        type="button"
+        :disabled="autoUpload ? !canSelect : !canUpload"
+        @click="autoUpload ? emit('select') : emit('upload')"
+      >
+        <svg class="vfu-button__icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 16V4" />
+          <path d="m7 9 5-5 5 5" />
+          <path d="M20 16v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3" />
+        </svg>
+        {{ autoUpload ? '上传文件' : '上传' }}
       </button>
     </span>
   </div>

@@ -211,6 +211,8 @@ const t = (key: string, values?: Record<string, string | number>) =>
   i18n.value.t(`VueFlowUpload.${key}`, values)
 const themeStyle = computed(() => resolvedTheme.value.variables ?? {})
 const dragActive = ref(false)
+const toastMessage = ref('')
+let toastTimer: number | undefined
 const pendingRemoval = ref<UploadFileItem[]>([])
 const removalBusy = ref(false)
 const removalError = ref('')
@@ -351,6 +353,31 @@ async function addFiles(selected: File[]) {
   }
 }
 
+function showToast(message: string) {
+  toastMessage.value = message
+  if (toastTimer !== undefined) window.clearTimeout(toastTimer)
+  toastTimer = window.setTimeout(() => {
+    toastMessage.value = ''
+    toastTimer = undefined
+  }, 1800)
+}
+
+async function handleUpload() {
+  const active = files.value.some((file) =>
+    ['uploading', 'hashing', 'checking', 'preparing', 'queued', 'merging'].includes(file.status),
+  )
+  if (active) {
+    showToast('正在上传')
+    return
+  }
+  const pending = files.value.some((file) => file.status === 'idle')
+  if (!pending) {
+    showToast('请选择需要上传的文件')
+    return
+  }
+  await submit()
+}
+
 async function validate(file: File): Promise<UploadError | undefined> {
   // 校验失败保留为 rejected 行，用户可以看到失败原因。 Keep validation failures as rejected rows so users can see why.
   if (props.maxSize !== undefined && file.size > props.maxSize) {
@@ -375,10 +402,22 @@ async function validate(file: File): Promise<UploadError | undefined> {
 async function removeSelected() {
   // 根据当前列表解析选中 id，弹窗期间文件可能已变化。 Resolve selected ids against the current list because files may change while dialog is open.
   const targets = files.value.filter((file) => selected.value.has(file.uid))
+  if (!targets.length) {
+    showToast('请选择需要删除的文件')
+    return
+  }
   const direct = targets.filter((file) => !requiresRemovalConfirmation(file))
   for (const file of direct) await removeImmediately(file)
   const confirmed = targets.filter(requiresRemovalConfirmation)
   if (confirmed.length) openRemovalConfirmation(confirmed)
+}
+
+function handleDownloadSelected(uids: string[]) {
+  if (!uids.length) {
+    showToast('请选择需要下载的文件')
+    return
+  }
+  void downloadSelected(uids)
 }
 
 async function remove(uid: string) {
@@ -588,9 +627,12 @@ defineExpose({
       :accept="accept"
       :max-size="maxSize"
       :text="text"
+      :auto-upload="autoUpload"
+      :can-upload="canUpload"
       @select="uploadTrigger?.browse()"
+      @upload="handleUpload"
       @toggle-all="toggleAllSelected"
-      @download-selected="downloadSelected"
+      @download-selected="handleDownloadSelected"
       @download-all="downloadAll"
       @remove-selected="removeSelected"
     />
@@ -639,6 +681,7 @@ defineExpose({
     <div v-if="drag && dragActive" class="vfu-upload__drop-mask" aria-live="polite">
       <span class="vfu-upload__drop-message">{{ text.dropToUpload }}</span>
     </div>
+    <div v-if="toastMessage" class="vfu-upload__toast" role="status" aria-live="polite">{{ toastMessage }}</div>
   </section>
 </template>
 
