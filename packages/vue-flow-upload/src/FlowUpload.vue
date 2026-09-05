@@ -367,12 +367,12 @@ async function handleUpload() {
     ['uploading', 'hashing', 'checking', 'preparing', 'queued', 'merging'].includes(file.status),
   )
   if (active) {
-    showToast('正在上传')
+    showToast(text.value.uploadingToast)
     return
   }
   const pending = files.value.some((file) => file.status === 'idle')
   if (!pending) {
-    showToast('请选择需要上传的文件')
+    showToast(text.value.noUploadFilesToast)
     return
   }
   await submit()
@@ -403,7 +403,7 @@ async function removeSelected() {
   // 根据当前列表解析选中 id，弹窗期间文件可能已变化。 Resolve selected ids against the current list because files may change while dialog is open.
   const targets = files.value.filter((file) => selected.value.has(file.uid))
   if (!targets.length) {
-    showToast('请选择需要删除的文件')
+    showToast(text.value.noRemoveFilesToast)
     return
   }
   const direct = targets.filter((file) => !requiresRemovalConfirmation(file))
@@ -414,7 +414,7 @@ async function removeSelected() {
 
 function handleDownloadSelected(uids: string[]) {
   if (!uids.length) {
-    showToast('请选择需要下载的文件')
+    showToast(text.value.noDownloadFilesToast)
     return
   }
   void downloadSelected(uids)
@@ -614,6 +614,7 @@ defineExpose({
     />
     <slot name="tip" />
 
+    <div class="vfu-upload__operation">
     <UploadToolbars
       :files="files"
       :selectable="selectable"
@@ -636,7 +637,9 @@ defineExpose({
       @download-all="downloadAll"
       @remove-selected="removeSelected"
     />
+    </div>
 
+    <div class="vfu-upload__display">
     <UploadFileList
       :files="displayedFiles"
       :show="showFileList"
@@ -664,6 +667,7 @@ defineExpose({
         <slot name="file" v-bind="slotProps" />
       </template>
     </UploadFileList>
+    </div>
 
     <UploadRemoveDialog
       :files="pendingRemoval"

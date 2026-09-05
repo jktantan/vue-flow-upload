@@ -19,6 +19,19 @@
     sans-serif;
 }
 
+.vfu-upload__operation,
+.vfu-upload__footer {
+  flex: 0 0 auto;
+}
+
+.vfu-upload__display {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow: auto;
+}
+
 .vfu-upload__toast {
   position: absolute;
   z-index: 20;
@@ -286,35 +299,80 @@
 .vfu-file:last-child {
   border-bottom: 0;
 }
-.vfu-list:not(.is-picture-card) .vfu-file {
+.vfu-list:not(.is-picture-wall) .vfu-file {
   display: grid;
   grid-template-columns: 41px minmax(0, 1fr) 104px;
 }
-.vfu-list:not(.is-picture-card) .vfu-file.has-select {
+.vfu-list:not(.is-picture-wall) .vfu-file.has-select {
   grid-template-columns: 24px 41px minmax(0, 1fr) 104px;
 }
-.vfu-list.is-picture-card {
-  grid-template-columns: repeat(auto-fill, minmax(164px, 1fr));
+.vfu-list.is-picture-wall {
+  grid-template-columns: repeat(auto-fill, minmax(172px, 1fr));
+  grid-auto-rows: 250px;
+  gap: 12px;
+  padding: 12px;
 }
-.vfu-list.is-picture-card .vfu-file {
+.vfu-list.is-picture-wall .vfu-file {
   position: relative;
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 7px;
-  min-height: 152px;
-  border-color: var(--vfu-line);
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) 58px;
+  gap: 0;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid #dcdfe6;
+  border-radius: var(--vfu-radius);
+  padding: 0;
+  background: #fff;
 }
-.vfu-list.is-picture-card .vfu-file__icon {
+.vfu-list.is-picture-wall .vfu-file:hover {
+  border-color: #c6e2ff;
+  background: #fff;
+}
+.vfu-list.is-picture-wall .vfu-file__visual {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  place-items: center;
+  overflow: hidden;
+  background: #fff;
+}
+.vfu-list.is-picture-wall .vfu-thumbnail {
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+}
+.vfu-list.is-picture-wall .vfu-thumbnail img {
+  object-fit: contain;
+}
+.vfu-list.is-picture-wall .vfu-file__icon {
   width: 64px;
   height: 64px;
-  margin: 12px auto 0;
-  background: transparent;
 }
-.vfu-list.is-picture-card .vfu-file__headline {
+.vfu-list.is-picture-wall .vfu-file__body {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 0;
+  border-top: 1px solid #ebeef5;
+  padding: 9px 10px;
+}
+.vfu-list.is-picture-wall .vfu-file__headline {
   display: block;
 }
-.vfu-list.is-picture-card .vfu-file__headline span {
+.vfu-list.is-picture-wall .vfu-file__headline strong {
   display: block;
+  width: 100%;
+}
+.vfu-list.is-picture-wall .vfu-file__headline span,
+.vfu-list.is-picture-wall .vfu-file__status {
+  display: none;
+}
+.vfu-list.is-picture-wall .vfu-progress {
+  display: block;
+  margin: 6px 0 0;
 }
 .vfu-select {
   z-index: 1;
@@ -343,10 +401,47 @@
 .vfu-select:has(input:disabled) {
   cursor: not-allowed;
 }
-.vfu-list.is-picture-card .vfu-select {
+.vfu-list.is-picture-wall .vfu-select {
   position: absolute;
+  z-index: 3;
   top: 9px;
   left: 9px;
+}
+.vfu-file__state {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  right: 0;
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: start end;
+  padding: 5px 5px 0 0;
+  box-sizing: border-box;
+  clip-path: polygon(100% 0, 0 0, 100% 100%);
+  color: #fff;
+  pointer-events: none;
+}
+.vfu-file__state.is-success {
+  background: #67c23a;
+}
+.vfu-file__state.is-pending {
+  background: #909399;
+}
+.vfu-file__state.is-uploading {
+  background: #409eff;
+}
+.vfu-file__state.is-error {
+  background: #f56c6c;
+}
+.vfu-file__state svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.2;
 }
 .vfu-thumbnail {
   width: 100%;
@@ -370,13 +465,13 @@
   height: 100%;
   object-fit: cover;
 }
-.vfu-list:not(.is-picture-card) .vfu-thumbnail {
+.vfu-list:not(.is-picture-wall) .vfu-thumbnail {
   width: 41px;
   height: 41px;
   flex: 0 0 41px;
   border-radius: 4px;
 }
-.vfu-list:not(.is-picture-card) .vfu-file__visual {
+.vfu-list:not(.is-picture-wall) .vfu-file__visual {
   display: flex;
   width: 41px;
   height: 41px;
@@ -496,6 +591,42 @@
   justify-content: flex-end;
   gap: 4px;
 }
+.vfu-list.is-picture-wall .vfu-file__actions {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  right: 0;
+  bottom: auto;
+  left: 0;
+  height: auto;
+  aspect-ratio: 1;
+  display: flex;
+  width: auto;
+  min-height: 0;
+  padding: 0;
+  justify-content: center;
+  background: rgb(0 0 0 / 48%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+.vfu-list.is-picture-wall .vfu-file:hover .vfu-file__actions,
+.vfu-list.is-picture-wall .vfu-file:focus-within .vfu-file__actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+.vfu-list.is-picture-wall .vfu-action {
+  background: rgb(255 255 255 / 92%);
+  color: #606266;
+}
+.vfu-list.is-picture-wall .vfu-action:hover:not(:disabled) {
+  background: #fff;
+  color: #409eff;
+}
+.vfu-list.is-picture-wall .vfu-action.is-danger:hover:not(:disabled) {
+  background: #fff;
+  color: #f56c6c;
+}
 .vfu-action {
   position: relative;
   display: grid;
@@ -608,21 +739,21 @@
     gap: 8px;
     padding: 8px 12px;
   }
-  .vfu-list:not(.is-picture-card) .vfu-file,
-  .vfu-list:not(.is-picture-card) .vfu-file.has-select {
+  .vfu-list:not(.is-picture-wall) .vfu-file,
+  .vfu-list:not(.is-picture-wall) .vfu-file.has-select {
     grid-template-columns: 41px minmax(0, 1fr);
   }
-  .vfu-list:not(.is-picture-card) .vfu-file.has-select .vfu-select {
+  .vfu-list:not(.is-picture-wall) .vfu-file.has-select .vfu-select {
     grid-row: 1 / span 2;
   }
-  .vfu-list:not(.is-picture-card) .vfu-file.has-select .vfu-file__visual {
+  .vfu-list:not(.is-picture-wall) .vfu-file.has-select .vfu-file__visual {
     grid-column: 2;
   }
-  .vfu-list:not(.is-picture-card) .vfu-file.has-select .vfu-file__body,
-  .vfu-list:not(.is-picture-card) .vfu-file.has-select .vfu-file__actions {
+  .vfu-list:not(.is-picture-wall) .vfu-file.has-select .vfu-file__body,
+  .vfu-list:not(.is-picture-wall) .vfu-file.has-select .vfu-file__actions {
     grid-column: 2;
   }
-  .vfu-list:not(.is-picture-card) .vfu-file:not(.has-select) .vfu-file__actions {
+  .vfu-list:not(.is-picture-wall) .vfu-file:not(.has-select) .vfu-file__actions {
     grid-column: 2;
   }
   .vfu-file__actions {

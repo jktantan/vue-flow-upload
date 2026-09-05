@@ -85,7 +85,7 @@ createApp(App).use(createFlowUploadI18n({ locale: 'en-US' }))
 | `drag`、`directory`                                              | 启用整组件拖拽上传及操作区提示、浏览器支持的目录选择                            | `true`、`false`              |
 | `width`、`height`                                                | 上传组件的 CSS 尺寸；数字按 px 处理。`height="auto"` 会填满具有明确高度的父容器 | `auto`、`600px`              |
 | `show-file-list`                                                 | 是否渲染内置列表                                                                | `true`                       |
-| `list-type`                                                      | `list`、`picture`、`picture-card`                                               | `list`                       |
+| `list-type`                                                      | `list`、`picture`、`picture-card`；后两者以图片墙卡片展示                       | `list`                       |
 | `data`、`headers`                                                | 对象或返回对象的异步函数                                                        | `{}`                         |
 | `normal-upload-threshold`、`chunk-size`                          | 超过阈值时走分片；需 transport 支持分片                                         | 10 MiB、5 MiB                |
 | `concurrency`、`max-concurrent-files`、`max-concurrent-requests` | 分片/文件/请求并发限制                                                          | 3、2、6                      |

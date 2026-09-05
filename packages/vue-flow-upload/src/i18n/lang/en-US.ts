@@ -45,5 +45,6 @@ export default {
     removeConfirmProcessing: 'Deleting…',
     cancel: 'Cancel',
     removeCleanupFailed: 'Server cleanup failed. Please try again.',
+    uploadingToast: 'Uploading', noUploadFilesToast: 'Please select files to upload', noDownloadFilesToast: 'Please select files to download', noRemoveFilesToast: 'Please select files to remove',
   } satisfies UploadMessages,
 }

@@ -49,6 +49,7 @@ const files = ref<UploadFileItem[]>([
 ])
 const autoUpload = ref(true)
 const drag = ref(true)
+const listType = ref<'list' | 'picture'>('list')
 const eventLog = ref<string[]>([])
 
 const transport: UploadTransport = {
@@ -159,6 +160,11 @@ const downloadTransport: DownloadTransport = {
         <h1>列表模式</h1>
       </div>
       <div class="demo-controls">
+        <fieldset class="layout-choice">
+          <legend>展示模式</legend>
+          <label><input v-model="listType" type="radio" value="list" /> 列表</label>
+          <label><input v-model="listType" type="radio" value="picture" /> 图片墙</label>
+        </fieldset>
         <label class="switch"><input v-model="autoUpload" type="checkbox" /> 选择后自动上传</label>
         <label class="switch"><input v-model="drag" type="checkbox" /> 启用拖拽上传</label>
       </div>
@@ -178,7 +184,7 @@ const downloadTransport: DownloadTransport = {
       :concurrency="2"
       :max-concurrent-files="2"
       :max-concurrent-requests="3"
-      list-type="list"
+      :list-type="listType"
       selectable
       @error="(_, error) => eventLog.unshift(`错误：${error.message}`)"
     />
@@ -230,6 +236,34 @@ h1 {
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 12px;
+}
+.layout-choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  padding: 6px 10px;
+  background: #fff;
+  color: #606266;
+  font-size: 13px;
+}
+.layout-choice legend {
+  float: left;
+  margin-right: 6px;
+  padding: 0;
+  color: #909399;
+  font-size: 12px;
+}
+.layout-choice label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+.layout-choice input {
+  accent-color: #409eff;
 }
 .log {
   margin-top: 20px;

@@ -41,6 +41,10 @@ export interface UploadMessages {
   removeConfirmProcessing: string
   cancel: string
   removeCleanupFailed: string
+  uploadingToast: string
+  noUploadFilesToast: string
+  noDownloadFilesToast: string
+  noRemoveFilesToast: string
 }
 export interface ThemeAdapter {
   name: string

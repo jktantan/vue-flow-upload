@@ -219,7 +219,7 @@ interface UploadProps {
   retryMaxDelay?: number                 // 默认 10_000 ms
   credentials?: RequestCredentials       // 默认 'same-origin'
   timeout?: number                       // 单请求超时，默认 60_000 ms
-  listType?: 'list' | 'picture-card'
+  listType?: 'list' | 'picture' | 'picture-card'
   theme?: 'default' | 'element-plus' | 'ant-design-vue' | ThemeAdapter
   draggable?: boolean                    // 默认 true
   pasteable?: boolean                    // 默认 true，支持从剪贴板粘贴文件
@@ -417,7 +417,7 @@ type DownloadScope =
 ### 7.3 列表、图片墙与预览
 
 - `listType: 'list'`：显示文件名、大小、状态、进度和操作。
-- `listType: 'picture-card'`：图片显示缩略图和遮罩进度；非图片显示文件类型占位图。
+- `listType: 'picture'` 或 `'picture-card'`：以图片墙卡片展示；图片显示缩略图，非图片显示居中的文件类型图标，并提供状态角标与悬浮操作。
 - 本地图片缩略图使用 `URL.createObjectURL`，文件移除/组件卸载时必须 `revokeObjectURL`。
 - 成功后优先使用服务端 `thumbnailUrl`/`url`。预览支持本地图片和远程图片，非图片交由 `onPreview` 回调自定义处理。
 

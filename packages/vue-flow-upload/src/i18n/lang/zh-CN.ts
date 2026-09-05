@@ -45,5 +45,6 @@ export default {
     removeConfirmProcessing: '正在删除…',
     cancel: '取消',
     removeCleanupFailed: '服务器清理失败，请重试。',
+    uploadingToast: '正在上传', noUploadFilesToast: '请选择需要上传的文件', noDownloadFilesToast: '请选择需要下载的文件', noRemoveFilesToast: '请选择需要删除的文件',
   } satisfies UploadMessages,
 }

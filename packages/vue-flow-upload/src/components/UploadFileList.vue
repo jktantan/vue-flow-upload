@@ -2,6 +2,13 @@
 import type { UploadFileItem, UploadMessages } from '../types'
 import { fileIconUrl, formatSize, isImage } from '../utils/file'
 
+function statusKind(status: UploadFileItem['status']) {
+  if (status === 'success') return 'success'
+  if (status === 'failed' || status === 'rejected') return 'error'
+  if (['uploading', 'merging'].includes(status)) return 'uploading'
+  return 'pending'
+}
+
 defineProps<{
   files: UploadFileItem[]
   show: boolean
@@ -32,7 +39,7 @@ defineProps<{
   <ul
     v-if="show && files.length"
     class="vfu-list"
-    :class="{ 'is-picture-card': listType === 'picture-card' }"
+    :class="{ 'is-picture-wall': listType === 'picture' || listType === 'picture-card' }"
     aria-live="polite"
   >
     <li
@@ -51,6 +58,36 @@ defineProps<{
         :resume="resume"
         :retry="retry"
       >
+        <span
+          v-if="listType !== 'list'"
+          class="vfu-file__state"
+          :class="`is-${statusKind(file.status)}`"
+          :aria-label="statusText(file.status)"
+          :title="statusText(file.status)"
+        >
+          <svg v-if="statusKind(file.status) === 'success'" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m6.5 12 3.5 3.5 7.5-7.5" />
+          </svg>
+          <svg
+            v-else-if="statusKind(file.status) === 'uploading'"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path d="M12 16V4" />
+            <path d="m7 9 5-5 5 5" />
+          </svg>
+          <svg
+            v-else-if="statusKind(file.status) === 'error'"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path d="m9 9 6 6m0-6-6 6" />
+          </svg>
+          <svg v-else viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="7" />
+            <path d="M12 8v4l2.5 1.5" />
+          </svg>
+        </span>
         <label v-if="selectable" class="vfu-select" @click.stop>
           <input
             :checked="file.status === 'success' && selected.has(file.uid)"
@@ -71,7 +108,10 @@ defineProps<{
           </button>
           <img v-else class="vfu-file__glyph vfu-file__icon" :src="fileIconUrl(file)" alt="" />
         </div>
-        <div class="vfu-file__body">
+        <div
+          class="vfu-file__body"
+          :title="listType !== 'list' ? `${file.name} (${formatSize(file.size)})` : undefined"
+        >
           <div class="vfu-file__headline">
             <strong>{{ file.name }}</strong
             ><span>{{ formatSize(file.size) }}</span>
@@ -164,7 +204,9 @@ defineProps<{
       </slot>
     </li>
   </ul>
-  <footer v-if="show && files.length && listType === 'list'" class="vfu-list-footer">
-    {{ t('fileCount', { count: files.length }) }}
-  </footer>
+  <div v-if="show && files.length && listType === 'list'" class="vfu-upload__footer">
+    <footer class="vfu-list-footer">
+      {{ t('fileCount', { count: files.length }) }}
+    </footer>
+  </div>
 </template>
