@@ -229,7 +229,9 @@
   opacity: 0;
   pointer-events: none;
   transform: translate(-50%, 2px);
-  transition: opacity 0.16s, transform 0.16s;
+  transition:
+    opacity 0.16s,
+    transform 0.16s;
   white-space: nowrap;
 }
 .vfu-button--tooltip:hover::after,
@@ -371,7 +373,6 @@
 }
 .vfu-file.is-failed,
 .vfu-file.is-rejected {
-  border: 1px solid #f56c6c;
   background: rgb(245 108 108 / 8%);
 }
 .vfu-file.is-idle .vfu-file__body small,
@@ -522,7 +523,9 @@
   opacity: 0;
   pointer-events: none;
   transform: translateY(-2px);
-  transition: opacity 0.16s, transform 0.16s;
+  transition:
+    opacity 0.16s,
+    transform 0.16s;
   white-space: nowrap;
 }
 .vfu-action:hover::after,
