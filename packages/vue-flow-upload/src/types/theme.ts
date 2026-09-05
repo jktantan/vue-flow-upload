@@ -45,6 +45,22 @@ export interface UploadMessages {
   noUploadFilesToast: string
   noDownloadFilesToast: string
   noRemoveFilesToast: string
+  uploadFile: string
+  avatar: string
+  avatarInvalidType: string
+  avatarTooLarge: string
+  avatarSelectFirst: string
+  avatarNotReady: string
+  avatarUploadFailed: string
+  avatarUploadFailedWithStatus: string
+  avatarTransportNotConfigured: string
+  avatarDeleteFailed: string
+  avatarPreview: string
+  avatarUpdate: string
+  avatarDragHint: string
+  avatarDropToUpload: string
+  avatarChoose: string
+  avatarUpload: string
 }
 export interface ThemeAdapter {
   name: string

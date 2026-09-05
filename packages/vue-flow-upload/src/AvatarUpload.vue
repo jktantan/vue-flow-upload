@@ -4,6 +4,8 @@ import { useCropper } from 'vue-picture-cropper'
 import 'cropperjs/dist/cropper.css'
 import 'vue-picture-cropper/style.css'
 import { api as viewerApi } from 'v-viewer'
+import { useI18n } from 'vue-i18n-lite'
+import { getUploadMessages } from './i18n'
 import 'viewerjs/dist/viewer.css'
 import defaultAvatar from './assets/default-avatar.svg?url'
 import { createHttpUploadTransport } from './core/http-transport'
@@ -57,6 +59,8 @@ const imageSrc = computed(() => avatar.value?.url || avatar.value?.thumbnailUrl 
 const canSelect = computed(() => !props.disabled && props.permissions.select !== false)
 const canRemove = computed(() => !props.disabled && props.permissions.remove !== false)
 const canPreview = computed(() => props.preview && props.permissions.preview !== false)
+const inheritedI18n = useI18n()
+const text = computed(() => getUploadMessages(inheritedI18n))
 const cardStyle = computed(() => ({
   width: toCssSize(props.width),
   height: toCssSize(props.height),
@@ -101,8 +105,8 @@ function select(event: Event) {
 }
 async function openEditor(file?: File) {
   if (!file || !canSelect.value) return
-  if (!matchesAccept(file, props.accept)) return showNotice('请选择符合格式要求的头像图片')
-  if (props.maxSize && file.size > props.maxSize) return showNotice('头像图片超过允许大小')
+  if (!matchesAccept(file, props.accept)) return showNotice(text.value.avatarInvalidType)
+  if (props.maxSize && file.size > props.maxSize) return showNotice(text.value.avatarTooLarge)
   if (props.beforeUpload && !(await props.beforeUpload(file))) return
   revokeSource()
   selectedFile.value = file
@@ -140,13 +144,13 @@ async function resolveHeaders() {
   return typeof props.headers === 'function' ? await props.headers() : (props.headers ?? {})
 }
 async function upload() {
-  if (!selectedFile.value) return showNotice('请先选择头像图片')
+  if (!selectedFile.value) return showNotice(text.value.avatarSelectFirst)
   const cropped = (await cropper.getFile({
     width: 512,
     height: 512,
     fileName: selectedFile.value.name || 'avatar.png',
   })) as File | undefined
-  if (!cropped) return showNotice('头像图片尚未准备完成')
+  if (!cropped) return showNotice(text.value.avatarNotReady)
   const existing = avatar.value
   try {
     let response: UploadSuccessResult = {}
@@ -158,7 +162,10 @@ async function upload() {
         props.updateAction.replace('{fileId}', encodeURIComponent(existing.fileId ?? '')),
         { method: 'PUT', body: formData, headers: await resolveHeaders() },
       )
-      if (!result.ok) throw new Error(`头像上传失败 (${result.status})`)
+      if (!result.ok)
+        throw new Error(
+          text.value.avatarUploadFailedWithStatus.replace('{status}', String(result.status)),
+        )
       response = result.headers.get('content-type')?.includes('application/json')
         ? await result.json()
         : {}
@@ -175,7 +182,7 @@ async function upload() {
           onProgress: () => {},
         },
       )
-    } else throw new Error('未配置头像上传地址或传输方法')
+    } else throw new Error(text.value.avatarTransportNotConfigured)
     const item: UploadFileItem = {
       uid: existing?.uid ?? createUid(),
       fileId: response.fileId ?? existing?.fileId,
@@ -192,8 +199,12 @@ async function upload() {
     emit('success', item, response)
     closeEditor()
   } catch (error) {
-    showNotice(error instanceof Error ? error.message : '头像上传失败')
-    emit('error', cropped, error instanceof Error ? error : new Error('头像上传失败'))
+    showNotice(error instanceof Error ? error.message : text.value.avatarUploadFailed)
+    emit(
+      'error',
+      cropped,
+      error instanceof Error ? error : new Error(text.value.avatarUploadFailed),
+    )
   }
 }
 async function remove() {
@@ -210,7 +221,7 @@ async function remove() {
     update([])
     emit('remove', removed)
   } catch {
-    showNotice('删除头像失败')
+    showNotice(text.value.avatarDeleteFailed)
   }
 }
 </script>
@@ -226,13 +237,13 @@ async function remove() {
       @change="select"
     />
     <div class="vfu-avatar-card" :class="{ 'is-disabled': disabled }">
-      <img :src="imageSrc" alt="头像" />
+      <img :src="imageSrc" :alt="text.avatar" />
       <div class="vfu-avatar-mask">
         <button
           v-if="canPreview"
           class="vfu-action"
           type="button"
-          data-tooltip="查看"
+          :data-tooltip="text.avatarPreview"
           @click.stop="preview"
         >
           <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -242,7 +253,7 @@ async function remove() {
         ><button
           class="vfu-action"
           type="button"
-          data-tooltip="更新"
+          :data-tooltip="text.avatarUpdate"
           :disabled="!canSelect"
           @click.stop="editorVisible = true"
         >
@@ -254,7 +265,7 @@ async function remove() {
           v-if="avatar"
           class="vfu-action is-danger"
           type="button"
-          data-tooltip="删除"
+          :data-tooltip="text.remove"
           :disabled="!canRemove"
           @click.stop="remove"
         >
@@ -280,21 +291,21 @@ async function remove() {
             class="vfu-avatar-empty"
             @click="browse"
           >
-            可拖拽头像图片
+            {{ text.avatarDragHint }}
           </button>
-          <div v-if="dragging" class="vfu-avatar-drop-mask">释放鼠标以上传头像</div>
+          <div v-if="dragging" class="vfu-avatar-drop-mask">{{ text.avatarDropToUpload }}</div>
         </div>
         <footer class="vfu-avatar-editor__footer">
-          <span>可拖拽头像图片</span>
+          <span>{{ text.avatarDragHint }}</span>
           <div>
-            <button type="button" class="vfu-button" @click="browse">选择头像</button
+            <button type="button" class="vfu-button" @click="browse">{{ text.avatarChoose }}</button
             ><button
               type="button"
               class="vfu-button is-success"
               :disabled="!selectedFile"
               @click="upload"
             >
-              上传
+              {{ text.avatarUpload }}
             </button>
           </div>
         </footer>

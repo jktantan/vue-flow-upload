@@ -128,7 +128,7 @@ const emit = defineEmits<{
           <path d="m7 9 5-5 5 5" />
           <path d="M20 16v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3" />
         </svg>
-        {{ autoUpload ? '上传文件' : '上传' }}
+        {{ autoUpload ? text.uploadFile : text.startUpload }}
       </button>
     </span>
   </div>
