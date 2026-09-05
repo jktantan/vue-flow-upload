@@ -5,7 +5,7 @@ import 'cropperjs/dist/cropper.css'
 import 'vue-picture-cropper/style.css'
 import { api as viewerApi } from 'v-viewer'
 import { useI18n } from 'vue-i18n-lite'
-import { getUploadMessages } from './i18n'
+import { createFlowUploadI18n, getUploadMessages } from './i18n'
 import 'viewerjs/dist/viewer.css'
 import defaultAvatar from './assets/default-avatar.svg?url'
 import { createHttpUploadTransport } from './core/http-transport'
@@ -60,7 +60,8 @@ const canSelect = computed(() => !props.disabled && props.permissions.select !==
 const canRemove = computed(() => !props.disabled && props.permissions.remove !== false)
 const canPreview = computed(() => props.preview && props.permissions.preview !== false)
 const inheritedI18n = useI18n()
-const text = computed(() => getUploadMessages(inheritedI18n))
+const localI18n = createFlowUploadI18n()
+const text = computed(() => getUploadMessages(inheritedI18n ?? localI18n))
 const cardStyle = computed(() => ({
   width: toCssSize(props.width),
   height: toCssSize(props.height),
