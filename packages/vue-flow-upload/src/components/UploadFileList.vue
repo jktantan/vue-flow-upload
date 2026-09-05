@@ -12,6 +12,7 @@ function statusKind(status: UploadFileItem['status']) {
 defineProps<{
   files: UploadFileItem[]
   show: boolean
+  showFooter: boolean
   listType: 'list' | 'picture' | 'picture-card'
   selectable: boolean
   selected: Set<string>
@@ -204,7 +205,7 @@ defineProps<{
       </slot>
     </li>
   </ul>
-  <div v-if="show && files.length && listType === 'list'" class="vfu-upload__footer">
+  <div v-if="show && files.length && showFooter" class="vfu-upload__footer">
     <footer class="vfu-list-footer">
       {{ t('fileCount', { count: files.length }) }}
     </footer>

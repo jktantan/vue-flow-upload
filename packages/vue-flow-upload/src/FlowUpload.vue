@@ -65,6 +65,8 @@ const props = withDefaults(
     resume?: boolean
     instantUpload?: boolean
     showFileList?: boolean
+    showOperation?: boolean
+    showFooter?: boolean
     drag?: boolean
     directory?: boolean
     listType?: 'list' | 'picture' | 'picture-card'
@@ -110,6 +112,8 @@ const props = withDefaults(
     instantUpload: true,
     listType: 'list',
     showFileList: true,
+    showOperation: true,
+    showFooter: true,
     drag: true,
     directory: false,
     preview: true,
@@ -614,7 +618,7 @@ defineExpose({
     />
     <slot name="tip" />
 
-    <div class="vfu-upload__operation">
+    <div v-if="showOperation" class="vfu-upload__operation">
     <UploadToolbars
       :files="files"
       :selectable="selectable"
@@ -643,6 +647,7 @@ defineExpose({
     <UploadFileList
       :files="displayedFiles"
       :show="showFileList"
+      :show-footer="showFooter"
       :list-type="listType"
       :selectable="selectable"
       :selected="selected"
