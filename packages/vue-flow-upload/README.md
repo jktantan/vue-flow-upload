@@ -1,5 +1,23 @@
 # vue-flow-upload
 
+## AvatarUpload 头像模式
+
+`AvatarUpload` 是独立的头像上传组件，内置圆形裁剪，不显示文件列表或上传进度，支持查看、更新、删除和拖拽更新。
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue'
+import { AvatarUpload, type UploadFileItem } from 'vue-flow-upload'
+const avatar = ref<UploadFileItem[]>([])
+</script>
+
+<template>
+  <AvatarUpload v-model="avatar" action="/api/avatar" update-action="/api/avatar/{fileId}" delete-action="/api/avatar/{fileId}" accept="image/*" drag />
+</template>
+```
+
+更新请求使用 `PUT`，`{fileId}` 会替换为当前头像 ID，并同时作为 multipart 字段发送。文件选中后会先使用 `vue-picture-cropper` 裁剪，再上传裁剪结果。
+
 面向 Vue 3 的上传组件：普通文件上传开箱即用，并为大文件提供分片、断点续传、SHA-256 秒传、并发调度、失败重试和下载归档。
 
 ## 安装与最小使用

@@ -215,6 +215,9 @@ const t = (key: string, values?: Record<string, string | number>) =>
   i18n.value.t(`VueFlowUpload.${key}`, values)
 const themeStyle = computed(() => resolvedTheme.value.variables ?? {})
 const dragActive = ref(false)
+function handleSelectedFiles(selected: File[]) {
+  void addFiles(selected)
+}
 const toastMessage = ref('')
 let toastTimer: number | undefined
 const pendingRemoval = ref<UploadFileItem[]>([])
@@ -574,7 +577,8 @@ function onDrop(event: DragEvent) {
   if (!props.drag || !canSelect.value || !isFileDrag(event)) return
   event.preventDefault()
   dragActive.value = false
-  void addFiles(Array.from(event.dataTransfer?.files ?? []))
+  const dropped = Array.from(event.dataTransfer?.files ?? [])
+  void addFiles(dropped)
 }
 
 onBeforeUnmount(clear)
@@ -614,64 +618,64 @@ defineExpose({
       :multiple="multiple"
       :accept="accept"
       :can-select="canSelect"
-      @files="addFiles"
+      @files="handleSelectedFiles"
     />
     <slot name="tip" />
 
     <div v-if="showOperation" class="vfu-upload__operation">
-    <UploadToolbars
-      :files="files"
-      :selectable="selectable"
-      :selected="selected"
-      :selectable-count="selectableFiles.length"
-      :all-selected="allSelectableFilesSelected"
-      :can-select="canSelect"
-      :can-remove="canRemove"
-      :can-download-all="canDownloadAll"
-      :drag="drag"
-      :accept="accept"
-      :max-size="maxSize"
-      :text="text"
-      :auto-upload="autoUpload"
-      :can-upload="canUpload"
-      @select="uploadTrigger?.browse()"
-      @upload="handleUpload"
-      @toggle-all="toggleAllSelected"
-      @download-selected="handleDownloadSelected"
-      @download-all="downloadAll"
-      @remove-selected="removeSelected"
-    />
+      <UploadToolbars
+        :files="files"
+        :selectable="selectable"
+        :selected="selected"
+        :selectable-count="selectableFiles.length"
+        :all-selected="allSelectableFilesSelected"
+        :can-select="canSelect"
+        :can-remove="canRemove"
+        :can-download-all="canDownloadAll"
+        :drag="drag"
+        :accept="accept"
+        :max-size="maxSize"
+        :text="text"
+        :auto-upload="autoUpload"
+        :can-upload="canUpload"
+        @select="uploadTrigger?.browse()"
+        @upload="handleUpload"
+        @toggle-all="toggleAllSelected"
+        @download-selected="handleDownloadSelected"
+        @download-all="downloadAll"
+        @remove-selected="removeSelected"
+      />
     </div>
 
     <div class="vfu-upload__display">
-    <UploadFileList
-      :files="displayedFiles"
-      :show="showFileList"
-      :show-footer="showFooter"
-      :list-type="listType"
-      :selectable="selectable"
-      :selected="selected"
-      :can-upload="canUpload"
-      :can-retry="canRetry"
-      :can-preview="canPreview"
-      :can-download="canDownload"
-      :can-remove="canRemove"
-      :text="text"
-      :t="t"
-      :status-text="statusText"
-      :image-url="imageUrl"
-      :toggle-selected="toggleSelected"
-      :remove="remove"
-      :preview="previewFile"
-      :download="download"
-      :pause="pause"
-      :resume="resumeUpload"
-      :retry="retry"
-    >
-      <template v-if="$slots.file" #file="slotProps">
-        <slot name="file" v-bind="slotProps" />
-      </template>
-    </UploadFileList>
+      <UploadFileList
+        :files="displayedFiles"
+        :show="showFileList"
+        :show-footer="showFooter"
+        :list-type="listType"
+        :selectable="selectable"
+        :selected="selected"
+        :can-upload="canUpload"
+        :can-retry="canRetry"
+        :can-preview="canPreview"
+        :can-download="canDownload"
+        :can-remove="canRemove"
+        :text="text"
+        :t="t"
+        :status-text="statusText"
+        :image-url="imageUrl"
+        :toggle-selected="toggleSelected"
+        :remove="remove"
+        :preview="previewFile"
+        :download="download"
+        :pause="pause"
+        :resume="resumeUpload"
+        :retry="retry"
+      >
+        <template v-if="$slots.file" #file="slotProps">
+          <slot name="file" v-bind="slotProps" />
+        </template>
+      </UploadFileList>
     </div>
 
     <UploadRemoveDialog
@@ -690,7 +694,9 @@ defineExpose({
     <div v-if="drag && dragActive" class="vfu-upload__drop-mask" aria-live="polite">
       <span class="vfu-upload__drop-message">{{ text.dropToUpload }}</span>
     </div>
-    <div v-if="toastMessage" class="vfu-upload__toast" role="status" aria-live="polite">{{ toastMessage }}</div>
+    <div v-if="toastMessage" class="vfu-upload__toast" role="status" aria-live="polite">
+      {{ toastMessage }}
+    </div>
   </section>
 </template>
 

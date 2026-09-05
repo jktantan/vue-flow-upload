@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import {
   FlowUpload,
+  AvatarUpload,
   type DownloadTransport,
   type UploadFileItem,
   type UploadTransport,
@@ -51,6 +52,8 @@ const autoUpload = ref(true)
 const drag = ref(true)
 const listType = ref<'list' | 'picture'>('list')
 const eventLog = ref<string[]>([])
+const avatar = ref<UploadFileItem[]>([])
+const avatarUpdateAction = '/api/avatar/{fileId}'
 
 const transport: UploadTransport = {
   createFile({ fileId, name }) {
@@ -188,6 +191,20 @@ const downloadTransport: DownloadTransport = {
       selectable
       @error="(_, error) => eventLog.unshift(`错误：${error.message}`)"
     />
+    <section class="avatar-demo">
+      <h2>头像上传</h2>
+      <p>支持点击或拖拽选择，选中后先裁剪再上传。</p>
+      <AvatarUpload
+        v-model="avatar"
+        :transport="transport"
+        :update-action="avatarUpdateAction"
+        accept="image/*"
+        :data="{ source: 'playground', scene: 'avatar' }"
+        :headers="{ Authorization: 'Bearer playground-token' }"
+        :drag="drag"
+        @update:model-value="eventLog.unshift('头像已更新')"
+      />
+    </section>
     <aside v-if="eventLog.length" class="log">
       <strong>事件记录</strong>
       <p v-for="entry in eventLog.slice(0, 4)" :key="entry">{{ entry }}</p>
@@ -273,6 +290,13 @@ h1 {
   color: #748094;
   font-size: 12px;
 }
+.avatar-demo {
+  margin-top: 28px;
+  padding-top: 22px;
+  border-top: 1px solid #e5e7eb;
+}
+.avatar-demo h2 { margin: 0; color: #202938; font-size: 16px; }
+.avatar-demo p { color: #748094; font-size: 13px; }
 .log strong {
   color: #202938;
 }

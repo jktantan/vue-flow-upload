@@ -1,6 +1,7 @@
 import FlowUpload from './FlowUpload.vue'
+import AvatarUpload from './AvatarUpload.vue'
 
-export { FlowUpload }
+export { FlowUpload, AvatarUpload }
 export { createHttpUploadTransport } from './core/http-transport'
 export { ChunkScheduler } from './core/chunk-scheduler'
 export { hashFile } from './core/hash-service'
