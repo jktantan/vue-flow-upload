@@ -225,7 +225,7 @@ async function remove() {
       :disabled="!canSelect"
       @change="select"
     />
-    <div class="vfu-avatar-card" :class="{ 'is-disabled': disabled }" @click="browse">
+    <div class="vfu-avatar-card" :class="{ 'is-disabled': disabled }">
       <img :src="imageSrc" alt="头像" />
       <div class="vfu-avatar-mask">
         <button
