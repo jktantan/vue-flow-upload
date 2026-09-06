@@ -26,7 +26,7 @@ const module: NuxtModule<VueFlowUploadNuxtModuleOptions> = defineNuxtModule({
     ] as const) {
       addComponent({
         name: `${prefix}${name}`,
-        filePath: resolver.resolve('./index'),
+        filePath: resolver.resolve(exportName === 'AvatarUpload' ? './avatar' : './index'),
         export: exportName,
         mode: 'client',
       })

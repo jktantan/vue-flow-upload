@@ -43,6 +43,36 @@ keeps browser-only upload, preview, and cropper APIs out of server rendering.
 
 Set `prefix: 'App'` to register `AppFlowUpload` and `AppAvatarUpload` instead.
 
+认证和上传默认策略在应用初始化时配置，使用 Vue 插件标准的第二参数：
+
+```ts
+import { createApp } from 'vue'
+import { vueFlowUpload } from 'vue-flow-upload'
+import App from './App.vue'
+
+createApp(App).use(vueFlowUpload, {
+  auth: {
+    credentials: 'include',
+    headers: async () => ({ Authorization: `Bearer ${getAccessToken()}` }),
+    query: { source: 'web' },
+  },
+  defaults: {
+    chunkSize: 1024 * 1024,
+    chunkConcurrency: 3,
+    maxConcurrentFiles: 2,
+    maxConcurrentRequests: 6,
+  },
+})
+```
+
+需要单独引入头像模块时可使用独立入口，避免将主上传组件作为业务依赖：
+
+```ts
+import { AvatarUpload } from 'vue-flow-upload/avatar'
+```
+
+主入口仍导出 `AvatarUpload` 以保持兼容；企业应用建议按需使用独立入口。
+
 ## AvatarUpload 头像模式
 
 `AvatarUpload` 是独立的头像上传组件，内置圆形裁剪，不显示文件列表或上传进度，支持查看、更新、删除和拖拽更新。
@@ -91,7 +121,7 @@ const files = ref<UploadFileItem[]>([])
 </template>
 ```
 
-`action` 使用内置 XHR（支持 `method`、`with-credentials`、`headers`、`data`）；需要秒传、分片或自定义协议时传入 `transport`。两者同时提供时优先使用 `transport`。
+`action` 使用内置 XHR（支持 `method`、`data`）；需要秒传、分片或自定义协议时传入 `transport`。两者同时提供时优先使用 `transport`。认证由应用初始化插件统一提供，不在组件上配置。
 
 认证配置只在 `app.use(vueFlowUpload, config)` 初始化时设置：`credentials` 控制 Cookie，`headers` 控制认证请求头，`query` 添加统一 URL 参数。三者会应用到所有上传、分片、合并、删除和头像请求；不要在组件上重复配置认证信息，也不要把敏感 Token 放在 query 中。
 

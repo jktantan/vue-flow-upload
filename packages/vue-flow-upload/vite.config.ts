@@ -8,6 +8,7 @@ export default defineConfig({
     lib: {
       entry: {
         index: fileURLToPath(new URL('./src/index.ts', import.meta.url)),
+        avatar: fileURLToPath(new URL('./src/avatar.ts', import.meta.url)),
         nuxt: fileURLToPath(new URL('./src/nuxt.ts', import.meta.url)),
       },
       formats: ['es', 'cjs'],

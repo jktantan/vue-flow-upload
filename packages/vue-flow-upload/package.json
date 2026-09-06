@@ -17,6 +17,11 @@
       "types": "./dist/nuxt.d.ts",
       "import": "./dist/nuxt.js"
     },
+    "./avatar": {
+      "types": "./dist/avatar.d.ts",
+      "import": "./dist/avatar.js",
+      "require": "./dist/avatar.cjs"
+    },
     "./style.css": "./dist/style.css"
   },
   "files": [
