@@ -33,6 +33,7 @@ import type {
   UploadTheme,
   UploadTransport,
   UploadUserFile,
+  UploadPagination,
 } from './types'
 
 const props = withDefaults(
@@ -70,6 +71,7 @@ const props = withDefaults(
     showFileList?: boolean
     showOperation?: boolean
     showFooter?: boolean
+    pagination?: UploadPagination
     drag?: boolean
     directory?: boolean
     listType?: 'list' | 'picture' | 'picture-card'
@@ -713,9 +715,10 @@ defineExpose({
       </div>
     </div>
     <UploadFooter
-      :visible="showFileList && displayedFiles.length > 0 && showFooter"
+      :visible="showFileList && displayedFiles.length > 0 && (showFooter || !!pagination)"
       :count="displayedFiles.length"
       :t="t"
+      :pagination="pagination"
     />
 
     <UploadRemoveDialog

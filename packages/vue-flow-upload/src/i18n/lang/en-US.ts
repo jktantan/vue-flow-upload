@@ -65,5 +65,12 @@ export default {
     avatarDropToUpload: 'Release to upload avatar image',
     avatarChoose: 'Choose avatar',
     avatarUpload: 'Upload',
+    paginationTotal: 'Total {total}',
+    paginationItemsPerPage: '{size} / page',
+    paginationPrevious: 'Previous page',
+    paginationNext: 'Next page',
+    paginationPageNumber: 'Page number',
+    paginationGoTo: 'Go to',
+    paginationLabel: 'Pagination',
   } satisfies UploadMessages,
 }

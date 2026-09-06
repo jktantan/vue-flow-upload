@@ -65,5 +65,12 @@ export default {
     avatarDropToUpload: '释放鼠标以上传头像',
     avatarChoose: '选择头像',
     avatarUpload: '上传',
+    paginationTotal: '共 {total} 项',
+    paginationItemsPerPage: '{size} / 页',
+    paginationPrevious: '上一页',
+    paginationNext: '下一页',
+    paginationPageNumber: '页码',
+    paginationGoTo: '跳转至',
+    paginationLabel: '分页导航',
   } satisfies UploadMessages,
 }

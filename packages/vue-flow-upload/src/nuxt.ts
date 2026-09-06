@@ -3,7 +3,7 @@ import type { NuxtModule } from '@nuxt/schema'
 
 export interface VueFlowUploadNuxtModuleOptions {
   /** Prefix applied to the globally registered component names. */
-  prefix?: string
+  prefix: string
 }
 
 const module: NuxtModule<VueFlowUploadNuxtModuleOptions> = defineNuxtModule({

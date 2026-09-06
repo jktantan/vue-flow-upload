@@ -873,6 +873,39 @@
   color: var(--vfu-muted);
   font-size: 11px;
 }
+
+.vfu-pagination {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  color: #606266;
+  font-size: 13px;
+}
+.vfu-pagination button,
+.vfu-pagination select,
+.vfu-pagination input {
+  height: 28px;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+}
+.vfu-pagination button { min-width: 28px; padding: 0 7px; cursor: pointer; }
+.vfu-pagination button.is-active { border-color: var(--vfu-primary, #409eff); background: var(--vfu-primary, #409eff); color: #fff; }
+.vfu-pagination button:disabled { color: #c0c4cc; cursor: not-allowed; }
+.vfu-pagination select { padding: 0 8px; }
+.vfu-pagination input { width: 42px; padding: 0 5px; text-align: center; }
+.vfu-pagination__jumper { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.vfu-pagination.is-large button, .vfu-pagination.is-large select, .vfu-pagination.is-large input { height: 32px; }
+.vfu-pagination.is-small button, .vfu-pagination.is-small select, .vfu-pagination.is-small input { height: 24px; font-size: 12px; }
+.vfu-pagination.is-background button { border: 0; background: #f4f4f5; }
+.vfu-pagination.is-background button.is-active { background: var(--vfu-primary, #409eff); }
+@media (max-width: 640px) {
+  .vfu-list-footer { align-items: flex-start; flex-direction: column; gap: 10px; }
+  .vfu-pagination { flex-wrap: wrap; margin-left: 0; }
+}
 .vfu-theme-element-plus .vfu-button {
   border-radius: var(--vfu-radius);
   font-weight: 500;

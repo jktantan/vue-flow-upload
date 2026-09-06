@@ -61,6 +61,13 @@ export interface UploadMessages {
   avatarDropToUpload: string
   avatarChoose: string
   avatarUpload: string
+  paginationTotal: string
+  paginationItemsPerPage: string
+  paginationPrevious: string
+  paginationNext: string
+  paginationPageNumber: string
+  paginationGoTo: string
+  paginationLabel: string
 }
 export interface ThemeAdapter {
   name: string

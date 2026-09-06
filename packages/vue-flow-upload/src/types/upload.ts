@@ -61,3 +61,13 @@ export interface UploadPermissions {
   download?: boolean
   downloadAll?: boolean
 }
+
+export interface UploadPagination {
+  total?: number
+  currentPage?: number
+  pageSize?: number
+  pageSizes?: number[]
+  size?: 'large' | 'default' | 'small'
+  background?: boolean
+  disabled?: boolean
+}

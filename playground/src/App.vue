@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onBeforeUnmount, ref } from 'vue'
 import {
   FlowUpload,
   AvatarUpload,
@@ -50,10 +50,25 @@ const files = ref<UploadFileItem[]>([
 ])
 const autoUpload = ref(true)
 const drag = ref(true)
+const loading = ref(false)
 const listType = ref<'list' | 'picture'>('list')
 const eventLog = ref<string[]>([])
 const avatar = ref<UploadFileItem[]>([])
 const avatarUpdateAction = '/api/avatar/{fileId}'
+let loadingTimer: number | undefined
+
+function testLoading() {
+  if (loadingTimer !== undefined) window.clearTimeout(loadingTimer)
+  loading.value = true
+  loadingTimer = window.setTimeout(() => {
+    loading.value = false
+    loadingTimer = undefined
+  }, 3_000)
+}
+
+onBeforeUnmount(() => {
+  if (loadingTimer !== undefined) window.clearTimeout(loadingTimer)
+})
 
 const transport: UploadTransport = {
   createFile({ fileId, name }) {
@@ -170,6 +185,9 @@ const downloadTransport: DownloadTransport = {
         </fieldset>
         <label class="switch"><input v-model="autoUpload" type="checkbox" /> 选择后自动上传</label>
         <label class="switch"><input v-model="drag" type="checkbox" /> 启用拖拽上传</label>
+        <button type="button" class="loading-test" :disabled="loading" @click="testLoading">
+          {{ loading ? '加载中...' : '测试 loading（3秒）' }}
+        </button>
       </div>
     </header>
     <FlowUpload
@@ -182,6 +200,7 @@ const downloadTransport: DownloadTransport = {
       :headers="{ Authorization: 'Bearer playground-token' }"
       :auto-upload="autoUpload"
       :drag="drag"
+      :loading="loading"
       :normal-upload-threshold="1024 * 1024"
       :chunk-size="256 * 1024"
       :concurrency="2"
@@ -248,6 +267,23 @@ h1 {
   font-size: 13px;
   cursor: pointer;
 }
+.loading-test {
+  border: 1px solid #c9d2e3;
+  border-radius: 4px;
+  padding: 6px 10px;
+  background: #fff;
+  color: #2f6bff;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.loading-test:hover:not(:disabled) {
+  border-color: #2f6bff;
+}
+.loading-test:disabled {
+  color: #aeb8c8;
+  cursor: wait;
+}
 .demo-controls {
   display: inline-flex;
   flex-wrap: wrap;
@@ -295,8 +331,54 @@ h1 {
   padding-top: 22px;
   border-top: 1px solid #e5e7eb;
 }
-.avatar-demo h2 { margin: 0; color: #202938; font-size: 16px; }
-.avatar-demo p { color: #748094; font-size: 13px; }
+.avatar-demo h2 {
+  margin: 0;
+  color: #202938;
+  font-size: 16px;
+}
+.avatar-demo p {
+  color: #748094;
+  font-size: 13px;
+}
+.pagination-demo {
+  margin-top: 28px;
+  padding-top: 22px;
+  border-top: 1px solid #e5e7eb;
+}
+.pagination-demo h2 {
+  margin: 0;
+  color: #202938;
+  font-size: 16px;
+}
+.pagination-demo p {
+  margin: 8px 0 16px;
+  color: #748094;
+  font-size: 13px;
+}
+.pagination-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+  color: #748094;
+  font-size: 13px;
+}
+.pagination-controls label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.pagination-controls select {
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  padding: 4px 8px;
+  color: #606266;
+  background: #fff;
+}
+.pagination-demo :deep(.el-pagination) {
+  justify-content: center;
+}
 .log strong {
   color: #202938;
 }
