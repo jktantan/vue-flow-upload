@@ -1,348 +1,100 @@
-# Vue Flow Upload 后端接口文档
+# Vue Flow Upload 后台 API 契约
 
-本文档供后端开发实现 `vue-flow-upload` 默认 HTTP 传输适配器时使用。接口以组件库的 `createHttpUploadTransport()` 为准；URL 可按项目网关规范调整，但请求字段、响应结构和分片序号约定应保持一致。
+本文档是 `UploadTransport`、`DownloadTransport` 的 HTTP 映射示例，不是组件强制的固定路由。后端可使用其他路由和鉴权方式，但必须保持请求语义、幂等性和响应字段等价。
 
-## 1. 接入约定
+## 1. 通用约定
 
-默认前端配置：
+- 默认适配器使用 XHR；2xx 表示成功，非 2xx 被转换为 `HTTP_<status>`。408、429、5xx 和网络/超时错误可重试，其他 4xx 默认不可重试。
+- JSON 使用 camelCase。除普通上传和分片上传外，控制请求为 `application/json`。普通上传的 `Content-Type` 由浏览器生成，服务端不得要求客户端手动设置 boundary。
+- 所有接口按当前用户、租户和业务数据鉴权。不得仅信任文件名、MIME 或客户端哈希。
+- `fileId` 是业务文件记录 ID；`uploadId` 是临时分片会话 ID。`createFile`、`checkFile`、`initMultipart`、分片上传和 `completeMultipart` 应具备幂等语义。
+- 默认的同内容并发策略是“独立会话、完成时去重”：不同用户或不同浏览器上传同一内容时，各自保有业务文件记录和临时分片会话；服务端仅在文件完整、校验成功后复用正式内容对象。不得将客户端生成的 `fileId` 或临时 `uploadId` 作为内容去重键。
 
-```ts
-const transport = createHttpUploadTransport({
-  url: '/uploads/file',
-  createUrl: '/uploads/files',
-  deleteUrl: '/uploads/files/{fileId}',
-  checkUrl: '/uploads/check',
-  multipart: {
-    initUrl: '/uploads/init',
-    chunkUrl: '/uploads/{uploadId}/chunks/{index}',
-    completeUrl: '/uploads/{uploadId}/complete',
-    cancelUrl: '/uploads/{uploadId}',
-  },
-})
-```
+## 2. 文件记录与普通上传
 
-- 所有接口由业务方的认证体系鉴权，例如 `Authorization: Bearer <token>`；前端会透传配置的自定义请求头。
-- 除普通上传和分片上传外，请求体均为 `application/json`。JSON 字段使用 camelCase。
-- 默认适配器直接读取整个响应 JSON，**不识别** `{ code, message, data }` 等业务包装。若后端必须使用包装结构，请在前端注入自定义 `UploadTransport` 或通过 `parseResponse` / 适配层拆包。
-- HTTP 成功状态为 `2xx`。普通上传、秒传检查、初始化和完成接口均应返回 JSON；取消接口可返回空响应。分片上传可返回空响应，或返回任意合法 JSON。
-- 分片索引从 `0` 开始。服务端合并时必须按索引升序，而不是按分片到达时间拼接。
-- `data` 是业务附加参数，前端会整体 JSON 序列化；由业务服务解析并用于归属、关联记录或权限隔离。
+### 2.1 创建文件记录（可选）
 
-## 2. 公共模型
-
-### 2.1 文件标识与生命周期
-
-`fileId` 是一次文件上传从创建到删除的唯一业务标识。前端会在文件进入列表时生成临时 ID；若配置 `createUrl`，上传前会调用创建接口，后端可返回正式 `fileId` 覆盖它。之后普通上传、秒传检查、分片初始化与合并均携带同一个 `fileId`。
-
-后端必须将一个 `fileId` 关联到该文件产生的所有 `uploadId`、临时分片、正式对象与业务记录。删除接口只接收 `fileId`，并清理全部关联资源。这样用户在上传中、失败或成功后删除时，前端不需要感知分片会话。
-
-创建与删除必须幂等：相同 `fileId` 的重复创建返回同一记录；重复删除或删除不存在资源返回 `204` 或 `2xx`，不能返回需要用户处理的错误。
-
-### 2.2 上传前创建文件记录
-
-`POST /uploads/files`
+`POST /uploads/files`（由 `createAction` 或 `transport.createFile` 配置）
 
 ```json
 {
-  "fileId": "client-generated-uuid",
-  "name": "report.pdf",
-  "size": 1048576,
-  "mimeType": "application/pdf",
-  "lastModified": 1722470400000
-}
-```
-
-服务端应完成鉴权、租户/业务归属校验及创建临时文件记录，成功时返回：
-
-```json
-{ "fileId": "file_01J..." }
-```
-
-若后端接受前端生成的 UUID，可原样返回；若需要服务端主键，可返回替换后的正式 ID。无论哪种方式，后续所有接口都必须使用响应中的 ID。
-
-### 2.3 删除文件及全部上传会话
-
-`DELETE /uploads/files/{fileId}`
-
-按当前用户和业务归属鉴权后，原子地删除/标记删除该 `fileId` 的正式文件、全部分片会话、未合并分片、临时对象和关联记录。上传中的请求可能仍在飞行，后端应让它们后续失败或忽略写入，不能重新创建已删除资源。
-
-推荐返回 `204 No Content`。前端仅在收到成功响应后才从上传列表移除文件；失败时会保留文件并提示用户重试，避免产生不可见的后台残留。
-
-### 2.4 文件成功结果 `UploadSuccessResult`
-
-以下字段直接位于响应根节点：
-
-```json
-{
-  "fileId": "file_01J...",
-  "name": "report.pdf",
-  "size": 1048576,
-  "mimeType": "application/pdf",
-  "url": "https://cdn.example.com/files/file_01J...",
-  "thumbnailUrl": "https://cdn.example.com/thumbs/file_01J...jpg"
-}
-```
-
-`fileId` 是后续下载和业务关联使用的稳定文件标识。`url` 与 `thumbnailUrl` 可选，建议返回具备权限控制或短有效期的 URL。
-
-### 2.5 错误响应
-
-组件默认会把非 `2xx` 响应统一识别为 `HTTP_<status>`；因此至少应使用准确的 HTTP 状态码。推荐同时返回以下 JSON，供自定义适配器、日志和其他客户端使用：
-
-```json
-{
-  "code": "SESSION_EXPIRED",
-  "message": "上传会话已过期",
-  "retriable": false,
-  "requestId": "req_..."
-}
-```
-
-建议状态码：`400` 参数或分片不合法、`401` 未认证、`403` 无权限、`404` 文件/会话不存在、`409` 分片冲突、`413` 文件过大、`415` 类型不支持、`429` 限流、`5xx` 服务端异常。前端默认将 `408`、`429` 和 `5xx` 判定为可重试。
-
-## 3. 上传接口
-
-### 3.1 普通文件上传
-
-`POST /uploads/file`
-
-适用于不大于前端 `normalUploadThreshold`（默认 10 MiB）的文件。
-
-请求使用 `multipart/form-data`，浏览器自动生成 `boundary`，后端不要要求客户端手动指定 `Content-Type`。
-
-| 字段 | 位置 | 类型 | 必填 | 说明 |
-| --- | --- | --- | --- | --- |
-| `file` | form-data | File | 是 | 字段名可由前端 `fileFieldName` 配置，默认 `file`。 |
-| `fileId` | form-data | string | 是 | 上传前创建接口返回的稳定文件标识。 |
-| `data` | form-data | string | 是 | JSON 字符串；字段名可由 `dataFieldName` 配置，默认 `data`。 |
-
-`data` 示例：`{"bizType":"contract","recordId":"123"}`。
-
-成功响应：`200 OK` 或 `201 Created`，响应为 [文件成功结果](#24-文件成功结果-uploadsuccessresult)。服务端应完成文件校验、持久化及业务记录创建后再返回成功。
-
-### 3.2 秒传检查
-
-`POST /uploads/check`
-
-前端仅在启用 `instantUpload` 且配置了 `checkUrl` 时调用。应按“当前用户/租户 + SHA-256 + 文件大小 + 业务隔离条件”判断是否可复用；即使物理文件存在，也不得绕过访问权限或业务关联创建。
-
-请求：
-
-```json
-{
-  "fileId": "file_01J...",
   "name": "report.pdf",
   "size": 1048576,
   "mimeType": "application/pdf",
   "lastModified": 1722470400000,
-  "sha256": "4e07408562bedb8b60ce05c1decfe3ad16b722309..."
+  "fileId": "client-generated-id"
 }
 ```
 
-命中响应：
+返回 `{ "fileId": "file_01..." }`。前端若已生成 `fileId` 也会发送它；服务端可原样接受或返回正式 ID，后续请求必须使用返回值。
+
+### 2.2 普通上传
+
+`POST /uploads/file`（`action`）或自定义 `uploadFile` URL。`multipart/form-data` 字段为 `file`（文件，可由 `fileFieldName` 修改）、`fileId`（必填）和 `data`（JSON 字符串，可由 `dataFieldName` 修改）。成功返回：
 
 ```json
-{
-  "exists": true,
-  "file": {
-    "fileId": "file_01J...",
-    "name": "report.pdf",
-    "size": 1048576,
-    "mimeType": "application/pdf",
-    "url": "https://cdn.example.com/files/file_01J..."
-  }
-}
+{"fileId":"file_01...","name":"report.pdf","size":1048576,"mimeType":"application/pdf","url":"https://cdn.example/files/file_01...","thumbnailUrl":"https://cdn.example/thumbs/file_01..."}
 ```
 
-未命中响应：
+`url`、`thumbnailUrl` 可选；204 或空 2xx 响应也可被内置适配器接受，但建议返回完整文件结果。
+
+### 2.3 秒传检查（可选）
+
+`POST /uploads/check`，由 `transport.checkFile` 实现。请求包含 `fileId`、`name`、`size`、`mimeType`、`lastModified`、`sha256`。未命中返回 `{ "exists": false }`；命中返回 `{ "exists": true, "file": { ...UploadSuccessResult } }`。命中时组件不会调用上传或分片接口。
+
+秒传只可命中已完成且当前用户有权引用的内容对象。内容仍在上传、合并、校验失败或已删除时必须返回 `{ "exists": false }`；不能把“其他用户正在上传”返回为 `exists: true`，因为组件会立即将当前文件标记为成功，不会等待该会话完成。
+
+当秒传命中时，服务端应原子地将本次 `fileId` 对应的业务文件记录绑定到既有内容对象，再返回该业务记录的 `UploadSuccessResult`。这避免 `createFile` 已执行但秒传命中后留下未关联的业务记录。
+
+### 2.4 同内容并发上传与完成时去重
+
+同一租户和同一访问隔离域内，服务端应为已校验完成的内容对象建立唯一键，推荐为 `(tenantScope, sha256, size)`；若加密域、存储策略或内容规范化规则会改变实际字节或可见性，也必须纳入该键。不得跨租户或跨访问隔离域去重或暴露内容是否存在。
+
+多个上传者在文件尚未完成时都可能秒传未命中，并各自创建会话、并发上传相同分片。这是预期行为。每个会话按其所属用户、业务范围、哈希、大小、分片大小和总分片数进行隔离和恢复；不要把不同上传者自动合并到同一个进行中的 `uploadId`。
+
+`completeMultipart` 必须在事务、数据库唯一约束或等价的分布式互斥下完成以下操作：
+
+1. 确认会话未取消且所有分片完整，按 index 合并并校验文件大小和 SHA-256。
+2. 尝试创建正式内容对象；第一个完成者写入内容对象。
+3. 若内容唯一键冲突，读取已存在的正式内容对象，丢弃当前会话的临时对象，而不是报上传失败。
+4. 原子地把当前 `fileId` 绑定到最终内容对象，并返回当前业务文件记录的 `UploadSuccessResult`。
+
+因此，先完成者与后完成者都应得到成功结果，但可拥有不同的 `fileId`、名称、目录或业务元数据；底层字节只保留一份。若并发完成期间发现目标内容尚未处于可用状态，服务端应在锁内等待、重读或重试，绝不能返回未完成内容。
+
+## 3. 分片上传
+
+### 3.1 创建或恢复会话
+
+`POST /uploads/init`，请求包含文件元数据、`sha256`、`chunkSize`、`totalChunks`、`data`；返回：
 
 ```json
-{ "exists": false }
+{ "uploadId": "upl_01...", "uploadedChunks": [0, 1] }
 ```
 
-当 `exists` 为 `true` 时，`file` 必须存在；前端不会再上传文件内容。
+`uploadedChunks` 可省略，省略等同空数组。服务端应按用户、业务隔离条件、哈希和大小恢复未过期会话，并校验分片范围。
 
-### 3.3 创建或恢复分片会话
+### 3.2 上传分片
 
-`POST /uploads/init`
+`PUT /uploads/{uploadId}/chunks/{index}`，请求体是 `application/octet-stream` 原始 Blob。内置适配器发送 `X-Upload-Id`、`X-Chunk-Index`（从 0 开始）、`X-Total-Chunks`、`X-Chunk-Size`、`X-File-Name`（URI 编码）、`X-File-Size`，以及可选 `X-File-Id`、`X-File-Sha256`。重复提交同一 index 且字节一致必须视为成功；不一致返回 409。
 
-适用于超过 `normalUploadThreshold` 的文件。前端在启用续传时会先计算 SHA-256；后端应根据当前身份、`sha256`、文件大小及必要业务隔离条件复用未过期会话。
+### 3.3 合并
 
-请求：
+`POST /uploads/{uploadId}/complete`，JSON 为 `{ "fileId": "...", "sha256": "...", "data": {} }`。服务端确认所有分片存在，按 index 合并并校验大小/哈希，再返回 `UploadSuccessResult`；重复调用返回同一结果。缺片建议返回 409：`{ "code": "CHUNKS_MISSING", "missingChunks": [3] }`。
+
+### 3.4 取消与删除
+
+`DELETE /uploads/{uploadId}` 可由 `cancelMultipart` 配置，用于取消临时会话。`DELETE /uploads/files/{fileId}`（`deleteAction` 或 `deleteFile`）应幂等删除正式文件、关联会话和临时对象，推荐返回 204。上传进行中收到删除后，后续写入必须被忽略。
+
+## 4. 下载契约
+
+下载不由 `createHttpUploadTransport` 提供，业务方实现 `DownloadTransport`。`downloadFile({ fileId, fileName })` 可返回 `{ fileName, url }` 或 `{ fileName, blob }`，服务端必须按 `fileId` 重新鉴权。
+
+`createArchive({ fileIds?, scope?, archiveName? })` 返回 `{ "taskId": "arc_01...", "status": "pending", "progress": 0 }`。组件轮询 `getArchiveTask(taskId)`，状态为 `pending | processing | success | failed | canceled`。成功返回 `fileName` 与 `downloadUrl`；失败返回 `errorMessage`。`cancelArchive` 可映射为 `DELETE /downloads/archives/{taskId}`。
+
+## 5. 错误与验收
 
 ```json
-{
-  "fileId": "file_01J...",
-  "name": "video.mp4",
-  "size": 26214400,
-  "mimeType": "video/mp4",
-  "lastModified": 1722470400000,
-  "sha256": "...",
-  "chunkSize": 5242880,
-  "totalChunks": 5,
-  "data": { "bizType": "video", "recordId": "123" }
-}
+{"code":"SESSION_EXPIRED","message":"upload session expired","retriable":false,"requestId":"req_01..."}
 ```
 
-响应：
-
-```json
-{
-  "uploadId": "upl_01J...",
-  "uploadedChunks": [0, 1],
-  "expiresAt": "2026-08-08T12:00:00Z"
-}
-```
-
-`uploadedChunks` 可省略，省略时等同于空数组。它只应包含已完整、可用于合并的索引，范围必须是 `0` 至 `totalChunks - 1`。`uploadId` 必须对当前用户可访问，并应具备过期和清理策略。
-
-### 3.4 上传单个分片
-
-`PUT /uploads/{uploadId}/chunks/{index}`
-
-路径参数：
-
-| 参数 | 说明 |
-| --- | --- |
-| `uploadId` | 初始化接口返回的会话标识。 |
-| `index` | 当前分片索引，从 `0` 开始。 |
-
-请求体为原始二进制字节流，`Content-Type: application/octet-stream`。前端同时发送以下请求头：
-
-| 请求头 | 示例 | 说明 |
-| --- | --- | --- |
-| `X-Upload-Id` | `upl_01J...` | 与路径中的会话标识一致。 |
-| `X-Chunk-Index` | `0` | 当前分片索引。 |
-| `X-Total-Chunks` | `5` | 文件总分片数。 |
-| `X-Chunk-Size` | `5242880` | 前端配置的分片大小；最后一片可能小于此值。 |
-| `X-File-Name` | `video.mp4` | 使用 `encodeURIComponent` 编码，服务端读取后应 URL 解码。 |
-| `X-File-Size` | `26214400` | 原始文件总字节数。 |
-| `X-File-Id` | `file_01J...` | 上传前创建接口返回的业务文件标识。 |
-| `X-File-Sha256` | `...` | 文件完整 SHA-256；未启用哈希时可能不存在。 |
-
-成功时返回 `200 OK`、`201 Created` 或 `204 No Content`。重复提交同一索引且内容一致时必须视为成功（幂等）；内容不一致时应返回 `409 Conflict`。服务端应校验会话归属、索引范围、实际字节数以及必要的文件策略，不能仅信任请求头。
-
-### 3.5 合并分片
-
-`POST /uploads/{uploadId}/complete`
-
-请求：
-
-```json
-{
-  "fileId": "file_01J...",
-  "sha256": "...",
-  "data": { "bizType": "video", "recordId": "123" }
-}
-```
-
-响应为 [文件成功结果](#24-文件成功结果-uploadsuccessresult)。服务端应先确认所有分片均存在，按索引顺序合并，并校验合并后的文件大小及（存在时）SHA-256；校验通过后再将文件置为可用状态。已经完成的同一会话再次调用应返回同一文件结果，保证幂等。
-
-若分片缺失，推荐返回 `409 Conflict`，例如：
-
-```json
-{ "code": "CHUNKS_MISSING", "message": "存在未上传的分片", "missingChunks": [3] }
-```
-
-### 3.6 旧版：取消上传会话
-
-`DELETE /uploads/{uploadId}`
-
-这是兼容旧的分片取消接口。新实现删除时优先调用 [`DELETE /uploads/files/{fileId}`](#23-删除文件及全部上传会话)，由后端按 `fileId` 清理所有会话；暂停只会中止浏览器请求，不调用该接口。
-
-## 4. 可选：查询分片会话
-
-组件当前默认 HTTP 适配器不会调用该接口，但服务端可提供给管理端、自定义传输适配器或排障使用。
-
-`GET /uploads/{uploadId}`
-
-```json
-{
-  "uploadId": "upl_01J...",
-  "status": "uploading",
-  "uploadedChunks": [0, 1],
-  "totalChunks": 5,
-  "expiresAt": "2026-08-08T12:00:00Z"
-}
-```
-
-## 5. 下载接口（自定义适配器契约）
-
-下载未包含在 `createHttpUploadTransport()` 中，业务前端需要按 `DownloadTransport` 实现请求。以下 URL 是推荐 REST 设计。
-
-### 5.1 单文件下载
-
-`POST /downloads/file`
-
-请求：`{ "fileId": "file_01J...", "fileName": "report.pdf" }`。
-
-响应可返回短时效 URL：
-
-```json
-{ "fileName": "report.pdf", "url": "https://download.example.com/signature..." }
-```
-
-也可直接返回二进制流，由适配器转换为 `Blob`。服务端必须按 `fileId` 重新鉴权，不能信任 `fileName`。
-
-### 5.2 创建打包任务
-
-`POST /downloads/archives`
-
-按 ID 打包：
-
-```json
-{ "fileIds": ["file_a", "file_b"], "archiveName": "materials.zip" }
-```
-
-按服务端筛选条件打包：
-
-```json
-{
-  "scope": {
-    "type": "server-query",
-    "queryKey": "order-attachments",
-    "query": { "orderId": "123" }
-  },
-  "archiveName": "order-123.zip"
-}
-```
-
-响应：
-
-```json
-{ "taskId": "arc_01J...", "status": "pending", "progress": 0 }
-```
-
-### 5.3 查询或取消打包任务
-
-`GET /downloads/archives/{taskId}` 返回：
-
-```json
-{
-  "taskId": "arc_01J...",
-  "status": "success",
-  "progress": 100,
-  "fileName": "materials.zip",
-  "downloadUrl": "https://download.example.com/signature..."
-}
-```
-
-`status` 取值：`pending`、`processing`、`success`、`failed`、`canceled`。失败时可返回 `errorMessage`。可选 `DELETE /downloads/archives/{taskId}` 取消未完成任务。
-
-## 6. 服务端实现要求
-
-- 对普通上传、`check`、`init`、分片上传和 `complete` 实现幂等处理，避免网络重试产生重复记录或重复拼接。
-- 文件名、MIME、扩展名和前端 SHA-256 都是不可信输入；在服务端执行大小、类型、内容、病毒扫描和权限校验。
-- 分片和临时合并文件放在非公开路径；成功文件的访问应通过鉴权下载接口、签名 URL 或受控 CDN 提供。
-- 会话必须绑定用户/租户及业务隔离条件，设置过期时间，并定期清理过期会话和临时分片。
-- 限制单用户并发会话、分片大小和总文件大小；对 `429` 返回合理的 `Retry-After`。
-- 记录 `uploadId`、`fileId`、用户标识和请求追踪 ID，日志中不得记录认证令牌、签名 URL 或文件二进制内容。
-
-## 7. 联调验收
-
-1. 小文件请求为一次 `multipart/form-data`，字段名和 `data` JSON 均正确。
-2. 大文件先调用 `init`，只上传 `uploadedChunks` 中不存在的索引，随后调用 `complete`。
-3. 相同文件重新选择后，`init` 能返回同一未完成会话及已完成索引，实现续传。
-4. `check` 命中时不产生普通上传或分片上传请求，直接返回文件结果。
-5. 重复分片 PUT、重复 `complete` 和重复取消均不会造成重复文件或错误合并。
-6. 401/403、413、409、429、5xx 及会话过期均能返回可识别的状态码和错误信息。
+建议使用 400（参数/分片非法）、401、403、404、409、413、415、429、5xx，并在 429 返回 `Retry-After`。内置适配器不解析 `{code,message,data}` 业务包装；请在自定义 transport 中解包。验收应覆盖幂等创建、秒传不上传字节、断点缺片续传、重复分片/complete、按 index 合并、过期会话拒绝写入、删除清理和权限隔离。
