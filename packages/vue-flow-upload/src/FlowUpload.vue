@@ -13,6 +13,7 @@ import UploadFooter from './components/UploadFooter.vue'
 import UploadRemoveDialog from './components/UploadRemoveDialog.vue'
 import UploadToolbars from './components/UploadToolbars.vue'
 import UploadTrigger from './components/UploadTrigger.vue'
+import loadingSvg from './assets/loading.svg'
 import { useDownloadManager } from './composables/useDownloadManager'
 import { useFilePreview } from './composables/useFilePreview'
 import { useFileSelectionState } from './composables/useFileSelectionState'
@@ -74,6 +75,8 @@ const props = withDefaults(
     listType?: 'list' | 'picture' | 'picture-card'
     preview?: boolean
     selectable?: boolean
+    /** Shows a loading mask over the list/picture display area. */
+    loading?: boolean
     /** CSS width. Numbers are treated as pixels. */
     width?: string | number
     /** CSS height. Use `auto` to fill a parent with an explicit height. */
@@ -120,6 +123,7 @@ const props = withDefaults(
     directory: false,
     preview: true,
     selectable: false,
+    loading: false,
     width: 'auto',
     height: '600px',
     archivePollingInterval: 2_000,
@@ -649,7 +653,7 @@ defineExpose({
       />
     </div>
 
-    <div class="vfu-upload__display">
+    <div class="vfu-upload__display" :aria-busy="loading || undefined">
       <UploadPictureWall
         v-if="listType === 'picture' || listType === 'picture-card'"
         :files="displayedFiles"
@@ -704,6 +708,9 @@ defineExpose({
           <slot name="file" v-bind="slotProps" />
         </template>
       </UploadFileList>
+      <div v-if="loading" class="vfu-upload__loading-mask" role="status" aria-live="polite">
+        <img :src="loadingSvg" alt="" aria-hidden="true" />
+      </div>
     </div>
     <UploadFooter
       :visible="showFileList && displayedFiles.length > 0 && showFooter"

@@ -180,11 +180,28 @@
 }
 
 .vfu-upload__display {
+  position: relative;
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
   min-height: 0;
   overflow: auto;
+}
+
+.vfu-upload__loading-mask {
+  position: absolute;
+  z-index: 5;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgb(255 255 255 / 68%);
+  cursor: progress;
+}
+
+.vfu-upload__loading-mask img {
+  display: block;
+  width: 48px;
+  height: 48px;
 }
 
 .vfu-upload__toast {
