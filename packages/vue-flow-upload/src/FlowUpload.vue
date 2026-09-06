@@ -8,6 +8,8 @@ import { resolveTheme } from './themes'
 import { createHttpUploadTransport } from './core/http-transport'
 import 'viewerjs/dist/viewer.css'
 import UploadFileList from './components/UploadFileList.vue'
+import UploadPictureWall from './components/UploadPictureWall.vue'
+import UploadFooter from './components/UploadFooter.vue'
 import UploadRemoveDialog from './components/UploadRemoveDialog.vue'
 import UploadToolbars from './components/UploadToolbars.vue'
 import UploadTrigger from './components/UploadTrigger.vue'
@@ -648,10 +650,10 @@ defineExpose({
     </div>
 
     <div class="vfu-upload__display">
-      <UploadFileList
+      <UploadPictureWall
+        v-if="listType === 'picture' || listType === 'picture-card'"
         :files="displayedFiles"
         :show="showFileList"
-        :show-footer="showFooter"
         :list-type="listType"
         :selectable="selectable"
         :selected="selected"
@@ -661,7 +663,33 @@ defineExpose({
         :can-download="canDownload"
         :can-remove="canRemove"
         :text="text"
-        :t="t"
+        :status-text="statusText"
+        :image-url="imageUrl"
+        :toggle-selected="toggleSelected"
+        :remove="remove"
+        :preview="previewFile"
+        :download="download"
+        :pause="pause"
+        :resume="resumeUpload"
+        :retry="retry"
+      >
+        <template v-if="$slots.file" #file="slotProps">
+          <slot name="file" v-bind="slotProps" />
+        </template>
+      </UploadPictureWall>
+      <UploadFileList
+        v-else
+        :files="displayedFiles"
+        :show="showFileList"
+        list-type="list"
+        :selectable="selectable"
+        :selected="selected"
+        :can-upload="canUpload"
+        :can-retry="canRetry"
+        :can-preview="canPreview"
+        :can-download="canDownload"
+        :can-remove="canRemove"
+        :text="text"
         :status-text="statusText"
         :image-url="imageUrl"
         :toggle-selected="toggleSelected"
@@ -677,6 +705,11 @@ defineExpose({
         </template>
       </UploadFileList>
     </div>
+    <UploadFooter
+      :visible="showFileList && displayedFiles.length > 0 && showFooter"
+      :count="displayedFiles.length"
+      :t="t"
+    />
 
     <UploadRemoveDialog
       :files="pendingRemoval"

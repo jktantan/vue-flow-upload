@@ -12,8 +12,7 @@ function statusKind(status: UploadFileItem['status']) {
 defineProps<{
   files: UploadFileItem[]
   show: boolean
-  showFooter: boolean
-  listType: 'list' | 'picture' | 'picture-card'
+  listType?: 'list' | 'picture' | 'picture-card'
   selectable: boolean
   selected: Set<string>
   canUpload: boolean
@@ -22,7 +21,6 @@ defineProps<{
   canDownload: boolean
   canRemove: boolean
   text: UploadMessages
-  t: (key: string, values?: Record<string, string | number>) => string
   statusText: (status: UploadFileItem['status']) => string
   imageUrl: (file: UploadFileItem) => string | undefined
   toggleSelected: (uid: string) => void
@@ -205,9 +203,4 @@ defineProps<{
       </slot>
     </li>
   </ul>
-  <div v-if="show && files.length && showFooter" class="vfu-upload__footer">
-    <footer class="vfu-list-footer">
-      {{ t('fileCount', { count: files.length }) }}
-    </footer>
-  </div>
 </template>
