@@ -13,6 +13,10 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     },
+    "./nuxt": {
+      "types": "./dist/nuxt.d.ts",
+      "import": "./dist/nuxt.js"
+    },
     "./style.css": "./dist/style.css"
   },
   "files": [
@@ -24,7 +28,13 @@
     "**/*.css"
   ],
   "peerDependencies": {
-    "vue": "^3.5.0"
+    "vue": "^3.5.0",
+    "nuxt": "^3.0.0 || ^4.0.0"
+  },
+  "peerDependenciesMeta": {
+    "nuxt": {
+      "optional": true
+    }
   },
   "scripts": {
     "dev": "vite build --watch",
@@ -36,6 +46,8 @@
     "format:check": "prettier src --check"
   },
   "devDependencies": {
+    "@nuxt/kit": "^3.0.0 || ^4.0.0",
+    "@nuxt/schema": "^3.0.0 || ^4.0.0",
     "@vitejs/plugin-vue": "^6.0.8",
     "sass": "^1.102.0",
     "typescript": "~6.0.3",

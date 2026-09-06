@@ -6,13 +6,16 @@ export default defineConfig({
   plugins: [vue()],
   build: {
     lib: {
-      entry: fileURLToPath(new URL('./src/index.ts', import.meta.url)),
+      entry: {
+        index: fileURLToPath(new URL('./src/index.ts', import.meta.url)),
+        nuxt: fileURLToPath(new URL('./src/nuxt.ts', import.meta.url)),
+      },
       formats: ['es', 'cjs'],
       cssFileName: 'style',
-      fileName: (format) => `index.${format === 'es' ? 'js' : 'cjs'}`,
+      fileName: (format, entryName) => `${entryName}.${format === 'es' ? 'js' : 'cjs'}`,
     },
     rollupOptions: {
-      external: ['vue', 'vue-i18n-lite'],
+      external: ['vue', 'vue-i18n-lite', '@nuxt/kit'],
       output: { globals: { vue: 'Vue', 'vue-i18n-lite': 'VueI18nLite' } },
     },
   },

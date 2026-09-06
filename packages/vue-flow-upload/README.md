@@ -1,5 +1,30 @@
 # vue-flow-upload
 
+## Nuxt
+
+Add the module to `nuxt.config.ts`. It registers client-only `FlowUpload` and
+`AvatarUpload` components and imports the package stylesheet automatically.
+
+```ts
+export default defineNuxtConfig({
+  modules: ['vue-flow-upload/nuxt'],
+  vueFlowUpload: {
+    prefix: '',
+  },
+})
+```
+
+The components can then be used without imports. Their client-only registration
+keeps browser-only upload, preview, and cropper APIs out of server rendering.
+
+```vue
+<template>
+  <FlowUpload v-model="files" action="/api/files" />
+</template>
+```
+
+Set `prefix: 'App'` to register `AppFlowUpload` and `AppAvatarUpload` instead.
+
 ## AvatarUpload 头像模式
 
 `AvatarUpload` 是独立的头像上传组件，内置圆形裁剪，不显示文件列表或上传进度，支持查看、更新、删除和拖拽更新。
