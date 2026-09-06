@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, inject, onBeforeUnmount, ref, watch } from 'vue'
 import { useCropper } from 'vue-picture-cropper'
 import 'cropperjs/dist/cropper.css'
 import 'vue-picture-cropper/style.css'
@@ -9,11 +9,11 @@ import { createFlowUploadI18n, getUploadMessages } from './i18n'
 import 'viewerjs/dist/viewer.css'
 import defaultAvatar from './assets/default-avatar.svg?url'
 import { createHttpUploadTransport } from './core/http-transport'
+import { vueFlowUploadConfigKey } from './config'
 import { createUid, matchesAccept, normalizeFileList, toCssSize } from './utils/file'
 import type {
   UploadData,
   UploadFileItem,
-  UploadHeaders,
   UploadPermissions,
   UploadSuccessResult,
   UploadTransport,
@@ -28,7 +28,6 @@ const props = withDefaults(
     deleteAction?: string
     transport?: UploadTransport
     data?: UploadData
-    headers?: UploadHeaders
     accept?: string | string[]
     maxSize?: number
     width?: string | number
@@ -48,6 +47,7 @@ const emit = defineEmits<{
   remove: [file: UploadFileItem]
 }>()
 const files = ref<UploadFileItem[]>(normalizeFileList(props.modelValue ?? []))
+const globalConfig = inject(vueFlowUploadConfigKey, {})
 const selectedFile = ref<File>()
 const source = ref('')
 const editorVisible = ref(false)
@@ -70,7 +70,7 @@ const transport = computed(
   () =>
     props.transport ??
     (props.action
-      ? createHttpUploadTransport({ url: props.action, deleteUrl: props.deleteAction })
+      ? createHttpUploadTransport({ url: props.action, deleteUrl: props.deleteAction, credentials: globalConfig.auth?.credentials })
       : undefined),
 )
 const cropperProps = computed(() => ({
@@ -142,7 +142,12 @@ async function resolveData() {
   return typeof props.data === 'function' ? await props.data() : (props.data ?? {})
 }
 async function resolveHeaders() {
-  return typeof props.headers === 'function' ? await props.headers() : (props.headers ?? {})
+  const headers = globalConfig.auth?.headers
+  return typeof headers === 'function' ? await headers() : (headers ?? {})
+}
+async function resolveQuery() {
+  const query = globalConfig.auth?.query
+  return typeof query === 'function' ? await query() : (query ?? {})
 }
 async function upload() {
   if (!selectedFile.value) return showNotice(text.value.avatarSelectFirst)
@@ -161,7 +166,7 @@ async function upload() {
       formData.append('fileId', existing.fileId ?? '')
       const result = await fetch(
         props.updateAction.replace('{fileId}', encodeURIComponent(existing.fileId ?? '')),
-        { method: 'PUT', body: formData, headers: await resolveHeaders() },
+        { method: 'PUT', body: formData, headers: await resolveHeaders(), credentials: globalConfig.auth?.credentials },
       )
       if (!result.ok)
         throw new Error(
@@ -180,6 +185,7 @@ async function upload() {
           data,
           fileFieldName: 'file',
           dataFieldName: 'data',
+          query: await resolveQuery(),
           onProgress: () => {},
         },
       )
@@ -217,6 +223,7 @@ async function remove() {
         data: await resolveData(),
         fileFieldName: 'file',
         dataFieldName: 'data',
+        query: await resolveQuery(),
       })
     const removed = avatar.value
     update([])

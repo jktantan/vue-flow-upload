@@ -18,14 +18,14 @@ FlowUpload / AvatarUpload
        业务后端或对象存储网关
 ```
 
-`FlowUpload` 的核心状态由 `useUploadQueue` 管理，所有文件共享一个 `ChunkScheduler`。普通上传和每个分片请求都受 `maxConcurrentRequests`、`maxConcurrentFiles` 与单文件 `concurrency` 限制。哈希计算使用 Web Worker；组件不使用 IndexedDB，也不保存跨页面的本地上传会话。
+`FlowUpload` 的核心状态由 `useUploadQueue` 管理，所有文件共享一个 `ChunkScheduler`。普通上传和每个分片请求都受 `maxConcurrentRequests`、`maxConcurrentFiles` 与单文件 `chunkConcurrency` 限制。哈希计算使用 Web Worker；组件不使用 IndexedDB，也不保存跨页面的本地上传会话。
 
 ## 2. 上传策略与状态
 
 | 条件 | 行为 |
 | --- | --- |
 | 文件大小 `<= normalUploadThreshold`（默认 10 MiB） | 调用 `uploadFile`，默认 XHR 为 `multipart/form-data` |
-| 文件大小超过阈值 | 要求适配器实现 `initMultipart`、`uploadChunk`、`completeMultipart`，按 `chunkSize`（默认 5 MiB）分片 |
+| 文件大小超过阈值 | 要求适配器实现 `initMultipart`、`uploadChunk`、`completeMultipart`，按 `chunkSize`（默认 1 MiB）分片 |
 | `instantUpload` 且实现 `checkFile` | 先计算 SHA-256 并调用秒传检查；命中后不发送文件字节 |
 | 大文件且 `resume` | 先计算 SHA-256，`initMultipart` 返回已完成分片后只上传缺失分片 |
 
@@ -37,7 +37,7 @@ FlowUpload / AvatarUpload
 
 ### 3.1 `FlowUpload` Props
 
-源码中的 Props 包括：`modelValue`、`defaultFileList`、`transport`、`action`、`createAction`、`deleteAction`、`method`（默认 `POST`）、`withCredentials`（默认 `false`）、`downloadTransport`、`data`、`headers`、`fileFieldName`（`file`）、`dataFieldName`（`data`）、`accept`、`maxSize`、`maxCount`、`multiple`、`autoUpload`（`true`）、`normalUploadThreshold`（10 MiB）、`chunkSize`（5 MiB）、`concurrency`（3）、`maxConcurrentFiles`（2）、`maxConcurrentRequests`（6）、`retryCount`（3）、`retryBaseDelay`（500 ms）、`resume`（`true`）、`instantUpload`（`true`）、`showFileList`、`showOperation`、`showFooter`、`pagination`、`drag`（`true`）、`directory`（`false`）、`listType`（`list`）、`preview`（`true`）、`selectable`（`false`）、`loading`、`width`（`auto`）、`height`（`600px`）、`archivePollingInterval`（2 s）、`archivePollingTimeout`（10 min）、`allDownloadScope`、`onPreview`、`theme`、`i18n`、兼容属性 `locale/messages`、`disabled`、`permissions`、`beforeUpload`、`beforeRemove`。
+源码中的 Props 包括：`modelValue`、`defaultFileList`、`transport`、`action`、`createAction`、`deleteAction`、`method`（默认 `POST`）、`withCredentials`（默认 `false`）、`downloadTransport`、`data`、`headers`、`fileFieldName`（`file`）、`dataFieldName`（`data`）、`accept`、`maxSize`、`maxCount`、`multiple`、`autoUpload`（`true`）、`normalUploadThreshold`（10 MiB）、`chunkSize`（1 MiB）、`chunkConcurrency`（3）、`maxConcurrentFiles`（2）、`maxConcurrentRequests`（6）、`retryCount`（3）、`retryBaseDelay`（500 ms）、`resume`（`true`）、`instantUpload`（`true`）、`showFileList`、`showOperation`、`showFooter`、`pagination`、`drag`（`true`）、`directory`（`false`）、`listType`（`list`）、`preview`（`true`）、`selectable`（`false`）、`loading`、`width`（`auto`）、`height`（`600px`）、`archivePollingInterval`（2 s）、`archivePollingTimeout`（10 min）、`allDownloadScope`、`onPreview`、`theme`、`i18n`、兼容属性 `locale/messages`、`disabled`、`permissions`、`beforeUpload`、`beforeRemove`。
 
 `directory` 只是传递给原生文件选择器的目录选择属性；当前组件没有 `pasteable` 或 `sortable` Props，也没有排序事件。
 

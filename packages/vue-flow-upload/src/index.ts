@@ -1,5 +1,7 @@
 import FlowUpload from './FlowUpload.vue'
 import AvatarUpload from './AvatarUpload.vue'
+export { vueFlowUpload, vueFlowUploadConfigKey } from './config'
+export type { UploadAuthConfig, UploadDefaults, VueFlowUploadOptions } from './config'
 
 export { FlowUpload, AvatarUpload }
 export { createHttpUploadTransport } from './core/http-transport'

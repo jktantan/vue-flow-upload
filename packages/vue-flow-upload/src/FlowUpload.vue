@@ -1,11 +1,12 @@
 <script setup lang="ts">
 /* eslint-disable vue/require-default-prop -- omitted values are semantically distinct in the public API */
-import { computed, getCurrentInstance, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, getCurrentInstance, inject, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n-lite'
 import { ChunkScheduler } from './core/chunk-scheduler'
 import { createFlowUploadI18n, getUploadMessages, type FlowUploadI18nOptions } from './i18n'
 import { resolveTheme } from './themes'
 import { createHttpUploadTransport } from './core/http-transport'
+import { vueFlowUploadConfigKey } from './config'
 import 'viewerjs/dist/viewer.css'
 import UploadFileList from './components/UploadFileList.vue'
 import UploadPictureWall from './components/UploadPictureWall.vue'
@@ -26,7 +27,6 @@ import type {
   DownloadTransport,
   UploadError,
   UploadFileItem,
-  UploadHeaders,
   UploadPermissions,
   UploadSuccessResult,
   UploadMessages,
@@ -48,10 +48,8 @@ const props = withDefaults(
     /** Endpoint that idempotently deletes a file and all of its upload sessions by fileId. */
     deleteAction?: string
     method?: 'POST' | 'PUT'
-    withCredentials?: boolean
     downloadTransport?: DownloadTransport
     data?: UploadData
-    headers?: UploadHeaders
     fileFieldName?: string
     dataFieldName?: string
     accept?: string | string[]
@@ -61,7 +59,8 @@ const props = withDefaults(
     autoUpload?: boolean
     normalUploadThreshold?: number
     chunkSize?: number
-    concurrency?: number
+    /** Maximum chunks uploaded concurrently for each active file. */
+    chunkConcurrency?: number
     maxConcurrentFiles?: number
     maxConcurrentRequests?: number
     retryCount?: number
@@ -106,11 +105,10 @@ const props = withDefaults(
     maxCount: Number.POSITIVE_INFINITY,
     multiple: true,
     method: 'POST',
-    withCredentials: false,
     autoUpload: true,
     normalUploadThreshold: 10 * 1024 * 1024,
-    chunkSize: 5 * 1024 * 1024,
-    concurrency: 3,
+    chunkSize: 1 * 1024 * 1024,
+    chunkConcurrency: 3,
     maxConcurrentFiles: 2,
     maxConcurrentRequests: 6,
     retryCount: 3,
@@ -157,14 +155,28 @@ const emit = defineEmits<{
 const internalFiles = ref<UploadFileItem[]>(
   normalizeFileList(props.modelValue ?? props.defaultFileList),
 )
+const globalConfig = inject(vueFlowUploadConfigKey, {})
 // Exposes the hidden native input's file picker to toolbar buttons and consumers.
 const uploadTrigger = ref<{ browse: () => void }>()
 // Shares request slots between files so file and chunk concurrency limits both apply.
+const positiveInteger = (value: number, fallback: number) =>
+  Number.isFinite(value) && value > 0 ? Math.max(1, Math.floor(value)) : fallback
 const scheduler = new ChunkScheduler({
-  concurrency: props.concurrency,
-  maxConcurrentFiles: props.maxConcurrentFiles,
-  maxConcurrentRequests: props.maxConcurrentRequests,
+  maxConcurrentChunksPerFile: positiveInteger(props.chunkConcurrency ?? globalConfig.defaults?.chunkConcurrency ?? 3, 3),
+  maxConcurrentFiles: positiveInteger(props.maxConcurrentFiles ?? globalConfig.defaults?.maxConcurrentFiles ?? 2, 2),
+  maxConcurrentRequests: positiveInteger(props.maxConcurrentRequests ?? globalConfig.defaults?.maxConcurrentRequests ?? 6, 6),
 })
+
+watch(
+  () => [props.chunkConcurrency, props.maxConcurrentFiles, props.maxConcurrentRequests],
+  () => {
+    scheduler.update({
+      maxConcurrentChunksPerFile: positiveInteger(props.chunkConcurrency ?? globalConfig.defaults?.chunkConcurrency ?? 3, 3),
+      maxConcurrentFiles: positiveInteger(props.maxConcurrentFiles ?? globalConfig.defaults?.maxConcurrentFiles ?? 2, 2),
+      maxConcurrentRequests: positiveInteger(props.maxConcurrentRequests ?? globalConfig.defaults?.maxConcurrentRequests ?? 6, 6),
+    })
+  },
+)
 
 watch(
   () => props.modelValue,
@@ -246,7 +258,7 @@ const uploadTransport = computed(
           createUrl: props.createAction,
           deleteUrl: props.deleteAction,
           method: props.method,
-          credentials: props.withCredentials ? 'include' : 'same-origin',
+           credentials: globalConfig.auth?.credentials ?? 'same-origin',
         })
       : undefined),
 )
@@ -270,16 +282,17 @@ const uploadQueue = useUploadQueue({
   canUpload,
   transport: uploadTransport,
   scheduler,
-  normalUploadThreshold: props.normalUploadThreshold,
-  chunkSize: props.chunkSize,
-  retryCount: props.retryCount,
-  retryBaseDelay: props.retryBaseDelay,
-  resume: props.resume,
-  instantUpload: props.instantUpload,
+  normalUploadThreshold: props.normalUploadThreshold ?? globalConfig.defaults?.normalUploadThreshold ?? 10 * 1024 * 1024,
+  chunkSize: positiveInteger(props.chunkSize ?? globalConfig.defaults?.chunkSize ?? 1 * 1024 * 1024, 1 * 1024 * 1024),
+  retryCount: props.retryCount ?? globalConfig.defaults?.retryCount ?? 3,
+  retryBaseDelay: props.retryBaseDelay ?? globalConfig.defaults?.retryBaseDelay ?? 500,
+  resume: props.resume ?? globalConfig.defaults?.resume ?? true,
+  instantUpload: props.instantUpload ?? globalConfig.defaults?.instantUpload ?? true,
   fileFieldName: props.fileFieldName,
   dataFieldName: props.dataFieldName,
   resolveData,
   resolveHeaders,
+  resolveQuery,
   updateFile,
   onProgress: (file, percent) => emit('progress', file, percent),
   onSuccess: (file, response) => emit('success', file, response),
@@ -309,7 +322,7 @@ const {
   allDownloadScope: props.allDownloadScope,
   archivePollingInterval: props.archivePollingInterval,
   archivePollingTimeout: props.archivePollingTimeout,
-  requestMeta: async () => requestMeta(await resolveData(), await resolveHeaders()),
+  requestMeta: async () => requestMeta(await resolveData(), await resolveHeaders(), await resolveQuery()),
   onDownloadStart: (file) => emit('download-start', file),
   onDownloadSuccess: (file) => emit('download-success', file),
   onDownloadError: (file, error) => {
@@ -492,7 +505,7 @@ async function removeImmediately(target: UploadFileItem) {
     uploadQueue.abort(target.uid)
     await uploadTransport.value.deleteFile(
       target.fileId,
-      requestMeta(await resolveData(), await resolveHeaders()),
+      requestMeta(await resolveData(), await resolveHeaders(), await resolveQuery()),
     )
   }
   revokePreviewUrl(target.uid)
@@ -530,8 +543,13 @@ async function resolveData() {
 }
 
 async function resolveHeaders() {
-  // Resolve lazily for the same reason as request data, without exposing mutable caller objects.
-  return typeof props.headers === 'function' ? await props.headers() : (props.headers ?? {})
+  const headers = globalConfig.auth?.headers
+  return typeof headers === 'function' ? await headers() : (headers ?? {})
+}
+
+async function resolveQuery() {
+  const query = globalConfig.auth?.query
+  return typeof query === 'function' ? await query() : (query ?? {})
 }
 
 function statusText(status: UploadFileItem['status']) {

@@ -10,7 +10,7 @@ import {
 
 test('scheduler observes request and file concurrency limits', async () => {
   const scheduler = new ChunkScheduler({
-    concurrency: 1,
+    maxConcurrentChunksPerFile: 1,
     maxConcurrentFiles: 1,
     maxConcurrentRequests: 1,
   })
@@ -40,7 +40,7 @@ test('messages and built-in themes resolve without UI library dependencies', () 
 
 test('scheduler rejects queued work for a canceled file without interrupting active work', async () => {
   const scheduler = new ChunkScheduler({
-    concurrency: 1,
+    maxConcurrentChunksPerFile: 1,
     maxConcurrentFiles: 1,
     maxConcurrentRequests: 1,
   })

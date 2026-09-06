@@ -14,6 +14,24 @@ export default defineNuxtConfig({
 })
 ```
 
+应用级认证和默认上传策略通过 Vue 插件初始化，并且组件不能覆盖认证配置：
+
+```ts
+// plugins/vue-flow-upload.client.ts
+import { vueFlowUpload } from 'vue-flow-upload'
+
+export default defineNuxtPlugin((nuxtApp) => {
+  nuxtApp.vueApp.use(vueFlowUpload, {
+    auth: {
+      credentials: 'include',
+      headers: async () => ({ Authorization: `Bearer ${getAccessToken()}` }),
+      query: { source: 'web' },
+    },
+    defaults: { chunkSize: 1024 * 1024, chunkConcurrency: 3 },
+  })
+})
+```
+
 The components can then be used without imports. Their client-only registration
 keeps browser-only upload, preview, and cropper APIs out of server rendering.
 
@@ -75,6 +93,8 @@ const files = ref<UploadFileItem[]>([])
 
 `action` 使用内置 XHR（支持 `method`、`with-credentials`、`headers`、`data`）；需要秒传、分片或自定义协议时传入 `transport`。两者同时提供时优先使用 `transport`。
 
+认证配置只在 `app.use(vueFlowUpload, config)` 初始化时设置：`credentials` 控制 Cookie，`headers` 控制认证请求头，`query` 添加统一 URL 参数。三者会应用到所有上传、分片、合并、删除和头像请求；不要在组件上重复配置认证信息，也不要把敏感 Token 放在 query 中。
+
 ```ts
 import { createHttpUploadTransport } from 'vue-flow-upload'
 
@@ -130,8 +150,8 @@ createApp(App).use(createFlowUploadI18n({ locale: 'en-US' }))
 | `show-file-list`                                                 | 是否渲染内置列表                                                                | `true`                       |
 | `list-type`                                                      | `list`、`picture`、`picture-card`；后两者以图片墙卡片展示                       | `list`                       |
 | `data`、`headers`                                                | 对象或返回对象的异步函数                                                        | `{}`                         |
-| `normal-upload-threshold`、`chunk-size`                          | 超过阈值时走分片；需 transport 支持分片                                         | 10 MiB、5 MiB                |
-| `concurrency`、`max-concurrent-files`、`max-concurrent-requests` | 分片/文件/请求并发限制                                                          | 3、2、6                      |
+| `normal-upload-threshold`、`chunk-size`                          | 超过阈值时走分片；需 transport 支持分片                                         | 10 MiB、1 MiB                |
+| `chunk-concurrency`、`max-concurrent-files`、`max-concurrent-requests` | 分片/文件/请求并发限制                                                          | 3、2、6                      |
 | `resume`、`instant-upload`                                       | 续传和 SHA-256 秒传                                                             | `true`、`true`               |
 | `before-upload`、`before-remove`                                 | 返回 `false` 或 reject 可阻止上传/删除                                          | —                            |
 

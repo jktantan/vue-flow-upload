@@ -42,7 +42,7 @@ export function createHttpUploadTransport(options: HttpUploadTransportOptions): 
         formData.append(context.fileFieldName, file)
         formData.append('fileId', fileId)
         formData.append(context.dataFieldName, JSON.stringify(data))
-        request.open(method, options.url)
+        request.open(method, appendQuery(options.url, context.query))
         request.timeout = options.timeout ?? 60_000
         request.withCredentials = options.credentials === 'include'
 
@@ -163,7 +163,7 @@ function sendChunk(
   // 分片字节放在请求体，重组所需元数据放在约定的请求头。 Send chunk bytes in the body and reassembly metadata in agreed headers.
   return request<void>(
     options,
-    url,
+    appendQuery(url, context.query),
     'PUT',
     input.chunk,
     context,
@@ -195,7 +195,7 @@ function request<T>(
   // 统一处理非 FormData 请求，确保所有端点错误语义一致。 Centralize non-FormData requests for consistent endpoint errors.
   return new Promise<T>((resolve, reject) => {
     const request = new XMLHttpRequest()
-    request.open(method, url)
+    request.open(method, appendQuery(url, context.query))
     request.timeout = options.timeout ?? 60_000
     request.withCredentials = options.credentials === 'include'
     for (const [key, value] of Object.entries({ ...context.headers, ...extraHeaders })) {
@@ -256,6 +256,13 @@ function resolveChunkUrl(
     : value
         .replace('{uploadId}', encodeURIComponent(uploadId))
         .replace('{index}', String(chunkIndex ?? ''))
+}
+
+function appendQuery(url: string, query?: Record<string, string | number | boolean>) {
+  if (!query || !Object.keys(query).length) return url
+  const target = new URL(url, typeof window !== 'undefined' ? window.location.href : 'http://localhost')
+  for (const [key, value] of Object.entries(query)) target.searchParams.set(key, String(value))
+  return target.toString()
 }
 
 function parseJsonResponse(request: XMLHttpRequest): UploadSuccessResult {

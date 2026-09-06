@@ -20,6 +20,7 @@ interface UploadQueueOptions {
   dataFieldName: string
   resolveData: () => Promise<Record<string, unknown>>
   resolveHeaders: () => Promise<Record<string, string>>
+  resolveQuery: () => Promise<Record<string, string | number | boolean>>
   updateFile: (uid: string, patch: Partial<UploadFileItem>) => UploadFileItem | undefined
   onProgress: (file: UploadFileItem, percent: number) => void
   onSuccess: (file: UploadFileItem, response: UploadSuccessResult) => void
@@ -38,11 +39,16 @@ export function useUploadQueue(options: UploadQueueOptions) {
     return transport
   }
 
-  function requestMeta(data: Record<string, unknown>, headers: Record<string, string>) {
+  function requestMeta(
+    data: Record<string, unknown>,
+    headers: Record<string, string>,
+    query: Record<string, string | number | boolean>,
+  ) {
     // Build the shared transport metadata once for normal, instant, and multipart requests.
     return {
       data,
       headers,
+      query,
       fileFieldName: options.fileFieldName,
       dataFieldName: options.dataFieldName,
     }
@@ -51,11 +57,12 @@ export function useUploadQueue(options: UploadQueueOptions) {
   function requestContext(
     data: Record<string, unknown>,
     headers: Record<string, string>,
+    query: Record<string, string | number | boolean>,
     controller: AbortController,
     onProgress: (loaded: number, total: number) => void,
   ) {
     // Extend metadata with cancellation and byte-level progress for an individual request.
-    return { ...requestMeta(data, headers), signal: controller.signal, onProgress }
+    return { ...requestMeta(data, headers, query), signal: controller.signal, onProgress }
   }
 
   function trackController(uid: string) {
@@ -129,7 +136,7 @@ export function useUploadQueue(options: UploadQueueOptions) {
     const created = transport.createFile
       ? await transport.createFile(
           fileMeta(file.file!, undefined, file.fileId),
-          requestMeta(data, await options.resolveHeaders()),
+          requestMeta(data, await options.resolveHeaders(), await options.resolveQuery()),
         )
       : { fileId: file.fileId! }
     return options.updateFile(uid, { fileId: created.fileId, remoteCreated: true })
@@ -149,7 +156,7 @@ export function useUploadQueue(options: UploadQueueOptions) {
       try {
         return await requireTransport().uploadFile(
           { file, fileId, data },
-          requestContext(data, await options.resolveHeaders(), controller, (loaded, total) =>
+          requestContext(data, await options.resolveHeaders(), await options.resolveQuery(), controller, (loaded, total) =>
             updateProgress(uid, loaded, total),
           ),
         )
@@ -176,7 +183,7 @@ export function useUploadQueue(options: UploadQueueOptions) {
     options.updateFile(uid, { status: 'preparing' })
     const session = await initMultipart(
       { ...fileMeta(file, sha256, fileId), chunkSize, totalChunks, data },
-      requestMeta(data, await options.resolveHeaders()),
+      requestMeta(data, await options.resolveHeaders(), await options.resolveQuery()),
     )
     ensureTaskActive(uid)
     options.updateFile(uid, { uploadId: session.uploadId, status: 'queued' })
@@ -205,7 +212,7 @@ export function useUploadQueue(options: UploadQueueOptions) {
                   chunkSize,
                   file: fileMeta(file, sha256, fileId),
                 },
-                requestContext(data, await options.resolveHeaders(), controller, (loaded) => {
+                requestContext(data, await options.resolveHeaders(), await options.resolveQuery(), controller, (loaded) => {
                   progress[index] = Math.min(chunk.size, loaded)
                   updateProgress(
                     uid,
@@ -231,7 +238,7 @@ export function useUploadQueue(options: UploadQueueOptions) {
     return completeMultipart(
       session.uploadId,
       { fileId, sha256, data },
-      requestMeta(data, await options.resolveHeaders()),
+      requestMeta(data, await options.resolveHeaders(), await options.resolveQuery()),
     )
   }
 
@@ -267,7 +274,7 @@ export function useUploadQueue(options: UploadQueueOptions) {
         options.updateFile(uid, { status: 'checking' })
         const check = await transport.checkFile(
           fileMeta(target.file, sha256, target.fileId),
-          requestMeta(data, await options.resolveHeaders()),
+          requestMeta(data, await options.resolveHeaders(), await options.resolveQuery()),
         )
         if (check.exists) {
           if (!check.file) throw makeUploadError('INVALID_RESPONSE', '秒传响应缺少文件信息', false)

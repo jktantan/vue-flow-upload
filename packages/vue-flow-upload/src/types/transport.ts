@@ -5,6 +5,7 @@ export interface RequestContext {
   data: Record<string, unknown>
   fileFieldName: string
   dataFieldName: string
+  query?: Record<string, string | number | boolean>
 }
 export interface UploadRequestContext extends RequestContext {
   signal: AbortSignal

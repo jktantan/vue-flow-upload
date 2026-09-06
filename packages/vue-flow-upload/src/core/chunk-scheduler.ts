@@ -1,7 +1,7 @@
 export interface ChunkSchedulerOptions {
   maxConcurrentFiles: number
   maxConcurrentRequests: number
-  concurrency: number
+  maxConcurrentChunksPerFile: number
 }
 
 interface ScheduledTask<T> {
@@ -19,6 +19,17 @@ export class ChunkScheduler {
 
   /** 保存并发策略；实际调度在任务入队后立即尝试执行。 Stores concurrency policy; scheduling starts when a task is enqueued. */
   constructor(private readonly options: ChunkSchedulerOptions) {}
+
+  /** Updates limits for queued work without interrupting active requests. */
+  update(next: Partial<ChunkSchedulerOptions>) {
+    if (next.maxConcurrentFiles !== undefined)
+      this.options.maxConcurrentFiles = next.maxConcurrentFiles
+    if (next.maxConcurrentRequests !== undefined)
+      this.options.maxConcurrentRequests = next.maxConcurrentRequests
+    if (next.maxConcurrentChunksPerFile !== undefined)
+      this.options.maxConcurrentChunksPerFile = next.maxConcurrentChunksPerFile
+    this.drain()
+  }
 
   /** 将任务加入队列，并在满足文件与请求并发限制时执行。 Enqueues a task and runs it when file/request limits allow. */
   schedule<T>(fileId: string, run: () => Promise<T>): Promise<T> {
@@ -52,7 +63,7 @@ export class ChunkScheduler {
     const ownRequests = this.activeByFile.get(fileId) ?? 0
     const activeFiles = this.activeByFile.size
     return (
-      ownRequests < this.options.concurrency &&
+      ownRequests < this.options.maxConcurrentChunksPerFile &&
       (ownRequests > 0 || activeFiles < this.options.maxConcurrentFiles)
     )
   }
