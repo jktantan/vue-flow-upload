@@ -39,64 +39,101 @@ import type {
 
 const props = withDefaults(
   defineProps<{
+    /** 受控文件列表；传入后会覆盖内部状态。 Controlled file list; when supplied it replaces internal state. */
     modelValue?: UploadUserFile[]
+    /** 非受控模式的初始文件列表。 Initial file list for uncontrolled mode. */
     defaultFileList?: UploadUserFile[]
-    /** Custom transport. Omit it and provide `action` for a standard XHR upload. */
+    /** 自定义传输适配器；省略它并提供 `action` 时使用标准 XHR 上传。 Custom transport adapter; omit it and provide `action` for standard XHR upload. */
     transport?: UploadTransport
+    /** 内置普通上传端点。 Built-in normal-upload endpoint. */
     action?: string
-    /** Optional endpoint that pre-creates a server file record and returns its fileId. */
+    /** 可选的预建文件记录端点，需返回 `fileId`。 Optional endpoint that pre-creates a server file record and returns its `fileId`. */
     createAction?: string
-    /** Endpoint that idempotently deletes a file and all of its upload sessions by fileId. */
+    /** 按 fileId 幂等删除文件及其上传会话的端点。 Endpoint that idempotently deletes a file and all of its upload sessions by fileId. */
     deleteAction?: string
+    /** 内置普通上传使用的 HTTP 方法。 HTTP method used by the built-in normal upload. */
     method?: 'POST' | 'PUT'
+    /** 下载与服务端打包下载的适配器。 Adapter for direct downloads and server-side archive downloads. */
     downloadTransport?: DownloadTransport
+    /** 每次上传附带的业务数据，可为异步工厂。 Business data sent with each upload; may be an async factory. */
     data?: UploadData
+    /** multipart 中二进制文件字段名。 Multipart binary-file field name. */
     fileFieldName?: string
+    /** multipart 中 JSON 业务数据字段名。 Multipart JSON business-data field name. */
     dataFieldName?: string
+    /** 接受的扩展名或 MIME 类型过滤器。 Accepted extension or MIME-type filter. */
     accept?: string | string[]
+    /** 单个文件允许的最大字节数。 Maximum allowed size in bytes for one file. */
     maxSize?: number
+    /** 允许保留在列表中的最大文件数。 Maximum number of files retained in the list. */
     maxCount?: number
+    /** 原生文件选择器是否允许多选。 Whether the native picker permits multiple selection. */
     multiple?: boolean
+    /** 选择/拖入后是否立即开始上传。 Whether to start upload immediately after selection/drop. */
     autoUpload?: boolean
+    /** 超过该字节数时改用分片上传。 Files larger than this byte threshold use multipart upload. */
     normalUploadThreshold?: number
+    /** 单个分片的字节大小。 Byte size of one upload chunk. */
     chunkSize?: number
-    /** Maximum chunks uploaded concurrently for each active file. */
+    /** 每个活动文件同时上传的最大分片数。 Maximum chunks uploaded concurrently for each active file. */
     chunkConcurrency?: number
+    /** 同时活动的最大文件数。 Maximum number of active files. */
     maxConcurrentFiles?: number
+    /** 全部文件共享的最大请求数。 Maximum requests shared by all files. */
     maxConcurrentRequests?: number
+    /** 可重试请求的最大额外尝试次数。 Maximum additional attempts for a retryable request. */
     retryCount?: number
+    /** 指数退避的初始等待时间（毫秒）。 Initial exponential-backoff delay in milliseconds. */
     retryBaseDelay?: number
+    /** 是否恢复服务端未过期的分片会话。 Whether to resume an unexpired server multipart session. */
     resume?: boolean
+    /** 是否先计算 SHA-256 并尝试秒传。 Whether to calculate SHA-256 and attempt instant upload first. */
     instantUpload?: boolean
+    /** 是否渲染文件列表。 Whether to render the file list. */
     showFileList?: boolean
+    /** 是否渲染工具栏和行操作。 Whether to render the toolbar and row actions. */
     showOperation?: boolean
-    /** Set to false or omit to hide pagination. Paging data is controlled by the host. */
+    /** 设为 false 或省略即隐藏分页；页面数据由宿主加载。 Set to false or omit to hide pagination; the host loads page data. */
     pagination?: UploadPaginationConfig
+    /** 是否启用拖入文件。 Whether file drag-and-drop is enabled. */
     drag?: boolean
+    /** 是否允许选择文件夹（浏览器支持时）。 Whether directory selection is allowed when the browser supports it. */
     directory?: boolean
+    /** 列表、图片墙或图片卡片的展示模式。 Display mode: list, picture wall, or picture card. */
     listType?: 'list' | 'picture' | 'picture-card'
+    /** 是否允许图片预览。 Whether image preview is allowed. */
     preview?: boolean
+    /** 是否显示用于批量操作的选择框。 Whether to show selection controls for batch operations. */
     selectable?: boolean
-    /** Shows a loading mask over the list/picture display area. */
+    /** 在列表/图片区域显示加载遮罩。 Shows a loading mask over the list/picture display area. */
     loading?: boolean
-    /** CSS width. Numbers are treated as pixels. */
+    /** CSS 宽度；数字按像素处理。 CSS width; numbers are treated as pixels. */
     width?: string | number
-    /** CSS height. Use `auto` to fill a parent with an explicit height. */
+    /** CSS 高度；`auto` 表示填满有明确高度的父容器。 CSS height; use `auto` to fill a parent with an explicit height. */
     height?: string | number
+    /** 服务端归档任务的轮询间隔（毫秒）。 Polling interval in milliseconds for a server archive task. */
     archivePollingInterval?: number
+    /** 服务端归档任务的最长等待时间（毫秒）。 Maximum wait time in milliseconds for a server archive task. */
     archivePollingTimeout?: number
+    /** “全部下载”时提交给服务端的文件范围或查询范围。 File or query scope submitted for “download all”. */
     allDownloadScope?: DownloadScope
+    /** 自定义预览处理；提供后替代内置图片查看器。 Custom preview handler; replaces the built-in image viewer when provided. */
     onPreview?: (file: UploadFileItem) => void | Promise<void>
+    /** 内置主题名或自定义主题适配器。 Built-in theme name or custom theme adapter. */
     theme?: UploadTheme
-    /** Preferred i18n configuration. Messages use the `VueFlowUpload` namespace. */
+    /** 推荐的国际化配置，文案使用 `VueFlowUpload` 命名空间。 Preferred i18n configuration; messages use the `VueFlowUpload` namespace. */
     i18n?: FlowUploadI18nOptions
-    /** @deprecated Use `i18n.locale` instead. */
+    /** 已废弃，请使用 `i18n.locale`。 @deprecated Use `i18n.locale` instead. */
     locale?: string
-    /** @deprecated Use `i18n.messages[locale].VueFlowUpload` instead. */
+    /** 已废弃，请使用 `i18n.messages[locale].VueFlowUpload`。 @deprecated Use `i18n.messages[locale].VueFlowUpload` instead. */
     messages?: Partial<UploadMessages>
+    /** 总开关；禁用后所有交互能力均关闭。 Master switch; disables every interactive capability. */
     disabled?: boolean
+    /** 按操作粒度控制选择、上传、删除、预览和下载能力。 Per-operation controls for selection, upload, removal, preview, and download. */
     permissions?: UploadPermissions
+    /** 客户端校验通过后、创建上传任务前调用；返回 false 会拒绝文件。 Called after client validation and before queueing; false rejects the file. */
     beforeUpload?: (file: File) => boolean | Promise<boolean>
+    /** 删除前调用；返回 false 会保留文件。 Called before removal; false keeps the file. */
     beforeRemove?: (file: UploadFileItem, files: UploadFileItem[]) => boolean | Promise<boolean>
   }>(),
   {
@@ -135,6 +172,7 @@ const props = withDefaults(
   },
 )
 
+/** 向宿主同步文件/分页状态，并报告上传、下载、归档各阶段事件。 Emits file/pagination synchronization plus upload, download, and archive lifecycle events to the host. */
 const emit = defineEmits<{
   'update:modelValue': [files: UploadFileItem[]]
   change: [file: UploadFileItem, files: UploadFileItem[]]
@@ -170,9 +208,9 @@ const pagination = computed<UploadPagination | undefined>(() => {
     ...props.pagination,
   }
 })
-// Exposes the hidden native input's file picker to toolbar buttons and consumers.
+// 向工具栏按钮和组件使用者暴露隐藏原生 input 的文件选择器。 Exposes the hidden native input's file picker to toolbar buttons and consumers.
 const uploadTrigger = ref<{ browse: () => void }>()
-// Shares request slots between files so file and chunk concurrency limits both apply.
+// 在文件间共享请求槽位，使文件并发和分片并发限制同时生效。 Shares request slots between files so file and chunk concurrency limits both apply.
 /** 规范化并发/尺寸参数，避免零、NaN 或小数破坏调度。 Normalizes concurrency/size inputs so zero, NaN, and fractions cannot break scheduling. */
 const positiveInteger = (value: number, fallback: number) =>
   Number.isFinite(value) && value > 0 ? Math.max(1, Math.floor(value)) : fallback
@@ -251,14 +289,17 @@ const canPreview = computed(
 const canDownload = computed(
   () => !props.disabled && !!props.downloadTransport && props.permissions.download !== false,
 )
+/** “全部下载”在单文件下载可用且未被单独禁止时才可用。 “Download all” is enabled only when downloads are available and it is not separately denied. */
 const canDownloadAll = computed(() => canDownload.value && props.permissions.downloadAll !== false)
 /** 将主题预设名或调用方主题适配器解析为 CSS 变量。 Resolves named theme presets or a caller-supplied theme adapter to CSS variables. */
 const resolvedTheme = computed(() => resolveTheme(props.theme))
+/** 宿主注入的 i18n 实例；不存在时使用下方本地实例。 Host-injected i18n instance; the local instance below is used when absent. */
 const inheritedI18n = useI18n()
-/** Detects deprecated locale/messages props so explicit legacy usage still wins over injected i18n. */
+/** 检测已废弃的 locale/messages prop，确保显式旧用法仍优先于注入 i18n。 Detects deprecated locale/messages props so explicit legacy usage still wins over injected i18n. */
 const declaredProps = getCurrentInstance()?.vnode.props
 const hasLegacyI18nOptions =
   !!declaredProps && ('locale' in declaredProps || 'messages' in declaredProps)
+/** 根据当前 prop 生成隔离的内置语言实例，避免跨组件污染文案。 Isolated built-in i18n instance derived from current props, avoiding cross-component message mutation. */
 const localI18n = computed(() =>
   createFlowUploadI18n(
     { locale: props.i18n?.locale ?? props.locale, messages: props.i18n?.messages },
@@ -268,32 +309,34 @@ const localI18n = computed(() =>
 const i18n = computed(() =>
   props.i18n || hasLegacyI18nOptions ? localI18n.value : (inheritedI18n ?? localI18n.value),
 )
+/** 解析成模板可直接读取的完整消息字典。 Complete resolved message dictionary for direct template consumption. */
 const text = computed(() => getUploadMessages(i18n.value))
 /** 翻译组件文案并插入变量的简写函数。 Shorthand for translating component-owned messages with interpolation values. */
 const t = (key: string, values?: Record<string, string | number>) =>
   i18n.value.t(`VueFlowUpload.${key}`, values)
+/** 当前主题提供的 CSS 自定义属性，绑定到组件根节点。 CSS custom properties provided by the current theme and bound to the component root. */
 const themeStyle = computed(() => resolvedTheme.value.variables ?? {})
 /** 控制拖放目标的视觉状态；它本身不接收或入队文件。 Controls the visual drop-target state; it does not itself accept or queue files. */
 const dragActive = ref(false)
 function handleSelectedFiles(selected: File[]) {
-  // Native picker and drag/drop both enter the same validation-and-queue path.
+  // 原生选择器与拖放均进入同一校验和入队路径。 Native picker and drag/drop both enter the same validation-and-queue path.
   void addFiles(selected)
 }
 /** 工具栏无效操作时的短暂反馈，例如没有待上传文件。 Ephemeral feedback used for invalid toolbar actions, for example when no pending files exist. */
 const toastMessage = ref('')
-/** Timer for the current toast; clearing it prevents an earlier message from hiding a newer one. */
+/** 当前提示的计时器；清理它可防止旧消息隐藏新消息。 Timer for the current toast; clearing it prevents an earlier message from hiding a newer one. */
 let toastTimer: number | undefined
 /** 等待用户确认、尚未开始远程清理/删除的文件。 Files awaiting user confirmation before remote cleanup/removal begins. */
 const pendingRemoval = ref<UploadFileItem[]>([])
-/** Locks dialog buttons while sequential remote deletion is underway. */
+/** 串行远程删除期间锁定对话框按钮。 Locks dialog buttons while sequential remote deletion is underway. */
 const removalBusy = ref(false)
-/** Preserves a remote cleanup failure in the confirmation dialog for retry/cancellation. */
+/** 在确认对话框中保留远程清理失败信息，供用户重试或取消。 Preserves a remote cleanup failure in the confirmation dialog for retry/cancellation. */
 const removalError = ref('')
-/** Size style for the root upload panel. */
+/** 上传面板根节点的尺寸样式。 Size style for the root upload panel. */
 const layoutStyle = computed(() => ({
   width: toCssSize(props.width),
-  // CSS `auto` sizes to content. For this component, it intentionally means
-  // "use the containing component's height" instead.
+  // CSS `auto` 通常按内容定高；本组件特意将其解释为填满父容器高度。
+  // CSS `auto` normally sizes to content; this component intentionally treats it as the parent height.
   height: props.height === 'auto' ? '100%' : toCssSize(props.height),
 }))
 /** 优先使用调用方 transport，否则根据 action props 创建内置 XHR 适配器。 Chooses caller transport first, otherwise creates the built-in XHR adapter from action props. */
@@ -319,11 +362,13 @@ function updateFiles(next: UploadFileItem[], changed?: UploadFileItem) {
 }
 
 function updatePagination(value: UploadPagination) {
+  // UploadFooter 已合并部分变更；此处将完整值向上转发为 pagination v-model。
   // UploadFooter already merged the partial change; forward it as the pagination v-model value.
   emit('update:pagination', value)
 }
 
 function handlePaginationChange(currentPage: number, pageSize: number) {
+  // 此事件通知宿主应从自身数据源加载新页。
   // This event tells the host when it should load a new page from its own data source.
   emit('pagination-change', currentPage, pageSize)
 }
@@ -401,14 +446,14 @@ const {
   onArchiveSuccess: (taskId) => emit('archive-success', taskId),
   onArchiveError: (taskId, error) => emit('archive-error', taskId, error),
 })
-/** Preview helpers own local object URLs and release them on removal/unmount. */
+/** 预览辅助函数持有本地对象 URL，并在删除/卸载时释放。 Preview helpers own local object URLs and release them on removal/unmount. */
 const {
   imageUrl,
   previewFile,
   revoke: revokePreviewUrl,
   clear: clearPreviews,
 } = useFilePreview({ files, canPreview, onPreview: props.onPreview })
-/** Batch-selection state only includes rows backed by a server file id. */
+/** 批量选择状态仅包含拥有服务端 fileId 的行。 Batch-selection state only includes rows backed by a server file id. */
 const {
   selected,
   selectableFiles,
@@ -451,6 +496,7 @@ async function addFiles(selected: File[]) {
 }
 
 function showToast(message: string) {
+  // 替换而非排队显示短提示，并重置过期计时器。
   // Replace, rather than queue, short toolbar feedback and reset its expiration timer.
   toastMessage.value = message
   if (toastTimer !== undefined) window.clearTimeout(toastTimer)
@@ -461,6 +507,7 @@ function showToast(message: string) {
 }
 
 async function handleUpload() {
+  // 任一文件正在状态机中推进时，不允许重复手动提交。
   // Manual submit is disabled while any file is already progressing through the state machine.
   const active = files.value.some((file) =>
     ['uploading', 'hashing', 'checking', 'preparing', 'queued', 'merging', 'processing'].includes(
@@ -592,16 +639,19 @@ async function removeImmediately(target: UploadFileItem) {
 }
 
 function handleStart(file: File) {
+  // 触发器一次发出一个文件，中心 add 路径则接受批量文件。
   // The trigger emits one file at a time, while the central add path accepts batches.
   return addFiles([file])
 }
 
 function handleRemove(file: string | UploadFileItem) {
+  // 同时支持公开 uid API 与传入完整文件项的插槽回调。
   // Support both the exposed uid API and slot callbacks that pass the full item.
   return remove(typeof file === 'string' ? file : file.uid)
 }
 
 function clear() {
+  // 清空模型前取消后台任务，并释放选择/预览资源。
   // Abort background work and release selection/preview resources before emptying the model.
   clearUploads()
   clearPreviews()
@@ -611,6 +661,7 @@ function clear() {
 }
 
 async function resolveData() {
+  // data 可以是静态值或异步函数，使调用方能为每次请求附加最新凭据/元数据。
   // Data may be static or async so callers can attach fresh credentials/metadata per request.
   return typeof props.data === 'function' ? await props.data() : (props.data ?? {})
 }
@@ -626,6 +677,7 @@ async function resolveQuery() {
 }
 
 function statusText(status: UploadFileItem['status']) {
+  // 集中维护状态到文案的映射，确保列表行和自定义插槽使用相同文本。
   // Centralize status-to-copy mapping so list rows and custom slots use identical language.
   return {
     idle: text.value.waiting,
@@ -646,12 +698,14 @@ function statusText(status: UploadFileItem['status']) {
 }
 
 function isFileDrag(event: DragEvent) {
+  // 忽略文本/URL 拖拽；只有文件载荷可激活上传拖放区。
   // Ignore text/URL drags; only file payloads should activate the upload drop zone.
   const transfer = event.dataTransfer
   return !!transfer && (transfer.files.length > 0 || Array.from(transfer.types).includes('Files'))
 }
 
 function onDragEnter(event: DragEvent) {
+  // 阻止浏览器导航，并在文件拖入时显示激活态。
   // Prevent browser navigation and show the active drop affordance for file drags.
   if (!props.drag || !canSelect.value || !isFileDrag(event)) return
   event.preventDefault()
@@ -659,12 +713,14 @@ function onDragEnter(event: DragEvent) {
 }
 
 function onDragOver(event: DragEvent) {
+  // 浏览器要求在 dragover 中重复 preventDefault，才允许随后 drop。
   // Repeating preventDefault is required for browsers to permit a subsequent drop.
   if (!props.drag || !canSelect.value || !isFileDrag(event)) return
   event.preventDefault()
 }
 
 function onDragLeave(event: DragEvent) {
+  // 仅离开组件时重置，不在子节点间移动时重置。
   // Reset only when leaving the component, not when moving between its children.
   if (!props.drag || !dragActive.value) return
   const container = event.currentTarget as HTMLElement | null
@@ -673,6 +729,7 @@ function onDragLeave(event: DragEvent) {
 }
 
 function onDrop(event: DragEvent) {
+  // 一次读取拖入文件，清除视觉状态，并走常规校验路径。
   // Read dropped files once, clear visual state, and route them through normal validation.
   if (!props.drag || !canSelect.value || !isFileDrag(event)) return
   event.preventDefault()
@@ -683,6 +740,7 @@ function onDrop(event: DragEvent) {
 
 onBeforeUnmount(clear)
 
+/** 组件实例公开的方法；供 ref 调用上传、暂停、重试、删除与下载操作。 Public instance methods for refs to upload, pause, retry, remove, and download. */
 defineExpose({
   submit,
   abort,
