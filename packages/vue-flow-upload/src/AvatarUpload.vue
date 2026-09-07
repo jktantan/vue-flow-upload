@@ -46,19 +46,31 @@ const emit = defineEmits<{
   error: [file: File, error: Error]
   remove: [file: UploadFileItem]
 }>()
+/** 与头像 v-model 保持同步的内部单项列表。 Internal single-item list kept in sync with the avatar v-model. */
 const files = ref<UploadFileItem[]>(normalizeFileList(props.modelValue ?? []))
+/** 插件注入的应用级请求与默认配置。 Application-wide request and default settings injected by the plugin. */
 const globalConfig = inject(vueFlowUploadConfigKey, {})
+/** 对话框中选中的原图；实际上传的是裁剪后的派生文件。 Original file selected in the dialog; the cropped derivative is uploaded instead. */
 const selectedFile = ref<File>()
+/** 作为裁剪器图片源传入的对象 URL。 Object URL passed to the cropper as its image source. */
 const source = ref('')
+/** 控制裁剪对话框是否显示。 Controls the cropper dialog visibility. */
 const editorVisible = ref(false)
+/** 驱动编辑器拖放区域的悬停视觉状态。 Drives the drag-over visual state in the editor drop zone. */
 const dragging = ref(false)
+/** 短暂显示给用户的校验或请求错误信息。 Short-lived, user-facing validation or request error message. */
 const notice = ref('')
+/** “选择图片”按钮使用的隐藏原生 input。 Hidden native input used by the “choose image” button. */
 const input = ref<HTMLInputElement>()
+/** 组件只将第一条记录渲染为当前头像。 The component deliberately renders only the first record as the current avatar. */
 const avatar = computed(() => files.value[0])
+/** Remote thumbnail/URL wins; otherwise show the package default placeholder. */
 const imageSrc = computed(() => avatar.value?.url || avatar.value?.thumbnailUrl || defaultAvatar)
+/** Permission-derived UI capabilities. */
 const canSelect = computed(() => !props.disabled && props.permissions.select !== false)
 const canRemove = computed(() => !props.disabled && props.permissions.remove !== false)
 const canPreview = computed(() => props.preview && props.permissions.preview !== false)
+/** Host i18n instance takes precedence over this component's fallback dictionary. */
 const inheritedI18n = useI18n()
 const localI18n = createFlowUploadI18n()
 const text = computed(() => getUploadMessages(inheritedI18n ?? localI18n))
@@ -66,6 +78,7 @@ const cardStyle = computed(() => ({
   width: toCssSize(props.width),
   height: toCssSize(props.height),
 }))
+/** Creates the built-in transport only when callers did not supply a custom transport. */
 const transport = computed(
   () =>
     props.transport ??
@@ -78,6 +91,7 @@ const transport = computed(
         })
       : undefined),
 )
+/** Reactive cropper input; the fixed 1:1 ratio produces a square avatar. */
 const cropperProps = computed(() => ({
   img: source.value,
   options: { aspectRatio: 1, viewMode: 1 as const },
@@ -91,25 +105,31 @@ watch(
 )
 onBeforeUnmount(revokeSource)
 function update(next: UploadFileItem[], changed?: UploadFileItem) {
+  // Keep local state, v-model, and the optional change notification in one place.
   files.value = next
   emit('update:modelValue', next)
   if (changed) emit('change', changed, next)
 }
 function revokeSource() {
+  // The cropper source is an object URL and must be released after replacement/close.
   if (source.value) URL.revokeObjectURL(source.value)
   source.value = ''
 }
 function preview() {
+  // Viewer receives the resolved displayed image, including local object URLs.
   if (canPreview.value) viewerApi({ images: [imageSrc.value], options: { title: false } })
 }
 function browse() {
+  // Do not allow programmatic file selection when the component is disabled.
   if (canSelect.value) input.value?.click()
 }
 function select(event: Event) {
+  // Reset the native input so choosing the same file again emits a change event.
   void openEditor((event.target as HTMLInputElement).files?.[0])
   ;(event.target as HTMLInputElement).value = ''
 }
 async function openEditor(file?: File) {
+  // Validate before allocating an object URL or opening the cropper dialog.
   if (!file || !canSelect.value) return
   if (!matchesAccept(file, props.accept)) return showNotice(text.value.avatarInvalidType)
   if (props.maxSize && file.size > props.maxSize) return showNotice(text.value.avatarTooLarge)
@@ -120,41 +140,50 @@ async function openEditor(file?: File) {
   editorVisible.value = true
 }
 function onDragOver(event: DragEvent) {
+  // preventDefault is required for a browser drop target.
   event.preventDefault()
   dragging.value = true
 }
 function onDragLeave(event: DragEvent) {
+  // Ignore transitions between descendants; only a real leave clears the indicator.
   const target = event.currentTarget as HTMLElement | null
   if (!target?.contains(event.relatedTarget as Node)) dragging.value = false
 }
 function onDrop(event: DragEvent) {
+  // Reuse the same validation/cropper entry point as native file selection.
   event.preventDefault()
   dragging.value = false
   void openEditor(event.dataTransfer?.files?.[0])
 }
 function closeEditor() {
+  // Closing is also the cleanup boundary for the pending selected file and object URL.
   editorVisible.value = false
   selectedFile.value = undefined
   revokeSource()
 }
 function showNotice(message: string) {
+  // A later message owns the notice slot and must not be cleared by an older timer.
   notice.value = message
   window.setTimeout(() => {
     if (notice.value === message) notice.value = ''
   }, 2200)
 }
 async function resolveData() {
+  // Data may be a lazy async factory so each request gets fresh values.
   return typeof props.data === 'function' ? await props.data() : (props.data ?? {})
 }
 async function resolveHeaders() {
+  // Authentication headers are intentionally owned by the global plugin configuration.
   const headers = globalConfig.auth?.headers
   return typeof headers === 'function' ? await headers() : (headers ?? {})
 }
 async function resolveQuery() {
+  // Query parameters follow the same lazy-resolution rule as headers and data.
   const query = globalConfig.auth?.query
   return typeof query === 'function' ? await query() : (query ?? {})
 }
 async function upload() {
+  // A crop is always generated at the canonical avatar size before network transfer.
   if (!selectedFile.value) return showNotice(text.value.avatarSelectFirst)
   const cropped = (await cropper.getFile({
     width: 512,
@@ -162,10 +191,12 @@ async function upload() {
     fileName: selectedFile.value.name || 'avatar.png',
   })) as File | undefined
   if (!cropped) return showNotice(text.value.avatarNotReady)
+  /** Existing record determines whether this is the initial POST or a PUT update. */
   const existing = avatar.value
   try {
     let response: UploadSuccessResult = {}
     if (existing && props.updateAction) {
+      // updateAction has an explicit REST contract: update the current server file by id.
       const formData = new FormData()
       formData.append('file', cropped)
       formData.append('fileId', existing.fileId ?? '')
@@ -189,6 +220,7 @@ async function upload() {
         ? await result.json()
         : {}
     } else if (transport.value) {
+      // Without updateAction, both initial upload and replacement use the supplied transport.
       const data = await resolveData()
       response = await transport.value.uploadFile(
         { file: cropped, fileId: createUid(), data },
@@ -203,6 +235,7 @@ async function upload() {
         },
       )
     } else throw new Error(text.value.avatarTransportNotConfigured)
+    // Preserve stable uid/fileId on replacement while accepting authoritative response metadata.
     const item: UploadFileItem = {
       uid: existing?.uid ?? createUid(),
       fileId: response.fileId ?? existing?.fileId,
@@ -228,6 +261,7 @@ async function upload() {
   }
 }
 async function remove() {
+  // Remote deletion must succeed before removing the rendered avatar locally.
   if (!avatar.value || !canRemove.value) return
   try {
     if (avatar.value.fileId && transport.value?.deleteFile)

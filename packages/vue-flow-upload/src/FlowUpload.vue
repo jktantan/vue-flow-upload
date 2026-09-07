@@ -154,10 +154,13 @@ const emit = defineEmits<{
   'pagination-change': [currentPage: number, pageSize: number]
 }>()
 
+/** v-model/defaultFileList 的本地副本；队列状态变化均以不可变方式更新它。 Local copy of v-model/defaultFileList; all queue transitions update this list immutably. */
 const internalFiles = ref<UploadFileItem[]>(
   normalizeFileList(props.modelValue ?? props.defaultFileList),
 )
+/** 插件提供的 URL、认证和上传默认配置。 Plugin-provided URL, auth, and upload-default configuration. */
 const globalConfig = inject(vueFlowUploadConfigKey, {})
+/** 合并实例分页参数和应用默认值，但不负责加载服务端页面数据。 Merges per-instance pagination with application defaults without owning server data loading. */
 const pagination = computed<UploadPagination | undefined>(() => {
   if (!props.pagination) return undefined
   const defaults = globalConfig.defaults?.pagination
@@ -170,6 +173,7 @@ const pagination = computed<UploadPagination | undefined>(() => {
 // Exposes the hidden native input's file picker to toolbar buttons and consumers.
 const uploadTrigger = ref<{ browse: () => void }>()
 // Shares request slots between files so file and chunk concurrency limits both apply.
+/** 规范化并发/尺寸参数，避免零、NaN 或小数破坏调度。 Normalizes concurrency/size inputs so zero, NaN, and fractions cannot break scheduling. */
 const positiveInteger = (value: number, fallback: number) =>
   Number.isFinite(value) && value > 0 ? Math.max(1, Math.floor(value)) : fallback
 const scheduler = new ChunkScheduler({
@@ -187,6 +191,7 @@ const scheduler = new ChunkScheduler({
   ),
 })
 
+/** 将运行时并发 prop 变化应用于待执行任务，不中断已发出的请求。 Applies runtime concurrency-prop changes to queued work without interrupting active requests. */
 watch(
   () => [props.chunkConcurrency, props.maxConcurrentFiles, props.maxConcurrentRequests],
   () => {
@@ -215,6 +220,7 @@ watch(
   },
 )
 
+/** 传给队列、预览、选择和下载组合式函数的只读文件视图。 Read-only view passed to queue, preview, selection, and download composables. */
 const files = computed(() => internalFiles.value)
 /**
  * 已完成文件保持服务端顺序，本地上传任务优先显示；同组保留原始顺序。
@@ -234,6 +240,7 @@ const displayedFiles = computed(() =>
     })
     .map(({ file }) => file),
 )
+/** 由 disabled 与 permissions 推导、供子控件和组合式函数共享的能力。 Permission-derived capabilities shared by child controls and composables. */
 const canSelect = computed(() => !props.disabled && props.permissions.select !== false)
 const canUpload = computed(() => !props.disabled && props.permissions.upload !== false)
 const canRemove = computed(() => !props.disabled && props.permissions.remove !== false)
@@ -245,8 +252,10 @@ const canDownload = computed(
   () => !props.disabled && !!props.downloadTransport && props.permissions.download !== false,
 )
 const canDownloadAll = computed(() => canDownload.value && props.permissions.downloadAll !== false)
+/** 将主题预设名或调用方主题适配器解析为 CSS 变量。 Resolves named theme presets or a caller-supplied theme adapter to CSS variables. */
 const resolvedTheme = computed(() => resolveTheme(props.theme))
 const inheritedI18n = useI18n()
+/** Detects deprecated locale/messages props so explicit legacy usage still wins over injected i18n. */
 const declaredProps = getCurrentInstance()?.vnode.props
 const hasLegacyI18nOptions =
   !!declaredProps && ('locale' in declaredProps || 'messages' in declaredProps)
@@ -260,24 +269,34 @@ const i18n = computed(() =>
   props.i18n || hasLegacyI18nOptions ? localI18n.value : (inheritedI18n ?? localI18n.value),
 )
 const text = computed(() => getUploadMessages(i18n.value))
+/** 翻译组件文案并插入变量的简写函数。 Shorthand for translating component-owned messages with interpolation values. */
 const t = (key: string, values?: Record<string, string | number>) =>
   i18n.value.t(`VueFlowUpload.${key}`, values)
 const themeStyle = computed(() => resolvedTheme.value.variables ?? {})
+/** 控制拖放目标的视觉状态；它本身不接收或入队文件。 Controls the visual drop-target state; it does not itself accept or queue files. */
 const dragActive = ref(false)
 function handleSelectedFiles(selected: File[]) {
+  // Native picker and drag/drop both enter the same validation-and-queue path.
   void addFiles(selected)
 }
+/** 工具栏无效操作时的短暂反馈，例如没有待上传文件。 Ephemeral feedback used for invalid toolbar actions, for example when no pending files exist. */
 const toastMessage = ref('')
+/** Timer for the current toast; clearing it prevents an earlier message from hiding a newer one. */
 let toastTimer: number | undefined
+/** 等待用户确认、尚未开始远程清理/删除的文件。 Files awaiting user confirmation before remote cleanup/removal begins. */
 const pendingRemoval = ref<UploadFileItem[]>([])
+/** Locks dialog buttons while sequential remote deletion is underway. */
 const removalBusy = ref(false)
+/** Preserves a remote cleanup failure in the confirmation dialog for retry/cancellation. */
 const removalError = ref('')
+/** Size style for the root upload panel. */
 const layoutStyle = computed(() => ({
   width: toCssSize(props.width),
   // CSS `auto` sizes to content. For this component, it intentionally means
   // "use the containing component's height" instead.
   height: props.height === 'auto' ? '100%' : toCssSize(props.height),
 }))
+/** 优先使用调用方 transport，否则根据 action props 创建内置 XHR 适配器。 Chooses caller transport first, otherwise creates the built-in XHR adapter from action props. */
 const uploadTransport = computed(
   () =>
     props.transport ??
@@ -300,10 +319,12 @@ function updateFiles(next: UploadFileItem[], changed?: UploadFileItem) {
 }
 
 function updatePagination(value: UploadPagination) {
+  // UploadFooter already merged the partial change; forward it as the pagination v-model value.
   emit('update:pagination', value)
 }
 
 function handlePaginationChange(currentPage: number, pageSize: number) {
+  // This event tells the host when it should load a new page from its own data source.
   emit('pagination-change', currentPage, pageSize)
 }
 
@@ -315,6 +336,7 @@ function updateFile(uid: string, patch: Partial<UploadFileItem>) {
   return changed
 }
 
+/** 由当前组件 props 和向外事件适配器配置的上传状态机。 Upload state machine configured with this component's props and outward event adapters. */
 const uploadQueue = useUploadQueue({
   files,
   canUpload,
@@ -340,6 +362,7 @@ const uploadQueue = useUploadQueue({
   onSuccess: (file, response) => emit('success', file, response),
   onError: (file, error) => emit('error', file, error),
 })
+/** 暴露给行操作、工具栏及组件公开 API 的队列命令。 Queue commands exposed to row actions, toolbar actions, and the public component API. */
 const {
   upload,
   submit,
@@ -350,6 +373,7 @@ const {
   clear: clearUploads,
   requestMeta,
 } = uploadQueue
+/** 委托给可选下载 transport 的下载/打包命令。 Download/archive commands delegated to the optional download transport. */
 const {
   download,
   downloadSelected,
@@ -377,12 +401,14 @@ const {
   onArchiveSuccess: (taskId) => emit('archive-success', taskId),
   onArchiveError: (taskId, error) => emit('archive-error', taskId, error),
 })
+/** Preview helpers own local object URLs and release them on removal/unmount. */
 const {
   imageUrl,
   previewFile,
   revoke: revokePreviewUrl,
   clear: clearPreviews,
 } = useFilePreview({ files, canPreview, onPreview: props.onPreview })
+/** Batch-selection state only includes rows backed by a server file id. */
 const {
   selected,
   selectableFiles,
@@ -425,6 +451,7 @@ async function addFiles(selected: File[]) {
 }
 
 function showToast(message: string) {
+  // Replace, rather than queue, short toolbar feedback and reset its expiration timer.
   toastMessage.value = message
   if (toastTimer !== undefined) window.clearTimeout(toastTimer)
   toastTimer = window.setTimeout(() => {
@@ -434,6 +461,7 @@ function showToast(message: string) {
 }
 
 async function handleUpload() {
+  // Manual submit is disabled while any file is already progressing through the state machine.
   const active = files.value.some((file) =>
     ['uploading', 'hashing', 'checking', 'preparing', 'queued', 'merging', 'processing'].includes(
       file.status,

@@ -2,6 +2,7 @@
 import type { UploadFileItem, UploadMessages } from '../types'
 import { fileIconUrl, formatSize, isImage } from '../utils/file'
 
+/** Maps detailed queue states to the smaller set of visual state-icon variants. */
 function statusKind(status: UploadFileItem['status']) {
   if (status === 'success') return 'success'
   if (status === 'failed' || status === 'rejected') return 'error'
@@ -10,6 +11,10 @@ function statusKind(status: UploadFileItem['status']) {
   return 'pending'
 }
 
+/**
+ * Render-only contract supplied by FlowUpload. Action callbacks receive a uid
+ * so this component never mutates upload state itself.
+ */
 defineProps<{
   files: UploadFileItem[]
   show: boolean
