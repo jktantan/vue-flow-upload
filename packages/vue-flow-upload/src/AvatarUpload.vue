@@ -8,7 +8,7 @@ import { useI18n } from 'vue-i18n-lite'
 import { createFlowUploadI18n, getUploadMessages } from './i18n'
 import 'viewerjs/dist/viewer.css'
 import defaultAvatar from './assets/default-avatar.svg?url'
-import { createHttpUploadTransport } from './core/http-transport'
+import { createHttpUploadTransport, resolveRequestUrl } from './core/http-transport'
 import { vueFlowUploadConfigKey } from './config'
 import { createUid, matchesAccept, normalizeFileList, toCssSize } from './utils/file'
 import type {
@@ -70,7 +70,12 @@ const transport = computed(
   () =>
     props.transport ??
     (props.action
-      ? createHttpUploadTransport({ url: props.action, deleteUrl: props.deleteAction, credentials: globalConfig.auth?.credentials })
+      ? createHttpUploadTransport({
+          url: props.action,
+          baseUrl: globalConfig.baseUrl,
+          deleteUrl: props.deleteAction,
+          credentials: globalConfig.auth?.credentials,
+        })
       : undefined),
 )
 const cropperProps = computed(() => ({
@@ -165,8 +170,16 @@ async function upload() {
       formData.append('file', cropped)
       formData.append('fileId', existing.fileId ?? '')
       const result = await fetch(
-        props.updateAction.replace('{fileId}', encodeURIComponent(existing.fileId ?? '')),
-        { method: 'PUT', body: formData, headers: await resolveHeaders(), credentials: globalConfig.auth?.credentials },
+        resolveRequestUrl(
+          props.updateAction.replace('{fileId}', encodeURIComponent(existing.fileId ?? '')),
+          globalConfig.baseUrl,
+        ),
+        {
+          method: 'PUT',
+          body: formData,
+          headers: await resolveHeaders(),
+          credentials: globalConfig.auth?.credentials,
+        },
       )
       if (!result.ok)
         throw new Error(

@@ -22,6 +22,7 @@ import { vueFlowUpload } from 'vue-flow-upload'
 
 export default defineNuxtPlugin((nuxtApp) => {
   nuxtApp.vueApp.use(vueFlowUpload, {
+    baseUrl: '/api',
     auth: {
       credentials: 'include',
       headers: async () => ({ Authorization: `Bearer ${getAccessToken()}` }),
@@ -41,7 +42,7 @@ keeps browser-only upload, preview, and cropper APIs out of server rendering.
 
 ```vue
 <template>
-  <FlowUpload v-model="files" action="/api/files" />
+  <FlowUpload v-model="files" action="/files" />
 </template>
 ```
 
@@ -59,11 +60,11 @@ const avatar = ref<UploadFileItem[]>([])
 </script>
 
 <template>
-  <AvatarUpload v-model="avatar" action="/api/avatar" update-action="/api/avatar/{fileId}" delete-action="/api/avatar/{fileId}" accept="image/*" drag />
+  <AvatarUpload v-model="avatar" action="/avatar" update-action="/avatar/{fileId}" delete-action="/avatar/{fileId}" accept="image/*" drag />
 </template>
 ```
 
-更新请求使用 `PUT`，`{fileId}` 会替换为当前头像 ID，并同时作为 multipart 字段发送。文件选中后会先使用 `vue-picture-cropper` 裁剪，再上传裁剪结果。
+更新请求使用 `PUT`，`{fileId}` 会替换为当前头像 ID，并同时作为 multipart 字段发送。`baseUrl` 会加到相对地址前，完整 `http(s)` URL 不受影响。文件选中后会先使用 `vue-picture-cropper` 裁剪，再上传裁剪结果。
 
 面向 Vue 3 的上传组件：普通文件上传开箱即用，并为大文件提供分片、断点续传、SHA-256 秒传、并发调度、失败重试和下载归档。
 
@@ -97,7 +98,7 @@ const files = ref<UploadFileItem[]>([])
 
 `action` 使用内置 XHR（支持 `method`、`with-credentials`、`headers`、`data`）；需要秒传、分片或自定义协议时传入 `transport`。两者同时提供时优先使用 `transport`。
 
-认证配置只在 `app.use(vueFlowUpload, config)` 初始化时设置：`credentials` 控制 Cookie，`headers` 控制认证请求头，`query` 添加统一 URL 参数。三者会应用到所有上传、分片、合并、删除和头像请求；不要在组件上重复配置认证信息，也不要把敏感 Token 放在 query 中。
+认证配置只在 `app.use(vueFlowUpload, config)` 初始化时设置：`baseUrl` 为内置 HTTP 端点添加统一前缀，`credentials` 控制 Cookie，`headers` 控制认证请求头，`query` 添加统一 URL 参数。它们会应用到所有内置上传、分片、合并、删除和头像请求；完整 `http(s)` 地址不会拼接 `baseUrl`。不要在组件上重复配置认证信息，也不要把敏感 Token 放在 query 中。
 
 ```ts
 import { createHttpUploadTransport } from 'vue-flow-upload'

@@ -4,7 +4,11 @@ import type { UploadHeaders, UploadPagination } from './types'
 export interface UploadAuthConfig {
   credentials?: RequestCredentials
   headers?: UploadHeaders
-  query?: Record<string, string | number | boolean> | (() => Record<string, string | number | boolean> | Promise<Record<string, string | number | boolean>>)
+  query?:
+    | Record<string, string | number | boolean>
+    | (() =>
+        | Record<string, string | number | boolean>
+        | Promise<Record<string, string | number | boolean>>)
 }
 
 export interface UploadDefaults {
@@ -22,6 +26,11 @@ export interface UploadDefaults {
 }
 
 export interface VueFlowUploadOptions {
+  /**
+   * Base path or origin for built-in HTTP endpoints. Relative component actions
+   * are appended to it; absolute URLs remain unchanged.
+   */
+  baseUrl?: string
   auth?: UploadAuthConfig
   defaults?: UploadDefaults
 }

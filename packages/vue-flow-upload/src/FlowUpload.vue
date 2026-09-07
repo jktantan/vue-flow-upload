@@ -173,18 +173,36 @@ const uploadTrigger = ref<{ browse: () => void }>()
 const positiveInteger = (value: number, fallback: number) =>
   Number.isFinite(value) && value > 0 ? Math.max(1, Math.floor(value)) : fallback
 const scheduler = new ChunkScheduler({
-  maxConcurrentChunksPerFile: positiveInteger(props.chunkConcurrency ?? globalConfig.defaults?.chunkConcurrency ?? 3, 3),
-  maxConcurrentFiles: positiveInteger(props.maxConcurrentFiles ?? globalConfig.defaults?.maxConcurrentFiles ?? 2, 2),
-  maxConcurrentRequests: positiveInteger(props.maxConcurrentRequests ?? globalConfig.defaults?.maxConcurrentRequests ?? 6, 6),
+  maxConcurrentChunksPerFile: positiveInteger(
+    props.chunkConcurrency ?? globalConfig.defaults?.chunkConcurrency ?? 3,
+    3,
+  ),
+  maxConcurrentFiles: positiveInteger(
+    props.maxConcurrentFiles ?? globalConfig.defaults?.maxConcurrentFiles ?? 2,
+    2,
+  ),
+  maxConcurrentRequests: positiveInteger(
+    props.maxConcurrentRequests ?? globalConfig.defaults?.maxConcurrentRequests ?? 6,
+    6,
+  ),
 })
 
 watch(
   () => [props.chunkConcurrency, props.maxConcurrentFiles, props.maxConcurrentRequests],
   () => {
     scheduler.update({
-      maxConcurrentChunksPerFile: positiveInteger(props.chunkConcurrency ?? globalConfig.defaults?.chunkConcurrency ?? 3, 3),
-      maxConcurrentFiles: positiveInteger(props.maxConcurrentFiles ?? globalConfig.defaults?.maxConcurrentFiles ?? 2, 2),
-      maxConcurrentRequests: positiveInteger(props.maxConcurrentRequests ?? globalConfig.defaults?.maxConcurrentRequests ?? 6, 6),
+      maxConcurrentChunksPerFile: positiveInteger(
+        props.chunkConcurrency ?? globalConfig.defaults?.chunkConcurrency ?? 3,
+        3,
+      ),
+      maxConcurrentFiles: positiveInteger(
+        props.maxConcurrentFiles ?? globalConfig.defaults?.maxConcurrentFiles ?? 2,
+        2,
+      ),
+      maxConcurrentRequests: positiveInteger(
+        props.maxConcurrentRequests ?? globalConfig.defaults?.maxConcurrentRequests ?? 6,
+        6,
+      ),
     })
   },
 )
@@ -266,10 +284,11 @@ const uploadTransport = computed(
     (props.action
       ? createHttpUploadTransport({
           url: props.action,
+          baseUrl: globalConfig.baseUrl,
           createUrl: props.createAction,
           deleteUrl: props.deleteAction,
           method: props.method,
-           credentials: globalConfig.auth?.credentials ?? 'same-origin',
+          credentials: globalConfig.auth?.credentials ?? 'same-origin',
         })
       : undefined),
 )
@@ -301,8 +320,12 @@ const uploadQueue = useUploadQueue({
   canUpload,
   transport: uploadTransport,
   scheduler,
-  normalUploadThreshold: props.normalUploadThreshold ?? globalConfig.defaults?.normalUploadThreshold ?? 10 * 1024 * 1024,
-  chunkSize: positiveInteger(props.chunkSize ?? globalConfig.defaults?.chunkSize ?? 1 * 1024 * 1024, 1 * 1024 * 1024),
+  normalUploadThreshold:
+    props.normalUploadThreshold ?? globalConfig.defaults?.normalUploadThreshold ?? 10 * 1024 * 1024,
+  chunkSize: positiveInteger(
+    props.chunkSize ?? globalConfig.defaults?.chunkSize ?? 1 * 1024 * 1024,
+    1 * 1024 * 1024,
+  ),
   retryCount: props.retryCount ?? globalConfig.defaults?.retryCount ?? 3,
   retryBaseDelay: props.retryBaseDelay ?? globalConfig.defaults?.retryBaseDelay ?? 500,
   resume: props.resume ?? globalConfig.defaults?.resume ?? true,
@@ -341,7 +364,8 @@ const {
   allDownloadScope: props.allDownloadScope,
   archivePollingInterval: props.archivePollingInterval,
   archivePollingTimeout: props.archivePollingTimeout,
-  requestMeta: async () => requestMeta(await resolveData(), await resolveHeaders(), await resolveQuery()),
+  requestMeta: async () =>
+    requestMeta(await resolveData(), await resolveHeaders(), await resolveQuery()),
   onDownloadStart: (file) => emit('download-start', file),
   onDownloadSuccess: (file) => emit('download-success', file),
   onDownloadError: (file, error) => {
@@ -411,7 +435,9 @@ function showToast(message: string) {
 
 async function handleUpload() {
   const active = files.value.some((file) =>
-    ['uploading', 'hashing', 'checking', 'preparing', 'queued', 'merging', 'processing'].includes(file.status),
+    ['uploading', 'hashing', 'checking', 'preparing', 'queued', 'merging', 'processing'].includes(
+      file.status,
+    ),
   )
   if (active) {
     showToast(text.value.uploadingToast)
