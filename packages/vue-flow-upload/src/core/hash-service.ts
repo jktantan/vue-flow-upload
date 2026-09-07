@@ -1,5 +1,7 @@
 import { IncrementalSha256 } from './sha256'
 
+declare const __VFU_ENABLE_HASH_WORKER__: boolean
+
 export interface HashOptions {
   chunkSize?: number
   signal?: AbortSignal
@@ -9,7 +11,7 @@ export interface HashOptions {
 /** 分块计算文件 SHA-256，优先使用 Worker，失败时回退到主线程。 Calculates chunked SHA-256 in a Worker first, then falls back to the main thread. */
 export async function hashFile(file: File, options: HashOptions = {}) {
   const chunkSize = options.chunkSize ?? 2 * 1024 * 1024
-  if (typeof Worker !== 'undefined') {
+  if (__VFU_ENABLE_HASH_WORKER__ && typeof Worker !== 'undefined') {
     try {
       return await hashInWorker(file, chunkSize, options)
     } catch (error) {
