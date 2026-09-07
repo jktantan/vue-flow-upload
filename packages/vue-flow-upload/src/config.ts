@@ -1,5 +1,5 @@
 import type { App, InjectionKey } from 'vue'
-import type { UploadHeaders } from './types'
+import type { UploadHeaders, UploadPagination } from './types'
 
 export interface UploadAuthConfig {
   credentials?: RequestCredentials
@@ -17,6 +17,8 @@ export interface UploadDefaults {
   retryBaseDelay?: number
   resume?: boolean
   instantUpload?: boolean
+  /** Default UI values used only when a FlowUpload instance enables pagination. */
+  pagination?: Pick<UploadPagination, 'pageSize' | 'pageSizes'>
 }
 
 export interface VueFlowUploadOptions {

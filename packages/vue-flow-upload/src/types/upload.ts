@@ -67,7 +67,10 @@ export interface UploadPagination {
   currentPage?: number
   pageSize?: number
   pageSizes?: number[]
-  size?: 'large' | 'default' | 'small'
-  background?: boolean
-  disabled?: boolean
 }
+
+/**
+ * Pagination is opt-in. When enabled, the host owns loading the selected page
+ * and supplies the resulting files through v-model.
+ */
+export type UploadPaginationConfig = false | UploadPagination

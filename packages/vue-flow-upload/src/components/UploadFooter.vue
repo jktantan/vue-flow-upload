@@ -4,26 +4,27 @@ import type { UploadPagination as UploadPaginationOptions } from '../types'
 
 const props = defineProps<{
   visible: boolean
-  count: number
-  t: (key: string, values?: Record<string, string | number>) => string
   pagination?: UploadPaginationOptions
 }>()
 const emit = defineEmits<{
-  'update:pagination': [value: Partial<UploadPaginationOptions>]
+  'update:pagination': [value: UploadPaginationOptions]
   'pagination-change': [currentPage: number, pageSize: number]
 }>()
+
+function handlePaginationChange(currentPage: number, pageSize: number) {
+  // Emit one complete value so v-model:pagination never loses the other fields.
+  emit('update:pagination', { ...props.pagination, currentPage, pageSize })
+  emit('pagination-change', currentPage, pageSize)
+}
 </script>
 
 <template>
   <div v-if="visible" class="vfu-upload__footer">
     <footer class="vfu-list-footer">
-      {{ t('fileCount', { count }) }}
       <UploadPagination
         v-if="props.pagination"
         v-bind="props.pagination"
-        @update:current-page="(value) => emit('update:pagination', { currentPage: value })"
-        @update:page-size="(value) => emit('update:pagination', { pageSize: value })"
-        @change="(page, size) => emit('pagination-change', page, size)"
+        @change="handlePaginationChange"
       />
       <slot v-else />
     </footer>

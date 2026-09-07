@@ -27,7 +27,11 @@ export default defineNuxtPlugin((nuxtApp) => {
       headers: async () => ({ Authorization: `Bearer ${getAccessToken()}` }),
       query: { source: 'web' },
     },
-    defaults: { chunkSize: 1024 * 1024, chunkConcurrency: 3 },
+    defaults: {
+      chunkSize: 1024 * 1024,
+      chunkConcurrency: 3,
+      pagination: { pageSize: 20, pageSizes: [10, 20, 50, 100] },
+    },
   })
 })
 ```
@@ -148,6 +152,7 @@ createApp(App).use(createFlowUploadI18n({ locale: 'en-US' }))
 | `drag`、`directory`                                              | 启用整组件拖拽上传及操作区提示、浏览器支持的目录选择                            | `true`、`false`              |
 | `width`、`height`                                                | 上传组件的 CSS 尺寸；数字按 px 处理。`height="auto"` 会填满具有明确高度的父容器 | `auto`、`600px`              |
 | `show-file-list`                                                 | 是否渲染内置列表                                                                | `true`                       |
+| `pagination`                                                     | `false` 关闭，或传入受控分页状态；翻页后由业务方拉取对应文件并更新 `v-model`     | `false`                      |
 | `list-type`                                                      | `list`、`picture`、`picture-card`；后两者以图片墙卡片展示                       | `list`                       |
 | `data`、`headers`                                                | 对象或返回对象的异步函数                                                        | `{}`                         |
 | `normal-upload-threshold`、`chunk-size`                          | 超过阈值时走分片；需 transport 支持分片                                         | 10 MiB、1 MiB                |
@@ -159,7 +164,36 @@ createApp(App).use(createFlowUploadI18n({ locale: 'en-US' }))
 
 ## 事件、插槽与实例
 
-事件：`change(file, files)`、`progress(file, percent)`、`success(file, response)`、`error(file, error)`、`remove(file)`、`exceed(files)`；下载归档还会发出 `download-*` 与 `archive-*` 事件。
+事件：`change(file, files)`、`progress(file, percent)`、`success(file, response)`、`error(file, error)`、`remove(file)`、`exceed(files)`；分页开启时还会发出 `update:pagination(value)` 和 `pagination-change(currentPage, pageSize)`；下载归档还会发出 `download-*` 与 `archive-*` 事件。
+
+## 服务端分页
+
+分页默认关闭。组件只负责分页状态和交互，不请求文件列表，也不会将页码参数附加到上传、分片、删除或下载请求。开启后，业务方使用同一个文件列表接口按页取数，并将本页结果更新到 `v-model`：
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue'
+
+const files = ref([])
+const pagination = ref({ total: 0, currentPage: 1, pageSize: 20 })
+
+async function loadFiles(currentPage: number, pageSize: number) {
+  const result = await api.get('/api/files', { params: { pageNum: currentPage, pageSize } })
+  files.value = result.rows
+  pagination.value = { ...pagination.value, currentPage, pageSize, total: result.total }
+}
+</script>
+
+<template>
+  <FlowUpload
+    v-model="files"
+    v-model:pagination="pagination"
+    @pagination-change="loadFiles"
+  />
+</template>
+```
+
+后端字段名（如 `pageNum/pageSize` 或 `page/limit`）与响应结构由业务请求层适配；组件不规定它们。关闭分页时，调用方直接传入完整文件列表。
 
 - `#tip`：紧跟选择区的说明。
 - `#file="{ file, remove, preview, download, pause, resume, retry }"`：替换单个文件条目。

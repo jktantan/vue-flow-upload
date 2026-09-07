@@ -34,6 +34,7 @@ import type {
   UploadTransport,
   UploadUserFile,
   UploadPagination,
+  UploadPaginationConfig,
 } from './types'
 
 const props = withDefaults(
@@ -69,8 +70,8 @@ const props = withDefaults(
     instantUpload?: boolean
     showFileList?: boolean
     showOperation?: boolean
-    showFooter?: boolean
-    pagination?: UploadPagination
+    /** Set to false or omit to hide pagination. Paging data is controlled by the host. */
+    pagination?: UploadPaginationConfig
     drag?: boolean
     directory?: boolean
     listType?: 'list' | 'picture' | 'picture-card'
@@ -118,7 +119,6 @@ const props = withDefaults(
     listType: 'list',
     showFileList: true,
     showOperation: true,
-    showFooter: true,
     drag: true,
     directory: false,
     preview: true,
@@ -150,12 +150,23 @@ const emit = defineEmits<{
   'archive-progress': [taskId: string, percent?: number]
   'archive-success': [taskId: string]
   'archive-error': [taskId: string, error: UploadError]
+  'update:pagination': [value: UploadPagination]
+  'pagination-change': [currentPage: number, pageSize: number]
 }>()
 
 const internalFiles = ref<UploadFileItem[]>(
   normalizeFileList(props.modelValue ?? props.defaultFileList),
 )
 const globalConfig = inject(vueFlowUploadConfigKey, {})
+const pagination = computed<UploadPagination | undefined>(() => {
+  if (!props.pagination) return undefined
+  const defaults = globalConfig.defaults?.pagination
+  return {
+    pageSize: defaults?.pageSize ?? 10,
+    pageSizes: defaults?.pageSizes ?? [10, 20, 30, 40],
+    ...props.pagination,
+  }
+})
 // Exposes the hidden native input's file picker to toolbar buttons and consumers.
 const uploadTrigger = ref<{ browse: () => void }>()
 // Shares request slots between files so file and chunk concurrency limits both apply.
@@ -267,6 +278,14 @@ function updateFiles(next: UploadFileItem[], changed?: UploadFileItem) {
   internalFiles.value = next
   emit('update:modelValue', next)
   if (changed) emit('change', changed, next)
+}
+
+function updatePagination(value: UploadPagination) {
+  emit('update:pagination', value)
+}
+
+function handlePaginationChange(currentPage: number, pageSize: number) {
+  emit('pagination-change', currentPage, pageSize)
 }
 
 function updateFile(uid: string, patch: Partial<UploadFileItem>) {
@@ -733,10 +752,10 @@ defineExpose({
       </div>
     </div>
     <UploadFooter
-      :visible="showFileList && displayedFiles.length > 0 && (showFooter || !!pagination)"
-      :count="displayedFiles.length"
-      :t="t"
+      :visible="showFileList && !!pagination"
       :pagination="pagination"
+      @update:pagination="updatePagination"
+      @pagination-change="handlePaginationChange"
     />
 
     <UploadRemoveDialog

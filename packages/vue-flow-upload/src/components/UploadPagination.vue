@@ -9,9 +9,6 @@ const props = withDefaults(defineProps<UploadPagination>(), {
   currentPage: 1,
   pageSize: 10,
   pageSizes: () => [10, 20, 30, 40],
-  size: 'default',
-  background: false,
-  disabled: false,
 })
 const emit = defineEmits<{
   'update:currentPage': [value: number]
@@ -29,14 +26,14 @@ const pages = computed(() => {
 })
 
 function changePage(page: number) {
-  if (props.disabled || page === props.currentPage || page < 1 || page > pageCount.value) return
+  if (page === props.currentPage || page < 1 || page > pageCount.value) return
   emit('update:currentPage', page)
   emit('change', page, props.pageSize)
 }
 
 function changeSize(event: Event) {
   const size = Number((event.target as HTMLSelectElement).value)
-  if (!size || props.disabled) return
+  if (!size) return
   emit('update:pageSize', size)
   emit('update:currentPage', 1)
   emit('change', 1, size)
@@ -44,21 +41,12 @@ function changeSize(event: Event) {
 </script>
 
 <template>
-  <nav
-    class="vfu-pagination"
-    :class="[`is-${size}`, { 'is-background': background, 'is-disabled': disabled }]"
-    :aria-label="text.paginationLabel"
-  >
+  <nav class="vfu-pagination" :aria-label="text.paginationLabel">
     <span class="vfu-pagination__total">{{
       text.paginationTotal.replace('{total}', String(total))
     }}</span>
     <label class="vfu-pagination__sizes">
-      <select
-        :value="pageSize"
-        :disabled="disabled"
-        :aria-label="text.paginationItemsPerPage"
-        @change="changeSize"
-      >
+      <select :value="pageSize" :aria-label="text.paginationItemsPerPage" @change="changeSize">
         <option v-for="option in pageSizes" :key="option" :value="option">
           {{ text.paginationItemsPerPage.replace('{size}', String(option)) }}
         </option>
@@ -67,7 +55,7 @@ function changeSize(event: Event) {
     <button
       type="button"
       :aria-label="text.paginationPrevious"
-      :disabled="disabled || currentPage <= 1"
+      :disabled="currentPage <= 1"
       @click="changePage(currentPage - 1)"
     >
       &lt;
@@ -77,7 +65,6 @@ function changeSize(event: Event) {
       :key="page"
       type="button"
       :class="{ 'is-active': page === currentPage }"
-      :disabled="disabled"
       @click="changePage(page)"
     >
       {{ page }}
@@ -85,7 +72,7 @@ function changeSize(event: Event) {
     <button
       type="button"
       :aria-label="text.paginationNext"
-      :disabled="disabled || currentPage >= pageCount"
+      :disabled="currentPage >= pageCount"
       @click="changePage(currentPage + 1)"
     >
       &gt;
@@ -97,7 +84,6 @@ function changeSize(event: Event) {
         type="number"
         min="1"
         :max="pageCount"
-        :disabled="disabled"
         :aria-label="text.paginationPageNumber"
         @change="changePage(Number(($event.target as HTMLInputElement).value))"
       />
