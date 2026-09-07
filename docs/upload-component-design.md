@@ -4,9 +4,7 @@
 
 ## 1. 范围与架构
 
-这是一个 Vue 3 + TypeScript 企业级文件上传套件，包含 `FlowUpload`（多文件上传）和可独立引入的 `AvatarUpload`（单头像裁剪上传），以及可注入的 `UploadTransport`、`DownloadTransport` 和默认 XHR 适配器。组件不负责文件存储、鉴权、病毒扫描、内容审核或对象存储 SDK；服务端通过传输接口与组件解耦。
-
-应用级认证和上传默认策略通过 `app.use(vueFlowUpload, options)` 注入；`auth` 只能在初始化配置，组件只负责上传目标、业务数据和文件校验等局部配置。头像能力可从 `vue-flow-upload/avatar` 独立入口引入。
+这是一个 Vue 3 + TypeScript 上传组件包，包含 `FlowUpload`（多文件上传）和 `AvatarUpload`（单头像裁剪上传），以及可注入的 `UploadTransport`、`DownloadTransport` 和默认 XHR 适配器。组件不负责文件存储、鉴权、病毒扫描、内容审核或对象存储 SDK；服务端通过传输接口与组件解耦。
 
 ```text
 FlowUpload / AvatarUpload
@@ -33,13 +31,13 @@ FlowUpload / AvatarUpload
 
 秒传是对已完成内容的服务端去重，客户端调度器不协调不同浏览器或不同用户。默认后端策略是让并发上传者各自使用独立临时会话，并在 `completeMultipart` 校验完成后以租户隔离范围内的内容哈希唯一键收敛到同一个正式内容对象；上传中的内容不得作为秒传命中。
 
-`action` 创建的内置适配器只实现普通上传；要使用秒传、分片或删除接口，应传 `transport`，或同时配置 `createAction`、`deleteAction` 及 `action`。状态值为 `idle`、`validating`、`hashing`、`checking`、`preparing`、`queued`、`uploading`、`paused`、`merging`、`success`、`failed`、`canceled`、`rejected`。暂停会中止请求但保留内存中的会话；卸载、`clear` 或删除会释放请求、Worker、对象 URL 和轮询器。
+`action` 创建的内置适配器只实现普通上传；要使用秒传、分片或删除接口，应传 `transport`，或同时配置 `createAction`、`deleteAction` 及 `action`。状态值为 `idle`、`validating`、`hashing`、`checking`、`preparing`、`queued`、`uploading`、`paused`、`merging`、`processing`、`success`、`failed`、`canceled`、`rejected`。其中 `processing` 由后端文件记录驱动，表示文件已接收但仍在转存或处理；前端不会自行切换为 `success`。暂停会中止请求但保留内存中的会话；卸载、`clear` 或删除会释放请求、Worker、对象 URL 和轮询器。
 
 ## 3. 公共 API
 
 ### 3.1 `FlowUpload` Props
 
-源码中的 Props 包括：`modelValue`、`defaultFileList`、`transport`、`action`、`createAction`、`deleteAction`、`method`（默认 `POST`）、`downloadTransport`、`data`、`fileFieldName`（`file`）、`dataFieldName`（`data`）、`accept`、`maxSize`、`maxCount`、`multiple`、`autoUpload`（`true`）、`normalUploadThreshold`（10 MiB）、`chunkSize`（1 MiB）、`chunkConcurrency`（3）、`maxConcurrentFiles`（2）、`maxConcurrentRequests`（6）、`retryCount`（3）、`retryBaseDelay`（500 ms）、`resume`（`true`）、`instantUpload`（`true`）、`showFileList`、`showOperation`、`showFooter`、`pagination`、`drag`（`true`）、`directory`（`false`）、`listType`（`list`）、`preview`（`true`）、`selectable`（`false`）、`loading`、`width`（`auto`）、`height`（`600px`）、`archivePollingInterval`（2 s）、`archivePollingTimeout`（10 min）、`allDownloadScope`、`onPreview`、`theme`、`i18n`、兼容属性 `locale/messages`、`disabled`、`permissions`、`beforeUpload`、`beforeRemove`。认证和请求默认值通过应用初始化插件配置。
+源码中的 Props 包括：`modelValue`、`defaultFileList`、`transport`、`action`、`createAction`、`deleteAction`、`method`（默认 `POST`）、`withCredentials`（默认 `false`）、`downloadTransport`、`data`、`headers`、`fileFieldName`（`file`）、`dataFieldName`（`data`）、`accept`、`maxSize`、`maxCount`、`multiple`、`autoUpload`（`true`）、`normalUploadThreshold`（10 MiB）、`chunkSize`（1 MiB）、`chunkConcurrency`（3）、`maxConcurrentFiles`（2）、`maxConcurrentRequests`（6）、`retryCount`（3）、`retryBaseDelay`（500 ms）、`resume`（`true`）、`instantUpload`（`true`）、`showFileList`、`showOperation`、`pagination`、`drag`（`true`）、`directory`（`false`）、`listType`（`list`）、`preview`（`true`）、`selectable`（`false`）、`loading`、`width`（`auto`）、`height`（`600px`）、`archivePollingInterval`（2 s）、`archivePollingTimeout`（10 min）、`allDownloadScope`、`onPreview`、`theme`、`i18n`、兼容属性 `locale/messages`、`disabled`、`permissions`、`beforeUpload`、`beforeRemove`。
 
 `directory` 只是传递给原生文件选择器的目录选择属性；当前组件没有 `pasteable` 或 `sortable` Props，也没有排序事件。
 

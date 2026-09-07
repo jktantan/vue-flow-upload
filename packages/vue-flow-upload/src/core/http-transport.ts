@@ -10,6 +10,8 @@ import type {
 
 export interface HttpUploadTransportOptions {
   url: string
+  /** Base path or origin prepended to relative endpoint URLs. */
+  baseUrl?: string
   method?: 'POST' | 'PUT'
   credentials?: RequestCredentials
   timeout?: number
@@ -42,7 +44,10 @@ export function createHttpUploadTransport(options: HttpUploadTransportOptions): 
         formData.append(context.fileFieldName, file)
         formData.append('fileId', fileId)
         formData.append(context.dataFieldName, JSON.stringify(data))
-        request.open(method, appendQuery(options.url, context.query))
+        request.open(
+          method,
+          appendQuery(resolveRequestUrl(options.url, options.baseUrl), context.query),
+        )
         request.timeout = options.timeout ?? 60_000
         request.withCredentials = options.credentials === 'include'
 
@@ -82,13 +87,19 @@ export function createHttpUploadTransport(options: HttpUploadTransportOptions): 
   }
   if (options.createUrl) {
     transport.createFile = (input, context) =>
-      sendJson<{ fileId: string }>(options, options.createUrl!, 'POST', input, context)
+      sendJson<{ fileId: string }>(
+        options,
+        resolveRequestUrl(options.createUrl!, options.baseUrl),
+        'POST',
+        input,
+        context,
+      )
   }
   if (options.deleteUrl) {
     transport.deleteFile = (fileId, context) =>
       request<void>(
         options,
-        resolveFileUrl(options.deleteUrl!, fileId),
+        resolveRequestUrl(resolveFileUrl(options.deleteUrl!, fileId), options.baseUrl),
         'DELETE',
         null,
         context,
@@ -99,7 +110,7 @@ export function createHttpUploadTransport(options: HttpUploadTransportOptions): 
     transport.checkFile = (input, context) =>
       sendJson<{ exists: boolean; file?: UploadSuccessResult }>(
         options,
-        options.checkUrl!,
+        resolveRequestUrl(options.checkUrl!, options.baseUrl),
         'POST',
         input,
         context,
@@ -111,12 +122,21 @@ export function createHttpUploadTransport(options: HttpUploadTransportOptions): 
   return {
     ...transport,
     initMultipart(input, context) {
-      return sendJson<MultipartSession>(options, multipart.initUrl, 'POST', input, context)
+      return sendJson<MultipartSession>(
+        options,
+        resolveRequestUrl(multipart.initUrl, options.baseUrl),
+        'POST',
+        input,
+        context,
+      )
     },
     uploadChunk(input, context) {
       return sendChunk(
         options,
-        resolveChunkUrl(multipart.chunkUrl, input.uploadId, input.chunkIndex),
+        resolveRequestUrl(
+          resolveChunkUrl(multipart.chunkUrl, input.uploadId, input.chunkIndex),
+          options.baseUrl,
+        ),
         input,
         context,
       )
@@ -124,7 +144,7 @@ export function createHttpUploadTransport(options: HttpUploadTransportOptions): 
     completeMultipart(uploadId, input, context) {
       return sendJson<UploadSuccessResult>(
         options,
-        resolveUrl(multipart.completeUrl, uploadId),
+        resolveRequestUrl(resolveUrl(multipart.completeUrl, uploadId), options.baseUrl),
         'POST',
         input,
         context,
@@ -134,7 +154,7 @@ export function createHttpUploadTransport(options: HttpUploadTransportOptions): 
       ? (uploadId, context) =>
           sendJson<void>(
             options,
-            resolveUrl(multipart.cancelUrl!, uploadId),
+            resolveRequestUrl(resolveUrl(multipart.cancelUrl!, uploadId), options.baseUrl),
             'DELETE',
             undefined,
             context,
@@ -245,6 +265,18 @@ function resolveFileUrl(value: string | ((fileId: string) => string), fileId: st
     : value.replace('{fileId}', encodeURIComponent(fileId))
 }
 
+/** Resolve an endpoint against the configured base without rewriting absolute URLs. */
+export function resolveRequestUrl(url: string, baseUrl?: string) {
+  if (!baseUrl || isAbsoluteUrl(url)) return url
+  const base = baseUrl.replace(/\/+$/, '')
+  const path = url.replace(/^\/+/, '')
+  return path ? `${base}/${path}` : base
+}
+
+function isAbsoluteUrl(url: string) {
+  return /^(?:[a-z][a-z\d+.-]*:)?\/\//i.test(url)
+}
+
 function resolveChunkUrl(
   value: string | ((uploadId: string, chunkIndex: number) => string),
   uploadId: string,
@@ -260,7 +292,10 @@ function resolveChunkUrl(
 
 function appendQuery(url: string, query?: Record<string, string | number | boolean>) {
   if (!query || !Object.keys(query).length) return url
-  const target = new URL(url, typeof window !== 'undefined' ? window.location.href : 'http://localhost')
+  const target = new URL(
+    url,
+    typeof window !== 'undefined' ? window.location.href : 'http://localhost',
+  )
   for (const [key, value] of Object.entries(query)) target.searchParams.set(key, String(value))
   return target.toString()
 }

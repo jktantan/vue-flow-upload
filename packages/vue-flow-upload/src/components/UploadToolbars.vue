@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import type { UploadFileItem, UploadMessages } from '../types'
 import { formatSize } from '../utils/file'
 
+/** Toolbar has no upload state of its own; it renders capabilities and emits intents upward. */
 const props = defineProps<{
   files: UploadFileItem[]
   selectable: boolean
@@ -20,6 +21,7 @@ const props = defineProps<{
   canUpload: boolean
 }>()
 
+/** Accessible tooltip describing the active accept and size constraints. */
 const selectFileTooltip = computed(() => {
   // 将选择限制组合为可访问的按钮提示文案。 Combine selection limits into an accessible button tooltip.
   const accept = Array.isArray(props.accept) ? props.accept.join(', ') : props.accept
@@ -32,6 +34,7 @@ const selectFileTooltip = computed(() => {
     .replace('{maxSize}', maxSize)
 })
 
+/** UI intents consumed by FlowUpload (selection, submission, batch operations). */
 const emit = defineEmits<{
   select: []
   upload: []

@@ -2,6 +2,7 @@
 import type { UploadFileItem, UploadMessages } from '../types'
 import UploadFileList from './UploadFileList.vue'
 
+/** Picture-wall mode is a thin presentation wrapper around UploadFileList. */
 defineProps<{
   files: UploadFileItem[]
   show: boolean

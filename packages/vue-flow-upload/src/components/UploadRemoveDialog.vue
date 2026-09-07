@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import type { UploadFileItem } from '../types'
 
+/** Receives the pending batch and emits a choice; deletion itself stays in FlowUpload. */
 const props = defineProps<{
   files: UploadFileItem[]
   busy: boolean

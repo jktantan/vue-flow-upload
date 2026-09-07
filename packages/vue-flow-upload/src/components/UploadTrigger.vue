@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useFileSelection } from '../composables/useFileSelection'
 
+/** Native input capabilities forwarded from FlowUpload. */
 const props = defineProps<{
   directory: boolean
   multiple: boolean
@@ -9,7 +10,9 @@ const props = defineProps<{
   canSelect: boolean
 }>()
 
+/** Emits browser-selected files; validation and queueing happen in the parent. */
 const emit = defineEmits<{ files: [files: File[]] }>()
+/** DOM input reference, normalized accept string, and selection handlers from the shared composable. */
 const { input, acceptValue, browse, onSelect } = useFileSelection({
   accept: computed(() => props.accept),
   canSelect: computed(() => props.canSelect),

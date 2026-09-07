@@ -4,24 +4,25 @@ import { useI18n } from 'vue-i18n-lite'
 import { createFlowUploadI18n, getUploadMessages } from '../i18n'
 import type { UploadPagination } from '../types'
 
+/** Controlled pagination input; the parent remains responsible for loading the selected page. */
 const props = withDefaults(defineProps<UploadPagination>(), {
   total: 0,
   currentPage: 1,
   pageSize: 10,
   pageSizes: () => [10, 20, 30, 40],
-  size: 'default',
-  background: false,
-  disabled: false,
 })
+/** Emits granular v-model updates and one combined event for non-v-model consumers. */
 const emit = defineEmits<{
   'update:currentPage': [value: number]
   'update:pageSize': [value: number]
   change: [currentPage: number, pageSize: number]
 }>()
+/** At least one page is rendered even when the server reports an empty result set. */
 const pageCount = computed(() => Math.max(1, Math.ceil(props.total / props.pageSize)))
 const inheritedI18n = useI18n()
 const localI18n = createFlowUploadI18n()
 const text = computed(() => getUploadMessages(inheritedI18n ?? localI18n))
+/** Five-page sliding window around the current page, clamped at both ends. */
 const pages = computed(() => {
   const start = Math.max(1, Math.min(props.currentPage - 2, pageCount.value - 4))
   const end = Math.min(pageCount.value, start + 4)
@@ -29,14 +30,16 @@ const pages = computed(() => {
 })
 
 function changePage(page: number) {
-  if (props.disabled || page === props.currentPage || page < 1 || page > pageCount.value) return
+  // Ignore duplicate and out-of-range requests before emitting to the host.
+  if (page === props.currentPage || page < 1 || page > pageCount.value) return
   emit('update:currentPage', page)
   emit('change', page, props.pageSize)
 }
 
 function changeSize(event: Event) {
+  // Changing page size resets to page 1 because the old page may no longer exist.
   const size = Number((event.target as HTMLSelectElement).value)
-  if (!size || props.disabled) return
+  if (!size) return
   emit('update:pageSize', size)
   emit('update:currentPage', 1)
   emit('change', 1, size)
@@ -44,21 +47,12 @@ function changeSize(event: Event) {
 </script>
 
 <template>
-  <nav
-    class="vfu-pagination"
-    :class="[`is-${size}`, { 'is-background': background, 'is-disabled': disabled }]"
-    :aria-label="text.paginationLabel"
-  >
+  <nav class="vfu-pagination" :aria-label="text.paginationLabel">
     <span class="vfu-pagination__total">{{
       text.paginationTotal.replace('{total}', String(total))
     }}</span>
     <label class="vfu-pagination__sizes">
-      <select
-        :value="pageSize"
-        :disabled="disabled"
-        :aria-label="text.paginationItemsPerPage"
-        @change="changeSize"
-      >
+      <select :value="pageSize" :aria-label="text.paginationItemsPerPage" @change="changeSize">
         <option v-for="option in pageSizes" :key="option" :value="option">
           {{ text.paginationItemsPerPage.replace('{size}', String(option)) }}
         </option>
@@ -67,7 +61,7 @@ function changeSize(event: Event) {
     <button
       type="button"
       :aria-label="text.paginationPrevious"
-      :disabled="disabled || currentPage <= 1"
+      :disabled="currentPage <= 1"
       @click="changePage(currentPage - 1)"
     >
       &lt;
@@ -77,7 +71,6 @@ function changeSize(event: Event) {
       :key="page"
       type="button"
       :class="{ 'is-active': page === currentPage }"
-      :disabled="disabled"
       @click="changePage(page)"
     >
       {{ page }}
@@ -85,7 +78,7 @@ function changeSize(event: Event) {
     <button
       type="button"
       :aria-label="text.paginationNext"
-      :disabled="disabled || currentPage >= pageCount"
+      :disabled="currentPage >= pageCount"
       @click="changePage(currentPage + 1)"
     >
       &gt;
@@ -97,7 +90,6 @@ function changeSize(event: Event) {
         type="number"
         min="1"
         :max="pageCount"
-        :disabled="disabled"
         :aria-label="text.paginationPageNumber"
         @change="changePage(Number(($event.target as HTMLInputElement).value))"
       />

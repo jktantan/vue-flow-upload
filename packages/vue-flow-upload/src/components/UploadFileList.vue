@@ -2,13 +2,19 @@
 import type { UploadFileItem, UploadMessages } from '../types'
 import { fileIconUrl, formatSize, isImage } from '../utils/file'
 
+/** Maps detailed queue states to the smaller set of visual state-icon variants. */
 function statusKind(status: UploadFileItem['status']) {
   if (status === 'success') return 'success'
   if (status === 'failed' || status === 'rejected') return 'error'
   if (['uploading', 'merging'].includes(status)) return 'uploading'
+  if (status === 'processing') return 'processing'
   return 'pending'
 }
 
+/**
+ * Render-only contract supplied by FlowUpload. Action callbacks receive a uid
+ * so this component never mutates upload state itself.
+ */
 defineProps<{
   files: UploadFileItem[]
   show: boolean
@@ -97,7 +103,7 @@ defineProps<{
         </label>
         <div class="vfu-file__visual">
           <button
-            v-if="isImage(file) && imageUrl(file)"
+            v-if="file.status !== 'processing' && isImage(file) && imageUrl(file)"
             class="vfu-thumbnail"
             type="button"
             :disabled="!canPreview"
@@ -116,7 +122,7 @@ defineProps<{
             ><span>{{ formatSize(file.size) }}</span>
           </div>
           <div
-            v-if="['uploading', 'queued', 'merging'].includes(file.status)"
+            v-if="['uploading', 'queued', 'merging', 'processing'].includes(file.status)"
             class="vfu-progress"
             role="progressbar"
             :aria-label="`${file.name} ${file.percent}%`"
@@ -132,7 +138,7 @@ defineProps<{
               >{{ file.error?.message ?? statusText(file.status) }}</small
             >
             <span
-              v-if="['uploading', 'queued', 'merging'].includes(file.status)"
+              v-if="['uploading', 'queued', 'merging', 'processing'].includes(file.status)"
               class="vfu-file__percent"
               >{{ file.percent }}%</span
             >
@@ -140,7 +146,7 @@ defineProps<{
         </div>
         <div class="vfu-file__actions">
           <button
-            v-if="isImage(file) && imageUrl(file) && canPreview"
+            v-if="file.status !== 'processing' && isImage(file) && imageUrl(file) && canPreview"
             class="vfu-action"
             type="button"
             :aria-label="text.preview"

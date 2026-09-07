@@ -26,6 +26,7 @@ export default {
     hashing: 'Calculating SHA-256',
     checking: 'Checking instant upload',
     uploading: 'Uploading',
+    processing: 'Processing',
     paused: 'Paused',
     completed: 'Completed',
     canceled: 'Cancelled',

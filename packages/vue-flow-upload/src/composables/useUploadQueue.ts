@@ -128,6 +128,23 @@ export function useUploadQueue(options: UploadQueueOptions) {
     }
   }
 
+  function finishUpload(uid: string, response: UploadSuccessResult) {
+    // The backend owns post-processing state (merge, COS/OSS/Blob transfer, scanning, etc.).
+    // A processing response must remain processing until the host refreshes its file record.
+    if (response.status === 'processing') {
+      const processing = options.updateFile(uid, {
+        status: 'processing',
+        percent: 100,
+        fileId: response.fileId ?? options.files.value.find((file) => file.uid === uid)?.fileId,
+        remoteCreated: true,
+        response,
+      })
+      if (processing) options.onProgress(processing, 100)
+      return
+    }
+    finishSuccess(uid, response)
+  }
+
   async function prepareFile(uid: string, file: UploadFileItem, data: Record<string, unknown>) {
     // Optionally create the server record before bytes are sent; never create it twice on resume.
     const transport = requireTransport()
@@ -283,7 +300,7 @@ export function useUploadQueue(options: UploadQueueOptions) {
         }
       }
       ensureTaskActive(uid)
-      finishSuccess(
+      finishUpload(
         uid,
         isMultipart
           ? await uploadMultipart(uid, target.file, data, sha256, target.fileId)

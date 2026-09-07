@@ -26,6 +26,7 @@ export default {
     hashing: '正在计算 SHA-256',
     checking: '正在检查秒传',
     uploading: '正在上传',
+    processing: '处理中',
     paused: '已暂停',
     completed: '已完成',
     canceled: '已取消',

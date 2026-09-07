@@ -52,6 +52,12 @@ const autoUpload = ref(true)
 const drag = ref(true)
 const loading = ref(false)
 const listType = ref<'list' | 'picture'>('list')
+const pagination = ref({
+  total: files.value.length,
+  currentPage: 1,
+  pageSize: 10,
+  pageSizes: [10, 20, 50, 100],
+})
 const eventLog = ref<string[]>([])
 const avatar = ref<UploadFileItem[]>([])
 const avatarUpdateAction = '/api/avatar/{fileId}'
@@ -192,6 +198,7 @@ const downloadTransport: DownloadTransport = {
     </header>
     <FlowUpload
       v-model="files"
+      v-model:pagination="pagination"
       :transport="transport"
       :download-transport="downloadTransport"
       accept="image/*,.pdf"
@@ -209,6 +216,7 @@ const downloadTransport: DownloadTransport = {
       :list-type="listType"
       selectable
       @error="(_, error) => eventLog.unshift(`错误：${error.message}`)"
+      @pagination-change="(page, size) => eventLog.unshift(`分页切换：第 ${page} 页，每页 ${size} 条`)"
     />
     <section class="avatar-demo">
       <h2>头像上传</h2>
