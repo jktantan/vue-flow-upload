@@ -38,6 +38,14 @@
 
 `url`、`thumbnailUrl` 可选；204 或空 2xx 响应也可被内置适配器接受，但建议返回完整文件结果。
 
+若字节接收完成后还需异步合并、转存 COS/OSS/Azure Blob、病毒扫描或生成预览，返回数据库中该文件记录的处理中状态：
+
+```json
+{ "fileId": "file_01...", "status": "processing" }
+```
+
+组件将显示黄色“处理中”，但不会轮询任务或自行改为成功。后台完成后必须更新文件记录为 `status: "success"`，并在文件列表接口中返回最终 `url`、`thumbnailUrl` 等字段；业务方刷新列表并将结果传回组件。只有文件实际可访问时才允许写为 `success`。
+
 ### 2.3 秒传检查（可选）
 
 `POST /uploads/check`，由 `transport.checkFile` 实现。请求包含 `fileId`、`name`、`size`、`mimeType`、`lastModified`、`sha256`。未命中返回 `{ "exists": false }`；命中返回 `{ "exists": true, "file": { ...UploadSuccessResult } }`。命中时组件不会调用上传或分片接口。
@@ -57,9 +65,9 @@
 1. 确认会话未取消且所有分片完整，按 index 合并并校验文件大小和 SHA-256。
 2. 尝试创建正式内容对象；第一个完成者写入内容对象。
 3. 若内容唯一键冲突，读取已存在的正式内容对象，丢弃当前会话的临时对象，而不是报上传失败。
-4. 原子地把当前 `fileId` 绑定到最终内容对象，并返回当前业务文件记录的 `UploadSuccessResult`。
+4. 原子地把当前 `fileId` 绑定到最终内容对象；若仍要转存或后处理，持久化为 `processing` 并返回当前业务文件记录状态。
 
-因此，先完成者与后完成者都应得到成功结果，但可拥有不同的 `fileId`、名称、目录或业务元数据；底层字节只保留一份。若并发完成期间发现目标内容尚未处于可用状态，服务端应在锁内等待、重读或重试，绝不能返回未完成内容。
+因此，先完成者与后完成者都应得到同一文件记录的当前状态：文件可用时为成功结果，仍在后处理时为 `processing`；二者可拥有不同的 `fileId`、名称、目录或业务元数据，底层字节只保留一份。若并发完成期间发现目标内容尚未处于可用状态，服务端应返回 `processing`，绝不能把未完成内容标记为 `success`。
 
 ## 3. 分片上传
 
@@ -79,7 +87,7 @@
 
 ### 3.3 合并
 
-`POST /uploads/{uploadId}/complete`，JSON 为 `{ "fileId": "...", "sha256": "...", "data": {} }`。服务端确认所有分片存在，按 index 合并并校验大小/哈希，再返回 `UploadSuccessResult`；重复调用返回同一结果。缺片建议返回 409：`{ "code": "CHUNKS_MISSING", "missingChunks": [3] }`。
+`POST /uploads/{uploadId}/complete`，JSON 为 `{ "fileId": "...", "sha256": "...", "data": {} }`。服务端确认所有分片存在，按 index 合并并校验大小/哈希。若文件已经可用，返回 `UploadSuccessResult`；若后续还要转存外部对象存储或执行其他异步处理，返回 `{ "fileId": "...", "status": "processing" }`。重复调用返回该文件记录当前的数据库状态。缺片建议返回 409：`{ "code": "CHUNKS_MISSING", "missingChunks": [3] }`。
 
 ### 3.4 取消与删除
 

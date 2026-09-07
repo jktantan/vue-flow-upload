@@ -195,6 +195,12 @@ async function loadFiles(currentPage: number, pageSize: number) {
 
 后端字段名（如 `pageNum/pageSize` 或 `page/limit`）与响应结构由业务请求层适配；组件不规定它们。关闭分页时，调用方直接传入完整文件列表。
 
+## 文件后处理状态
+
+当分片已合并、文件仍在转存 COS、OSS 或 Blob Storage，或仍在做病毒扫描、转码等后端操作时，后端文件记录应为 `processing`。组件以该状态显示黄色“处理中”；文件在此期间不可预览、下载或参与批量下载。
+
+上传完成接口可返回 `{ "fileId": "...", "status": "processing" }`，组件会保持黄色状态。状态切换完全由后端更新数据库记录决定：业务方刷新文件列表后，将后端返回的 `status: "success"` 连同最终 `url` 更新到 `v-model`，组件才显示绿色“已完成”。组件不会轮询处理任务或自行把文件变为成功。
+
 - `#tip`：紧跟选择区的说明。
 - `#file="{ file, remove, preview, download, pause, resume, retry }"`：替换单个文件条目。
 

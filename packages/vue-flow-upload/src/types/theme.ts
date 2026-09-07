@@ -23,6 +23,7 @@ export interface UploadMessages {
   hashing: string
   checking: string
   uploading: string
+  processing: string
   paused: string
   completed: string
   canceled: string

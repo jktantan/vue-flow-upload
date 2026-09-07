@@ -8,6 +8,7 @@ export type UploadStatus =
   | 'uploading'
   | 'paused'
   | 'merging'
+  | 'processing'
   | 'success'
   | 'failed'
   | 'canceled'
@@ -21,6 +22,8 @@ export interface UploadError {
   cause?: unknown
 }
 export interface UploadSuccessResult {
+  /** Final availability is decided by the backend file record, never by the client. */
+  status?: 'processing' | 'success'
   fileId?: string
   name?: string
   size?: number

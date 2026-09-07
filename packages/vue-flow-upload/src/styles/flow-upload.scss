@@ -603,6 +603,9 @@
 .vfu-file__state.is-uploading {
   background: #409eff;
 }
+.vfu-file__state.is-processing {
+  background: #e6a23c;
+}
 .vfu-file__state.is-error {
   background: #f56c6c;
 }
@@ -670,6 +673,9 @@
 .vfu-file.is-uploading .vfu-file__body small,
 .vfu-file.is-merging .vfu-file__body small {
   color: #409eff;
+}
+.vfu-file.is-processing .vfu-file__body small {
+  color: #e6a23c;
 }
 .vfu-file.is-success .vfu-file__body small {
   color: #67c23a;

@@ -207,7 +207,7 @@ const displayedFiles = computed(() =>
     .map((file, index) => ({ file, index }))
     .sort((left, right) => {
       const priority = (file: UploadFileItem) => {
-        if (file.status === 'uploading' || file.status === 'merging') return 0
+        if (['uploading', 'merging', 'processing'].includes(file.status)) return 0
         if (['failed', 'rejected', 'canceled'].includes(file.status)) return 2
         if (file.status === 'success') return 3
         return 1
@@ -411,7 +411,7 @@ function showToast(message: string) {
 
 async function handleUpload() {
   const active = files.value.some((file) =>
-    ['uploading', 'hashing', 'checking', 'preparing', 'queued', 'merging'].includes(file.status),
+    ['uploading', 'hashing', 'checking', 'preparing', 'queued', 'merging', 'processing'].includes(file.status),
   )
   if (active) {
     showToast(text.value.uploadingToast)
@@ -583,6 +583,7 @@ function statusText(status: UploadFileItem['status']) {
     queued: text.value.waiting,
     paused: text.value.paused,
     merging: text.value.uploading,
+    processing: text.value.processing,
     success: text.value.completed,
     failed: text.value.uploadFailed,
     canceled: text.value.canceled,

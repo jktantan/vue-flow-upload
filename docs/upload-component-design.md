@@ -31,7 +31,7 @@ FlowUpload / AvatarUpload
 
 秒传是对已完成内容的服务端去重，客户端调度器不协调不同浏览器或不同用户。默认后端策略是让并发上传者各自使用独立临时会话，并在 `completeMultipart` 校验完成后以租户隔离范围内的内容哈希唯一键收敛到同一个正式内容对象；上传中的内容不得作为秒传命中。
 
-`action` 创建的内置适配器只实现普通上传；要使用秒传、分片或删除接口，应传 `transport`，或同时配置 `createAction`、`deleteAction` 及 `action`。状态值为 `idle`、`validating`、`hashing`、`checking`、`preparing`、`queued`、`uploading`、`paused`、`merging`、`success`、`failed`、`canceled`、`rejected`。暂停会中止请求但保留内存中的会话；卸载、`clear` 或删除会释放请求、Worker、对象 URL 和轮询器。
+`action` 创建的内置适配器只实现普通上传；要使用秒传、分片或删除接口，应传 `transport`，或同时配置 `createAction`、`deleteAction` 及 `action`。状态值为 `idle`、`validating`、`hashing`、`checking`、`preparing`、`queued`、`uploading`、`paused`、`merging`、`processing`、`success`、`failed`、`canceled`、`rejected`。其中 `processing` 由后端文件记录驱动，表示文件已接收但仍在转存或处理；前端不会自行切换为 `success`。暂停会中止请求但保留内存中的会话；卸载、`clear` 或删除会释放请求、Worker、对象 URL 和轮询器。
 
 ## 3. 公共 API
 

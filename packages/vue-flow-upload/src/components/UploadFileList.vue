@@ -6,6 +6,7 @@ function statusKind(status: UploadFileItem['status']) {
   if (status === 'success') return 'success'
   if (status === 'failed' || status === 'rejected') return 'error'
   if (['uploading', 'merging'].includes(status)) return 'uploading'
+  if (status === 'processing') return 'processing'
   return 'pending'
 }
 
@@ -97,7 +98,7 @@ defineProps<{
         </label>
         <div class="vfu-file__visual">
           <button
-            v-if="isImage(file) && imageUrl(file)"
+            v-if="file.status !== 'processing' && isImage(file) && imageUrl(file)"
             class="vfu-thumbnail"
             type="button"
             :disabled="!canPreview"
@@ -116,7 +117,7 @@ defineProps<{
             ><span>{{ formatSize(file.size) }}</span>
           </div>
           <div
-            v-if="['uploading', 'queued', 'merging'].includes(file.status)"
+            v-if="['uploading', 'queued', 'merging', 'processing'].includes(file.status)"
             class="vfu-progress"
             role="progressbar"
             :aria-label="`${file.name} ${file.percent}%`"
@@ -132,7 +133,7 @@ defineProps<{
               >{{ file.error?.message ?? statusText(file.status) }}</small
             >
             <span
-              v-if="['uploading', 'queued', 'merging'].includes(file.status)"
+              v-if="['uploading', 'queued', 'merging', 'processing'].includes(file.status)"
               class="vfu-file__percent"
               >{{ file.percent }}%</span
             >
@@ -140,7 +141,7 @@ defineProps<{
         </div>
         <div class="vfu-file__actions">
           <button
-            v-if="isImage(file) && imageUrl(file) && canPreview"
+            v-if="file.status !== 'processing' && isImage(file) && imageUrl(file) && canPreview"
             class="vfu-action"
             type="button"
             :aria-label="text.preview"
