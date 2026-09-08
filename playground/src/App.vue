@@ -216,7 +216,9 @@ const downloadTransport: DownloadTransport = {
       :list-type="listType"
       selectable
       @error="(_, error) => eventLog.unshift(`错误：${error.message}`)"
-      @pagination-change="(page, size) => eventLog.unshift(`分页切换：第 ${page} 页，每页 ${size} 条`)"
+      @pagination-change="
+        (page, size) => eventLog.unshift(`分页切换：第 ${page} 页，每页 ${size} 条`)
+      "
     />
     <section class="avatar-demo">
       <h2>头像上传</h2>

@@ -4,7 +4,8 @@
 
 ## Nuxt 接入
 
-在 `nuxt.config.ts` 中添加模块。模块会注册仅客户端渲染的 `FlowUpload` 和 `AvatarUpload`，并自动导入组件样式；因此不会在 SSR 阶段访问浏览器文件、预览或裁剪 API。
+在 `nuxt.config.ts` 中添加模块。模块会注册仅客户端渲染的 `FlowUpload` 和 `AvatarUpload`，并自动导入组件样式；因此不会在 SSR
+阶段访问浏览器文件、预览或裁剪 API。
 
 ```ts
 export default defineNuxtConfig({
@@ -46,7 +47,8 @@ export default defineNuxtPlugin((nuxtApp) => {
 </template>
 ```
 
-设置 `prefix: 'App'` 会将注册名改为 `AppFlowUpload` 和 `AppAvatarUpload`。这里的 `prefix` 只影响组件名，接口前缀请使用插件配置的 `baseUrl`。
+设置 `prefix: 'App'` 会将注册名改为 `AppFlowUpload` 和 `AppAvatarUpload`。这里的 `prefix` 只影响组件名，接口前缀请使用插件配置的
+`baseUrl`。
 
 ## AvatarUpload 头像模式
 
@@ -70,7 +72,9 @@ const avatar = ref<UploadFileItem[]>([])
 </template>
 ```
 
-首次上传走 `action`；已有头像并配置 `update-action` 时，组件会向替换 `{fileId}` 后的 URL 发出 `PUT`，并提交 `file`、`fileId` 两个 multipart 字段。首次响应必须返回 `fileId`，否则无法生成后续更新 URL。`baseUrl` 会加到相对地址前，完整 `http(s)` URL 不受影响。若使用自定义 `transport` 处理更新，请不要传 `update-action`。
+首次上传走 `action`；已有头像并配置 `update-action` 时，组件会向替换 `{fileId}` 后的 URL 发出 `PUT`，并提交 `file`、`fileId`
+两个 multipart 字段。首次响应必须返回 `fileId`，否则无法生成后续更新 URL。`baseUrl` 会加到相对地址前，完整 `http(s)` URL
+不受影响。若使用自定义 `transport` 处理更新，请不要传 `update-action`。
 
 面向 Vue 3 的上传组件：普通文件上传开箱即用，并为大文件提供分片、断点续传、SHA-256 秒传、并发调度、失败重试和下载归档。
 
@@ -102,9 +106,12 @@ const files = ref<UploadFileItem[]>([])
 </template>
 ```
 
-`action` 使用内置 XHR，支持 `method`、`data`、`create-action`、`delete-action` 与全局 `auth` 配置；它只实现普通上传。秒传、分片、续传或非标准响应结构需要 `transport`。两者同时提供时，`transport` 优先。
+`action` 使用内置 XHR，支持 `method`、`data`、`create-action`、`delete-action` 与全局 `auth` 配置；它只实现普通上传。秒传、分片、续传或非标准响应结构需要
+`transport`。两者同时提供时，`transport` 优先。
 
-认证配置只在 `app.use(vueFlowUpload, config)` 初始化时设置：`baseUrl` 为内置 HTTP 端点添加统一前缀，`credentials` 控制 Cookie，`headers` 控制认证请求头，`query` 添加统一 URL 参数。它们会应用到所有内置上传、分片、合并、删除和头像请求；完整 `http(s)` 地址不会拼接 `baseUrl`。不要在组件上重复配置认证信息，也不要把敏感 Token 放在 query 中。
+认证配置只在 `app.use(vueFlowUpload, config)` 初始化时设置：`baseUrl` 为内置 HTTP 端点添加统一前缀，`credentials` 控制
+Cookie，`headers` 控制认证请求头，`query` 添加统一 URL 参数。它们会应用到所有内置上传、分片、合并、删除和头像请求；完整
+`http(s)` 地址不会拼接 `baseUrl`。不要在组件上重复配置认证信息，也不要把敏感 Token 放在 query 中。
 
 ```ts
 import { createHttpUploadTransport } from 'vue-flow-upload'
@@ -149,33 +156,39 @@ createApp(App).use(createFlowUploadI18n({ locale: 'en-US' }))
 
 ## 常用属性（摘要）
 
-| 属性                                                             | 说明                                                                            | 默认值                       |
-| ---------------------------------------------------------------- | ------------------------------------------------------------------------------- | ---------------------------- |
-| `action` / `transport`                                           | 内置普通上传 URL / 自定义协议；同时传入时 `transport` 优先                      | —                            |
-| `create-action`、`delete-action`                                 | 上传前创建文件记录 / 按 `fileId` 清理远端文件及上传会话                         | —                            |
-| `v-model`、`default-file-list`                                   | 受控文件列表 / 非受控初始列表；远端回显建议提供 `uid`、`fileId`、`url`、`status` | `[]`                         |
-| `multiple`、`max-count`、`max-size`、`accept`                    | 选择和校验限制                                                                  | `true`、无限制、无限制、全部 |
-| `auto-upload`                                                    | 选择后立刻上传；关闭后调用实例 `submit()`                                       | `true`                       |
-| `drag`、`directory`                                              | 启用整组件拖拽上传及操作区提示、浏览器支持的目录选择                            | `true`、`false`              |
-| `width`、`height`                                                | 上传组件的 CSS 尺寸；数字按 px 处理。`height="auto"` 会填满具有明确高度的父容器 | `auto`、`600px`              |
-| `show-file-list`                                                 | 是否渲染内置列表                                                                | `true`                       |
-| `pagination`                                                     | `false` 关闭，或传入受控分页状态；翻页后由业务方拉取对应文件并更新 `v-model`     | `false`                      |
-| `list-type`                                                      | `list`、`picture`、`picture-card`；后两者以图片墙卡片展示                       | `list`                       |
-| `data`                                                           | 对象或返回对象的异步函数；认证头请在全局 `auth.headers` 中配置                  | `{}`                         |
-| `normal-upload-threshold`、`chunk-size`                          | 超过阈值时走分片；需 transport 支持分片                                         | 10 MiB、1 MiB                |
-| `chunk-concurrency`、`max-concurrent-files`、`max-concurrent-requests` | 分片/文件/请求并发限制                                                          | 3、2、6                      |
-| `resume`、`instant-upload`                                       | 续传和 SHA-256 秒传                                                             | `true`、`true`               |
-| `before-upload`、`before-remove`                                 | 返回 `false` 或 reject 可阻止上传/删除                                          | —                            |
+| 属性                                                                   | 说明                                                                             | 默认值                       |
+|------------------------------------------------------------------------|----------------------------------------------------------------------------------|------------------------------|
+| `action` / `transport`                                                 | 内置普通上传 URL / 自定义协议；同时传入时 `transport` 优先                       | —                            |
+| `create-action`、`delete-action`                                       | 上传前创建文件记录 / 按 `fileId` 清理远端文件及上传会话                          | —                            |
+| `v-model`、`default-file-list`                                         | 受控文件列表 / 非受控初始列表；远端回显建议提供 `uid`、`fileId`、`url`、`status` | `[]`                         |
+| `multiple`、`max-count`、`max-size`、`accept`                          | 选择和校验限制                                                                   | `true`、无限制、无限制、全部 |
+| `auto-upload`                                                          | 选择后立刻上传；关闭后调用实例 `submit()`                                        | `true`                       |
+| `drag`、`directory`                                                    | 启用整组件拖拽上传及操作区提示、浏览器支持的目录选择                             | `true`、`false`              |
+| `width`、`height`                                                      | 上传组件的 CSS 尺寸；数字按 px 处理。`height="auto"` 会填满具有明确高度的父容器  | `auto`、`600px`              |
+| `show-file-list`                                                       | 是否渲染内置列表                                                                 | `true`                       |
+| `pagination`                                                           | `false` 关闭，或传入受控分页状态；翻页后由业务方拉取对应文件并更新 `v-model`     | `false`                      |
+| `list-type`                                                            | `list`、`picture`、`picture-card`；后两者以图片墙卡片展示                        | `list`                       |
+| `data`                                                                 | 对象或返回对象的异步函数；认证头请在全局 `auth.headers` 中配置                   | `{}`                         |
+| `normal-upload-threshold`、`chunk-size`                                | 超过阈值时走分片；需 transport 支持分片                                          | 10 MiB、1 MiB                |
+| `chunk-concurrency`、`max-concurrent-files`、`max-concurrent-requests` | 分片/文件/请求并发限制                                                           | 3、2、6                      |
+| `resume`、`instant-upload`                                             | 续传和 SHA-256 秒传                                                              | `true`、`true`               |
+| `before-upload`、`before-remove`                                       | 返回 `false` 或 reject 可阻止上传/删除                                           | —                            |
 
-删除规则：`idle`、`validating`、`rejected` 文件直接从列表移除；其他已进入上传流程的状态会显示确认框。确认后组件调用 `transport.deleteFile(fileId)` 或 `delete-action` 清理后端资源，成功后才移除本地行。因此，为可远程清理的文件配置删除能力，并确保服务端返回稳定的 `fileId`。上传前通过 `transport.createFile()` 或 `create-action` 可让后端确认/分配该 ID；上传、重试和删除均会复用它。
+删除规则：`idle`、`validating`、`rejected` 文件直接从列表移除；其他已进入上传流程的状态会显示确认框。确认后组件调用
+`transport.deleteFile(fileId)` 或 `delete-action` 清理后端资源，成功后才移除本地行。因此，为可远程清理的文件配置删除能力，并确保服务端返回稳定的
+`fileId`。上传前通过 `transport.createFile()` 或 `create-action` 可让后端确认/分配该 ID；上传、重试和删除均会复用它。
 
 ## 事件、插槽与实例
 
-事件：`change(file, files)`、`progress(file, percent)`、`success(file, response)`、`error(file, error)`、`remove(file)`、`exceed(files)`；分页开启时还会发出 `update:pagination(value)` 和 `pagination-change(currentPage, pageSize)`；下载与归档还会发出 `download-start/success/error`、`archive-start/progress/success/error`。完整参数和事件表见[使用指南](../../docs/usage-guide.md#5-事件插槽与实例方法)。
+事件：`change(file, files)`、`progress(file, percent)`、`success(file, response)`、`error(file, error)`、`remove(file)`、
+`exceed(files)`；分页开启时还会发出 `update:pagination(value)` 和 `pagination-change(currentPage, pageSize)`；下载与归档还会发出
+`download-start/success/error`、`archive-start/progress/success/error`
+。完整参数和事件表见[使用指南](../../docs/usage-guide.md#5-事件插槽与实例方法)。
 
 ## 服务端分页
 
-分页默认关闭。组件只负责分页状态和交互，不请求文件列表，也不会将页码参数附加到上传、分片、删除或下载请求。开启后，业务方使用同一个文件列表接口按页取数，并将本页结果更新到 `v-model`：
+分页默认关闭。组件只负责分页状态和交互，不请求文件列表，也不会将页码参数附加到上传、分片、删除或下载请求。开启后，业务方使用同一个文件列表接口按页取数，并将本页结果更新到
+`v-model`：
 
 ```vue
 <script setup lang="ts">
@@ -204,13 +217,16 @@ async function loadFiles(currentPage: number, pageSize: number) {
 
 ## 文件后处理状态
 
-当分片已合并、文件仍在转存 COS、OSS 或 Blob Storage，或仍在做病毒扫描、转码等后端操作时，后端文件记录应为 `processing`。组件以该状态显示黄色“处理中”；文件在此期间不可预览、下载或参与批量下载。
+当分片已合并、文件仍在转存 COS、OSS 或 Blob Storage，或仍在做病毒扫描、转码等后端操作时，后端文件记录应为 `processing`
+。组件以该状态显示黄色“处理中”；文件在此期间不可预览、下载或参与批量下载。
 
-上传完成接口可返回 `{ "fileId": "...", "status": "processing" }`，组件会保持黄色状态。状态切换完全由后端更新数据库记录决定：业务方刷新文件列表后，将后端返回的 `status: "success"` 连同最终 `url` 更新到 `v-model`，组件才显示绿色“已完成”。组件不会轮询处理任务或自行把文件变为成功。
+上传完成接口可返回 `{ "fileId": "...", "status": "processing" }`，组件会保持黄色状态。状态切换完全由后端更新数据库记录决定：业务方刷新文件列表后，将后端返回的
+`status: "success"` 连同最终 `url` 更新到 `v-model`，组件才显示绿色“已完成”。组件不会轮询处理任务或自行把文件变为成功。
 
 - `#tip`：紧跟选择区的说明。
 - `#file="{ file, remove, preview, download, pause, resume, retry }"`：替换单个文件条目。
 
-通过 `ref` 可调用 `submit()`、`abort(file?)`、`pause(uid)`、`resume(uid)`、`retry(uid)`、`remove(uid)`、`clear()`/`clearFiles()`、`handleStart(file)`、`handleRemove(file)`；此外还提供下载与归档方法。
+通过 `ref` 可调用 `submit()`、`abort(file?)`、`pause(uid)`、`resume(uid)`、`retry(uid)`、`remove(uid)`、`clear()`/
+`clearFiles()`、`handleStart(file)`、`handleRemove(file)`；此外还提供下载与归档方法。
 
 完整后端分片协议见仓库根目录的 [`docs/backend-api.md`](../../docs/backend-api.md)。
