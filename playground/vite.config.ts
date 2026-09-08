@@ -5,6 +5,9 @@ import vue from '@vitejs/plugin-vue'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [vue()],
+  define: {
+    __VFU_ENABLE_HASH_WORKER__: 'true',
+  },
   resolve: {
     alias: {
       'vue-flow-upload': fileURLToPath(

@@ -196,6 +196,9 @@ const emit = defineEmits<{
 const internalFiles = ref<UploadFileItem[]>(
   normalizeFileList(props.modelValue ?? props.defaultFileList),
 )
+// Uids created by this instance identify transient upload work. Server pages
+// supplied through v-model are merged with these rows instead of replacing them.
+const localUploadUids = new Set<string>()
 /** 插件提供的 URL、认证和上传默认配置。 Plugin-provided URL, auth, and upload-default configuration. */
 const globalConfig = inject(vueFlowUploadConfigKey, {})
 /** 合并实例分页参数和应用默认值，但不负责加载服务端页面数据。 Merges per-instance pagination with application defaults without owning server data loading. */
@@ -254,7 +257,21 @@ watch(
   () => props.modelValue,
   (value) => {
     // 受控模式由外部模型覆盖本地状态，先补全可选字段。 A controlled model replaces local state; normalize optional fields first.
-    if (value !== undefined) internalFiles.value = normalizeFileList(value)
+    if (value === undefined) return
+    const incomingFiles = normalizeFileList(value)
+    const isLocalPending = (file: UploadFileItem) =>
+      localUploadUids.has(file.uid) && !['processing', 'success'].includes(file.status)
+    const serverFiles = incomingFiles.filter((file) => !isLocalPending(file))
+    const incomingTransient = incomingFiles.filter(isLocalPending)
+    const serverIds = new Set(
+      serverFiles.map((file) => file.fileId).filter((fileId): fileId is string => !!fileId),
+    )
+    const transient = [...internalFiles.value, ...incomingTransient].filter(
+      (file) => isLocalPending(file) && (!file.fileId || !serverIds.has(file.fileId)),
+    )
+    const byUid = new Map<string, UploadFileItem>()
+    for (const file of [...transient, ...serverFiles]) byUid.set(file.uid, file)
+    internalFiles.value = [...byUid.values()]
   },
 )
 
@@ -264,20 +281,23 @@ const files = computed(() => internalFiles.value)
  * 已完成文件保持服务端顺序，本地上传任务优先显示；同组保留原始顺序。
  * Completed files retain server order; local work appears first; order stays stable within a group.
  */
-const displayedFiles = computed(() =>
-  files.value
+const displayedFiles = computed(() => {
+  const local = files.value
+    .filter((file) => localUploadUids.has(file.uid) && !['processing', 'success'].includes(file.status))
     .map((file, index) => ({ file, index }))
     .sort((left, right) => {
-      const priority = (file: UploadFileItem) => {
-        if (['uploading', 'merging', 'processing'].includes(file.status)) return 0
-        if (['failed', 'rejected', 'canceled'].includes(file.status)) return 2
-        if (file.status === 'success') return 3
-        return 1
+      const priority = (status: UploadFileItem['status']) => {
+        if (['uploading', 'hashing', 'checking', 'preparing', 'merging'].includes(status)) return 0
+        if (['idle', 'queued', 'paused', 'validating'].includes(status)) return 1
+        if (['failed', 'rejected'].includes(status)) return 2
+        return 3
       }
-      return priority(left.file) - priority(right.file) || left.index - right.index
+      return priority(left.file.status) - priority(right.file.status) || left.index - right.index
     })
-    .map(({ file }) => file),
-)
+    .map(({ file }) => file)
+  const localUids = new Set(local.map((file) => file.uid))
+  return [...local, ...files.value.filter((file) => !localUids.has(file.uid))]
+})
 /** 由 disabled 与 permissions 推导、供子控件和组合式函数共享的能力。 Permission-derived capabilities shared by child controls and composables. */
 const canSelect = computed(() => !props.disabled && props.permissions.select !== false)
 const canUpload = computed(() => !props.disabled && props.permissions.upload !== false)
@@ -483,6 +503,7 @@ async function addFiles(selected: File[]) {
       percent: 0,
       file,
     }
+    localUploadUids.add(item.uid)
     updateFiles([...files.value, item], item)
     const error = await validate(file)
     if (error) {
@@ -630,6 +651,7 @@ async function removeImmediately(target: UploadFileItem) {
   }
   revokePreviewUrl(target.uid)
   removeSelection(target.uid)
+  localUploadUids.delete(target.uid)
   updateFiles(
     files.value.filter((file) => file.uid !== target.uid),
     target,
@@ -657,6 +679,7 @@ function clear() {
   clearPreviews()
   clearSelection()
   clearDownloads()
+  localUploadUids.clear()
   updateFiles([])
 }
 
