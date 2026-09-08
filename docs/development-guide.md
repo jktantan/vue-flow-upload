@@ -13,7 +13,8 @@ playground/                # Vite 手工验证页面，不发布
 docs/                      # 项目文档
 ```
 
-包入口由 `src/index.ts` 导出组件、类型、主题、国际化工厂和 `createHttpUploadTransport`；Nuxt 入口为 `src/nuxt.ts`。Vue 是 peer dependency。
+包入口由 `src/index.ts` 导出组件、类型、主题、国际化工厂和 `createHttpUploadTransport`；Nuxt 入口为 `src/nuxt.ts`。Vue 是
+peer dependency。
 
 ## 2. 环境与命令
 
@@ -44,12 +45,16 @@ pnpm format:check
 
 ## 4. 实现要点
 
-`useUploadQueue.ts` 负责创建文件记录（可选 `createFile`）、哈希、秒传检查、普通上传、分片初始化/上传/合并、暂停、重试和状态更新。`ChunkScheduler` 共享文件和请求并发槽位。`hash-service.ts` 使用 Worker 增量计算 SHA-256。`useDownloadManager.ts` 负责单文件下载和归档任务轮询。
+`useUploadQueue.ts` 负责创建文件记录（可选 `createFile`）、哈希、秒传检查、普通上传、分片初始化/上传/合并、暂停、重试和状态更新。
+`ChunkScheduler` 共享文件和请求并发槽位。`hash-service.ts` 使用 Worker 增量计算 SHA-256。`useDownloadManager.ts`
+负责单文件下载和归档任务轮询。
 
 当前 `FlowUpload` 没有粘贴上传、排序、`removeSelected` 暴露方法或 `getMultipartStatus` 传输方法；如需新增，先扩展类型、实现测试，再更新文档。
 
 ## 5. Playground 与质量门禁
 
-至少覆盖普通 `action` 上传、自定义 transport 的秒传/分片、暂停继续、失败重试、远程删除、列表与图片墙、预览、权限、国际化和归档下载。Mock 只模拟公共传输接口，不规定真实后端存储或鉴权。
+至少覆盖普通 `action` 上传、自定义 transport 的秒传/分片、暂停继续、失败重试、远程删除、列表与图片墙、预览、权限、国际化和归档下载。Mock
+只模拟公共传输接口，不规定真实后端存储或鉴权。
 
-提交前运行 `pnpm typecheck`、`pnpm lint`、`pnpm test`、`pnpm build`。只在 `packages/vue-flow-upload` 目录发布：构建后执行 `npm pack --dry-run`，确认仅包含 `dist`、README、LICENSE、package.json，再执行 `npm publish`。版本遵循 SemVer。
+提交前运行 `pnpm typecheck`、`pnpm lint`、`pnpm test`、`pnpm build`。只在 `packages/vue-flow-upload` 目录发布：构建后执行
+`npm pack --dry-run`，确认仅包含 `dist`、README、LICENSE、package.json，再执行 `npm publish`。版本遵循 SemVer。

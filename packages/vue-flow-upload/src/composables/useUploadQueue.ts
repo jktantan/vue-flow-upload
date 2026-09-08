@@ -173,8 +173,12 @@ export function useUploadQueue(options: UploadQueueOptions) {
       try {
         return await requireTransport().uploadFile(
           { file, fileId, data },
-          requestContext(data, await options.resolveHeaders(), await options.resolveQuery(), controller, (loaded, total) =>
-            updateProgress(uid, loaded, total),
+          requestContext(
+            data,
+            await options.resolveHeaders(),
+            await options.resolveQuery(),
+            controller,
+            (loaded, total) => updateProgress(uid, loaded, total),
           ),
         )
       } finally {
@@ -229,14 +233,20 @@ export function useUploadQueue(options: UploadQueueOptions) {
                   chunkSize,
                   file: fileMeta(file, sha256, fileId),
                 },
-                requestContext(data, await options.resolveHeaders(), await options.resolveQuery(), controller, (loaded) => {
-                  progress[index] = Math.min(chunk.size, loaded)
-                  updateProgress(
-                    uid,
-                    progress.reduce((sum, value) => sum + value, 0),
-                    file.size,
-                  )
-                }),
+                requestContext(
+                  data,
+                  await options.resolveHeaders(),
+                  await options.resolveQuery(),
+                  controller,
+                  (loaded) => {
+                    progress[index] = Math.min(chunk.size, loaded)
+                    updateProgress(
+                      uid,
+                      progress.reduce((sum, value) => sum + value, 0),
+                      file.size,
+                    )
+                  },
+                ),
               ),
             )
             progress[index] = chunk.size

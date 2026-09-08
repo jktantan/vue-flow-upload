@@ -1,7 +1,4 @@
 {
   "files": [],
-  "references": [
-    { "path": "./packages/vue-flow-upload" },
-    { "path": "./playground" }
-  ]
+  "references": [{ "path": "./packages/vue-flow-upload" }, { "path": "./playground" }]
 }
