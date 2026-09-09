@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { onBeforeUnmount, ref } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import {
   FlowUpload,
   AvatarUpload,
+  createHttpUploadTransport,
   type DownloadTransport,
   type UploadFileItem,
   type UploadTransport,
@@ -49,6 +50,8 @@ const files = ref<UploadFileItem[]>([
   },
 ])
 const autoUpload = ref(true)
+const mode = ref<'mock' | 'local'>('mock')
+const clearing = ref(false)
 const drag = ref(true)
 const loading = ref(false)
 const listType = ref<'list' | 'picture'>('list')
@@ -76,7 +79,7 @@ onBeforeUnmount(() => {
   if (loadingTimer !== undefined) window.clearTimeout(loadingTimer)
 })
 
-const transport: UploadTransport = {
+const mockTransport: UploadTransport = {
   createFile({ fileId, name }) {
     eventLog.value.unshift(`创建文件记录：${name}`)
     return Promise.resolve({ fileId: fileId ?? `demo-file-${Date.now()}` })
@@ -155,6 +158,19 @@ const transport: UploadTransport = {
   },
 }
 
+const localTransport = createHttpUploadTransport({
+  url: '/api/files/upload',
+  createUrl: '/api/files',
+  deleteUrl: (fileId) => `/api/files/${encodeURIComponent(fileId)}`,
+  checkUrl: '/api/files/check',
+  multipart: {
+    initUrl: '/api/multipart/init',
+    chunkUrl: (uploadId, index) => `/api/multipart/${encodeURIComponent(uploadId)}/chunks/${index}`,
+    completeUrl: (uploadId) => `/api/multipart/${encodeURIComponent(uploadId)}/complete`,
+  },
+})
+const activeTransport = computed(() => (mode.value === 'local' ? localTransport : mockTransport))
+
 const downloadTransport: DownloadTransport = {
   downloadFile({ fileName }) {
     return Promise.resolve({ blob: new window.Blob([`Mock download: ${fileName}`]), fileName })
@@ -174,6 +190,74 @@ const downloadTransport: DownloadTransport = {
     })
   },
 }
+
+const localDownloadTransport: DownloadTransport = {
+  async downloadFile({ fileId, fileName }) {
+    const response = await fetch(`/api/files/${encodeURIComponent(fileId)}/download`)
+    if (!response.ok) throw new Error(`下载失败（${response.status}）`)
+    return { blob: await response.blob(), fileName }
+  },
+  async createArchive({ fileIds }) {
+    const response = await fetch('/api/archives', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fileIds }),
+    })
+    if (!response.ok) throw new Error(`创建打包下载失败（${response.status}）`)
+    return response.json()
+  },
+  async getArchiveTask(taskId) {
+    const response = await fetch(`/api/archives/${encodeURIComponent(taskId)}`)
+    if (!response.ok) throw new Error(`读取打包下载状态失败（${response.status}）`)
+    return response.json()
+  },
+}
+const activeDownloadTransport = computed(() =>
+  mode.value === 'local' ? localDownloadTransport : downloadTransport,
+)
+
+async function loadLocalFiles() {
+  const response = await fetch('/api/files')
+  if (!response.ok) throw new Error(`加载本地文件失败（${response.status}）`)
+  const result = (await response.json()) as {
+    files: Array<{ fileId: string; name: string; size: number; mimeType: string; url: string }>
+    total: number
+  }
+  files.value = result.files.map((file) => ({
+    uid: file.fileId,
+    fileId: file.fileId,
+    name: file.name,
+    size: file.size,
+    type: file.mimeType,
+    status: 'success',
+    percent: 100,
+    url: file.url,
+  }))
+  pagination.value = { ...pagination.value, total: result.total }
+  eventLog.value.unshift(`已加载 ${result.total} 个本地文件`)
+}
+
+async function clearLocalData() {
+  if (!window.confirm('将永久删除本地 SQLite 记录、已上传文件和未完成分片会话，是否继续？')) return
+  clearing.value = true
+  try {
+    const response = await fetch('/api/test/reset', { method: 'POST' })
+    if (!response.ok) throw new Error(`清空失败（${response.status}）`)
+    files.value = []
+    pagination.value = { ...pagination.value, total: 0 }
+    avatar.value = []
+    eventLog.value.unshift('已清空本地 SQLite 与上传目录')
+  } catch (error) {
+    eventLog.value.unshift(error instanceof Error ? error.message : '清空本地数据失败')
+  } finally {
+    clearing.value = false
+  }
+}
+
+watch(mode, (value) => {
+  if (value === 'local')
+    void loadLocalFiles().catch((error) => eventLog.value.unshift(error.message))
+})
 </script>
 
 <template>
@@ -189,18 +273,32 @@ const downloadTransport: DownloadTransport = {
           <label><input v-model="listType" type="radio" value="list" /> 列表</label>
           <label><input v-model="listType" type="radio" value="picture" /> 图片墙</label>
         </fieldset>
+        <fieldset class="layout-choice">
+          <legend>传输模式</legend>
+          <label><input v-model="mode" type="radio" value="mock" /> Mock</label>
+          <label><input v-model="mode" type="radio" value="local" /> 本地 SQLite</label>
+        </fieldset>
         <label class="switch"><input v-model="autoUpload" type="checkbox" /> 选择后自动上传</label>
         <label class="switch"><input v-model="drag" type="checkbox" /> 启用拖拽上传</label>
         <button type="button" class="loading-test" :disabled="loading" @click="testLoading">
           {{ loading ? '加载中...' : '测试 loading（3秒）' }}
+        </button>
+        <button
+          v-if="mode === 'local'"
+          type="button"
+          class="clear-test"
+          :disabled="clearing"
+          @click="clearLocalData"
+        >
+          {{ clearing ? '清空中...' : '清空本地测试数据' }}
         </button>
       </div>
     </header>
     <FlowUpload
       v-model="files"
       v-model:pagination="pagination"
-      :transport="transport"
-      :download-transport="downloadTransport"
+      :transport="activeTransport"
+      :download-transport="activeDownloadTransport"
       accept="image/*,.pdf"
       :max-size="20 * 1024 * 1024"
       :data="{ source: 'playground', scene: 'm3' }"
@@ -216,6 +314,8 @@ const downloadTransport: DownloadTransport = {
       :list-type="listType"
       selectable
       @error="(_, error) => eventLog.unshift(`错误：${error.message}`)"
+      @archive-success="(taskId) => eventLog.unshift(`打包下载已开始：${taskId}`)"
+      @archive-error="(_, error) => eventLog.unshift(`打包下载错误：${error.message}`)"
       @pagination-change="
         (page, size) => eventLog.unshift(`分页切换：第 ${page} 页，每页 ${size} 条`)
       "
@@ -225,7 +325,7 @@ const downloadTransport: DownloadTransport = {
       <p>支持点击或拖拽选择，选中后先裁剪再上传。</p>
       <AvatarUpload
         v-model="avatar"
-        :transport="transport"
+        :transport="activeTransport"
         :update-action="avatarUpdateAction"
         accept="image/*"
         :data="{ source: 'playground', scene: 'avatar' }"
@@ -289,6 +389,20 @@ h1 {
 }
 .loading-test:hover:not(:disabled) {
   border-color: #2f6bff;
+}
+.clear-test {
+  border: 1px solid #f0a9a9;
+  border-radius: 4px;
+  padding: 6px 10px;
+  background: #fff;
+  color: #c0392b;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.clear-test:disabled {
+  color: #aeb8c8;
+  cursor: wait;
 }
 .loading-test:disabled {
   color: #aeb8c8;

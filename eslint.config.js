@@ -15,6 +15,7 @@ export default tseslint.config(
         Event: 'readonly',
         File: 'readonly',
         FormData: 'readonly',
+        fetch: 'readonly',
         HTMLInputElement: 'readonly',
         XMLHttpRequest: 'readonly',
         crypto: 'readonly',
