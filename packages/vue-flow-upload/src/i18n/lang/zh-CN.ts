@@ -51,6 +51,7 @@ export default {
     noDownloadFilesToast: '请选择需要下载的文件',
     noRemoveFilesToast: '请选择需要删除的文件',
     uploadFile: '上传文件',
+    noData: '暂无数据',
     avatar: '头像',
     avatarInvalidType: '请选择符合格式要求的头像图片',
     avatarTooLarge: '头像图片超过允许大小',

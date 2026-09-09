@@ -1,0 +1,26 @@
+<!--
+  Adapted from Element Plus' ImgEmpty illustration (MIT License):
+  https://github.com/element-plus/element-plus/blob/dev/packages/components/empty/src/img-empty.vue
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 79 86" fill="none">
+  <defs>
+    <linearGradient id="vfu-empty-front" x1="13" y1="45" x2="53" y2="81" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#DCE7FF"/>
+      <stop offset="1" stop-color="#B9CFFF"/>
+    </linearGradient>
+    <linearGradient id="vfu-empty-page" x1="38" y1="7" x2="55" y2="43" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#EEF4FF"/>
+      <stop offset="1" stop-color="#D5E3FF"/>
+    </linearGradient>
+  </defs>
+  <path d="M39.5 86C61.315 86 79 83.911 79 81.333 79 78.756 57.315 78 35.5 78S0 78.756 0 81.333C0 83.911 17.685 86 39.5 86Z" fill="#E7EDF8"/>
+  <path d="m13 58 40 0-11-13H2l11 13Z" fill="#C7D8F8"/>
+  <path d="m7 13 18 0 5 4H12l-5-4Z" fill="#C7D8F8"/>
+  <path d="M7 17h38v36H7V17Z" fill="#F1F5FE"/>
+  <path d="M38 17h17v36H38V17Z" fill="url(#vfu-empty-page)"/>
+  <path d="m24 17 17 0 14-7H38l-14 7Z" fill="#B9CFFF"/>
+  <path d="M13 45h40v36H13V45Z" fill="url(#vfu-empty-front)"/>
+  <path d="M53 45h17v36H53V45Z" fill="#C7D8F8"/>
+  <path d="m62 45 17 0-9 13H53l9-13Z" fill="#B9CFFF"/>
+  <path d="m60 45 12 0-4 18-12-2 4-16Z" fill="#E6EEFD"/>
+</svg>

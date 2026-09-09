@@ -187,6 +187,30 @@
   overflow: auto;
 }
 
+.vfu-upload__empty {
+  display: grid;
+  flex: 1 1 auto;
+  min-height: 0;
+  place-content: center;
+  justify-items: center;
+  gap: 10px;
+  border: 1px solid var(--vfu-line);
+  color: #909399;
+  text-align: center;
+}
+
+.vfu-upload__empty img {
+  display: block;
+  width: 118px;
+  height: 128px;
+}
+
+.vfu-upload__empty p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
 .vfu-upload__loading-mask {
   position: absolute;
   z-index: 5;

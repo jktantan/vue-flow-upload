@@ -51,6 +51,7 @@ export default {
     noDownloadFilesToast: 'Please select files to download',
     noRemoveFilesToast: 'Please select files to remove',
     uploadFile: 'Upload files',
+    noData: 'No data',
     avatar: 'Avatar',
     avatarInvalidType: 'Please select an avatar image in an accepted format',
     avatarTooLarge: 'Avatar image exceeds the allowed size',

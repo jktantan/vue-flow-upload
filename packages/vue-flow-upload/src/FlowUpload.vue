@@ -14,6 +14,7 @@ import UploadFooter from './components/UploadFooter.vue'
 import UploadRemoveDialog from './components/UploadRemoveDialog.vue'
 import UploadToolbars from './components/UploadToolbars.vue'
 import UploadTrigger from './components/UploadTrigger.vue'
+import emptySvg from './assets/empty.svg'
 import loadingSvg from './assets/loading.svg'
 import { useDownloadManager } from './composables/useDownloadManager'
 import { useFilePreview } from './composables/useFilePreview'
@@ -829,6 +830,15 @@ defineExpose({
     </div>
 
     <div class="vfu-upload__display" :aria-busy="loading || undefined">
+      <div
+        v-if="showFileList && !displayedFiles.length && !loading"
+        class="vfu-upload__empty"
+        role="status"
+        aria-live="polite"
+      >
+        <img :src="emptySvg" alt="" aria-hidden="true" />
+        <p>{{ text.noData }}</p>
+      </div>
       <UploadPictureWall
         v-if="listType === 'picture' || listType === 'picture-card'"
         :files="displayedFiles"

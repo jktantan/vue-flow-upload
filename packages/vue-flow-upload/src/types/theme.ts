@@ -47,6 +47,7 @@ export interface UploadMessages {
   noDownloadFilesToast: string
   noRemoveFilesToast: string
   uploadFile: string
+  noData: string
   avatar: string
   avatarInvalidType: string
   avatarTooLarge: string
