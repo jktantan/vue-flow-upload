@@ -13,6 +13,7 @@ const props = defineProps<{
   confirmText: string
   processingText: string
 }>()
+const emit = defineEmits<{ cancel: []; confirm: [] }>()
 
 // 将待删除文件名汇总到确认文案，供单个和批量删除共用。 Summarize pending names for both single and batch removal copy.
 const names = computed(() => props.files.map((file) => file.name).join('、'))
@@ -30,8 +31,8 @@ const names = computed(() => props.files.map((file) => file.name).join('、'))
           <p v-if="error" class="vfu-confirm__error">{{ error }}</p>
         </div>
         <footer>
-          <button type="button" :disabled="busy" @click="$emit('cancel')">{{ cancelText }}</button>
-          <button class="is-danger" type="button" :disabled="busy" @click="$emit('confirm')">
+          <button type="button" :disabled="busy" @click="emit('cancel')">{{ cancelText }}</button>
+          <button class="is-danger" type="button" :disabled="busy" @click="emit('confirm')">
             {{ busy ? processingText : confirmText }}
           </button>
         </footer>

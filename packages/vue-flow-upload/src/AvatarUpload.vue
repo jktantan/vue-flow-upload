@@ -1,4 +1,5 @@
 <script setup lang="ts">
+/* eslint-disable vue/require-default-prop -- omitted values are semantically distinct in the public API */
 import { computed, inject, onBeforeUnmount, ref, watch } from 'vue'
 import { useCropper } from 'vue-picture-cropper'
 import 'cropperjs/dist/cropper.css'
@@ -8,7 +9,12 @@ import { useI18n } from 'vue-i18n-lite'
 import { createFlowUploadI18n, getUploadMessages } from './i18n'
 import 'viewerjs/dist/viewer.css'
 import defaultAvatar from './assets/default-avatar.svg?url'
-import { createHttpUploadTransport, resolveRequestUrl } from './core/http-transport'
+import {
+  appendQuery,
+  createHttpUploadTransport,
+  resolveRequestUrl,
+  withoutContentType,
+} from './core/http-transport'
 import { vueFlowUploadConfigKey } from './config'
 import { createUid, matchesAccept, normalizeFileList, toCssSize } from './utils/file'
 import type {
@@ -54,6 +60,8 @@ const globalConfig = inject(vueFlowUploadConfigKey, {})
 const selectedFile = ref<File>()
 /** 作为裁剪器图片源传入的对象 URL。 Object URL passed to the cropper as its image source. */
 const source = ref('')
+/** Object URLs created for local post-upload display; external URLs are never revoked by this component. */
+const generatedAvatarUrls = new Set<string>()
 /** 控制裁剪对话框是否显示。 Controls the cropper dialog visibility. */
 const editorVisible = ref(false)
 /** 驱动编辑器拖放区域的悬停视觉状态。 Drives the drag-over visual state in the editor drop zone. */
@@ -69,7 +77,9 @@ const imageSrc = computed(() => avatar.value?.url || avatar.value?.thumbnailUrl 
 /** Permission-derived UI capabilities. */
 const canSelect = computed(() => !props.disabled && props.permissions.select !== false)
 const canRemove = computed(() => !props.disabled && props.permissions.remove !== false)
-const canPreview = computed(() => props.preview && props.permissions.preview !== false)
+const canPreview = computed(
+  () => !props.disabled && props.preview && props.permissions.preview !== false,
+)
 /** Host i18n instance takes precedence over this component's fallback dictionary. */
 const inheritedI18n = useI18n()
 const localI18n = createFlowUploadI18n()
@@ -103,9 +113,20 @@ watch(
     if (value !== undefined) files.value = normalizeFileList(value)
   },
 )
-onBeforeUnmount(revokeSource)
+onBeforeUnmount(() => {
+  revokeSource()
+  for (const url of generatedAvatarUrls) URL.revokeObjectURL(url)
+  generatedAvatarUrls.clear()
+})
 function update(next: UploadFileItem[], changed?: UploadFileItem) {
   // Keep local state, v-model, and the optional change notification in one place.
+  const retainedUrls = new Set(next.map((file) => file.url).filter((url): url is string => !!url))
+  for (const url of generatedAvatarUrls) {
+    if (!retainedUrls.has(url)) {
+      URL.revokeObjectURL(url)
+      generatedAvatarUrls.delete(url)
+    }
+  }
   files.value = next
   emit('update:modelValue', next)
   if (changed) emit('change', changed, next)
@@ -115,7 +136,7 @@ function revokeSource() {
   if (source.value) URL.revokeObjectURL(source.value)
   source.value = ''
 }
-function preview() {
+function previewAvatar() {
   // Viewer receives the resolved displayed image, including local object URLs.
   if (canPreview.value) viewerApi({ images: [imageSrc.value], options: { title: false } })
 }
@@ -201,14 +222,17 @@ async function upload() {
       formData.append('file', cropped)
       formData.append('fileId', existing.fileId ?? '')
       const result = await fetch(
-        resolveRequestUrl(
-          props.updateAction.replace('{fileId}', encodeURIComponent(existing.fileId ?? '')),
-          globalConfig.baseUrl,
+        appendQuery(
+          resolveRequestUrl(
+            props.updateAction.replace('{fileId}', encodeURIComponent(existing.fileId ?? '')),
+            globalConfig.baseUrl,
+          ),
+          await resolveQuery(),
         ),
         {
           method: 'PUT',
           body: formData,
-          headers: await resolveHeaders(),
+          headers: withoutContentType(await resolveHeaders()),
           credentials: globalConfig.auth?.credentials,
         },
       )
@@ -236,6 +260,8 @@ async function upload() {
       )
     } else throw new Error(text.value.avatarTransportNotConfigured)
     // Preserve stable uid/fileId on replacement while accepting authoritative response metadata.
+    const localUrl = response.url ? undefined : URL.createObjectURL(cropped)
+    if (localUrl) generatedAvatarUrls.add(localUrl)
     const item: UploadFileItem = {
       uid: existing?.uid ?? createUid(),
       fileId: response.fileId ?? existing?.fileId,
@@ -245,7 +271,7 @@ async function upload() {
       status: 'success',
       percent: 100,
       file: cropped,
-      url: response.url ?? URL.createObjectURL(cropped),
+      url: response.url ?? localUrl,
       thumbnailUrl: response.thumbnailUrl,
     }
     update([item], item)
@@ -299,7 +325,7 @@ async function remove() {
           class="vfu-action"
           type="button"
           :data-tooltip="text.avatarPreview"
-          @click.stop="preview"
+          @click.stop="previewAvatar"
         >
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" />

@@ -290,7 +290,8 @@ function resolveChunkUrl(
         .replace('{index}', String(chunkIndex ?? ''))
 }
 
-function appendQuery(url: string, query?: Record<string, string | number | boolean>) {
+/** Appends common auth/query parameters for both XHR transports and fetch-based component requests. */
+export function appendQuery(url: string, query?: Record<string, string | number | boolean>) {
   if (!query || !Object.keys(query).length) return url
   const target = new URL(
     url,
@@ -298,6 +299,13 @@ function appendQuery(url: string, query?: Record<string, string | number | boole
   )
   for (const [key, value] of Object.entries(query)) target.searchParams.set(key, String(value))
   return target.toString()
+}
+
+/** FormData owns its multipart boundary, so caller-provided Content-Type must be omitted. */
+export function withoutContentType(headers: Record<string, string>) {
+  return Object.fromEntries(
+    Object.entries(headers).filter(([key]) => key.toLowerCase() !== 'content-type'),
+  )
 }
 
 function parseJsonResponse(request: XMLHttpRequest): UploadSuccessResult {

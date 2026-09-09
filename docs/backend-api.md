@@ -37,7 +37,14 @@
 修改）、`fileId`（必填）和 `data`（JSON 字符串，可由 `dataFieldName` 修改）。成功返回：
 
 ```json
-{"fileId":"file_01...","name":"report.pdf","size":1048576,"mimeType":"application/pdf","url":"https://cdn.example/files/file_01...","thumbnailUrl":"https://cdn.example/thumbs/file_01..."}
+{
+  "fileId": "file_01...",
+  "name": "report.pdf",
+  "size": 1048576,
+  "mimeType": "application/pdf",
+  "url": "https://cdn.example/files/file_01...",
+  "thumbnailUrl": "https://cdn.example/thumbs/file_01..."
+}
 ```
 
 `url`、`thumbnailUrl` 可选；204 或空 2xx 响应也可被内置适配器接受，但建议返回完整文件结果。
@@ -123,7 +130,12 @@ index 合并并校验大小/哈希。若文件已经可用，返回 `UploadSucce
 ## 5. 错误与验收
 
 ```json
-{"code":"SESSION_EXPIRED","message":"upload session expired","retriable":false,"requestId":"req_01..."}
+{
+  "code": "SESSION_EXPIRED",
+  "message": "upload session expired",
+  "retriable": false,
+  "requestId": "req_01..."
+}
 ```
 
 建议使用 400（参数/分片非法）、401、403、404、409、413、415、429、5xx，并在 429 返回 `Retry-After`。内置适配器不解析

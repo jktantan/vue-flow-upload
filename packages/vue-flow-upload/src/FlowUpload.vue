@@ -284,7 +284,9 @@ const files = computed(() => internalFiles.value)
  */
 const displayedFiles = computed(() => {
   const local = files.value
-    .filter((file) => localUploadUids.has(file.uid) && !['processing', 'success'].includes(file.status))
+    .filter(
+      (file) => localUploadUids.has(file.uid) && !['processing', 'success'].includes(file.status),
+    )
     .map((file, index) => ({ file, index }))
     .sort((left, right) => {
       const priority = (status: UploadFileItem['status']) => {
