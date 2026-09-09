@@ -9,6 +9,13 @@ import {
   type UploadTransport,
 } from 'vue-flow-upload'
 
+type Pagination = {
+  total?: number
+  currentPage?: number
+  pageSize?: number
+  pageSizes?: number[]
+}
+
 const files = ref<UploadFileItem[]>([
   {
     uid: 'sample-pending',
@@ -55,6 +62,7 @@ const clearing = ref(false)
 const drag = ref(true)
 const loading = ref(false)
 const listType = ref<'list' | 'picture'>('list')
+const paginationEnabled = ref(true)
 const pagination = ref({
   total: files.value.length,
   currentPage: 1,
@@ -65,6 +73,7 @@ const eventLog = ref<string[]>([])
 const avatar = ref<UploadFileItem[]>([])
 const avatarUpdateAction = '/api/avatar/{fileId}'
 let loadingTimer: number | undefined
+let listRequestId = 0
 
 function testLoading() {
   if (loadingTimer !== undefined) window.clearTimeout(loadingTimer)
@@ -216,25 +225,50 @@ const activeDownloadTransport = computed(() =>
   mode.value === 'local' ? localDownloadTransport : downloadTransport,
 )
 
-async function loadLocalFiles() {
-  const response = await fetch('/api/files')
-  if (!response.ok) throw new Error(`加载本地文件失败（${response.status}）`)
-  const result = (await response.json()) as {
-    files: Array<{ fileId: string; name: string; size: number; mimeType: string; url: string }>
-    total: number
+async function loadLocalFiles(
+  currentPage = pagination.value.currentPage,
+  pageSize = pagination.value.pageSize,
+) {
+  const requestId = ++listRequestId
+  const query = new window.URLSearchParams({
+    pagination: String(paginationEnabled.value),
+    currentPage: String(currentPage),
+    pageSize: String(pageSize),
+  })
+  loading.value = true
+  try {
+    const response = await fetch(`/api/files?${query}`)
+    if (!response.ok) throw new Error(`加载本地文件失败（${response.status}）`)
+    const result = (await response.json()) as {
+      files: Array<{ fileId: string; name: string; size: number; mimeType: string; url: string }>
+      total: number
+    }
+    // A slower, earlier request must not overwrite the latest page.
+    if (requestId !== listRequestId) return
+    files.value = result.files.map((file) => ({
+      uid: file.fileId,
+      fileId: file.fileId,
+      name: file.name,
+      size: file.size,
+      type: file.mimeType,
+      status: 'success',
+      percent: 100,
+      url: file.url,
+    }))
+    pagination.value = { ...pagination.value, currentPage, pageSize, total: result.total }
+    eventLog.value.unshift(
+      paginationEnabled.value
+        ? `已加载第 ${currentPage} 页，共 ${result.total} 个本地文件`
+        : `已加载全部 ${result.total} 个本地文件`,
+    )
+  } catch (error) {
+    if (requestId !== listRequestId) return
+    const message = error instanceof Error ? error.message : '加载本地文件失败'
+    eventLog.value.unshift(message)
+    window.alert(message)
+  } finally {
+    if (requestId === listRequestId) loading.value = false
   }
-  files.value = result.files.map((file) => ({
-    uid: file.fileId,
-    fileId: file.fileId,
-    name: file.name,
-    size: file.size,
-    type: file.mimeType,
-    status: 'success',
-    percent: 100,
-    url: file.url,
-  }))
-  pagination.value = { ...pagination.value, total: result.total }
-  eventLog.value.unshift(`已加载 ${result.total} 个本地文件`)
 }
 
 async function clearLocalData() {
@@ -255,9 +289,30 @@ async function clearLocalData() {
 }
 
 watch(mode, (value) => {
-  if (value === 'local')
-    void loadLocalFiles().catch((error) => eventLog.value.unshift(error.message))
+  if (value === 'local') void loadLocalFiles()
 })
+
+watch(paginationEnabled, () => {
+  pagination.value = { ...pagination.value, currentPage: 1 }
+  if (mode.value === 'local') void loadLocalFiles(1, pagination.value.pageSize)
+})
+
+function handlePaginationChange(currentPage: number, pageSize: number) {
+  if (mode.value === 'local') {
+    void loadLocalFiles(currentPage, pageSize)
+    return
+  }
+  eventLog.value.unshift(`分页切换：第 ${currentPage} 页，每页 ${pageSize} 条`)
+}
+
+function updatePagination(value: Pagination) {
+  pagination.value = {
+    total: value.total ?? pagination.value.total,
+    currentPage: value.currentPage ?? pagination.value.currentPage,
+    pageSize: value.pageSize ?? pagination.value.pageSize,
+    pageSizes: value.pageSizes ?? pagination.value.pageSizes,
+  }
+}
 </script>
 
 <template>
@@ -280,6 +335,7 @@ watch(mode, (value) => {
         </fieldset>
         <label class="switch"><input v-model="autoUpload" type="checkbox" /> 选择后自动上传</label>
         <label class="switch"><input v-model="drag" type="checkbox" /> 启用拖拽上传</label>
+        <label class="switch"><input v-model="paginationEnabled" type="checkbox" /> 启用分页</label>
         <button type="button" class="loading-test" :disabled="loading" @click="testLoading">
           {{ loading ? '加载中...' : '测试 loading（3秒）' }}
         </button>
@@ -296,7 +352,7 @@ watch(mode, (value) => {
     </header>
     <FlowUpload
       v-model="files"
-      v-model:pagination="pagination"
+      :pagination="paginationEnabled ? pagination : false"
       :transport="activeTransport"
       :download-transport="activeDownloadTransport"
       accept="image/*,.pdf"
@@ -313,12 +369,11 @@ watch(mode, (value) => {
       :max-concurrent-requests="3"
       :list-type="listType"
       selectable
+      @update:pagination="updatePagination"
       @error="(_, error) => eventLog.unshift(`错误：${error.message}`)"
       @archive-success="(taskId) => eventLog.unshift(`打包下载已开始：${taskId}`)"
       @archive-error="(_, error) => eventLog.unshift(`打包下载错误：${error.message}`)"
-      @pagination-change="
-        (page, size) => eventLog.unshift(`分页切换：第 ${page} 页，每页 ${size} 条`)
-      "
+      @pagination-change="handlePaginationChange"
     />
     <section class="avatar-demo">
       <h2>头像上传</h2>

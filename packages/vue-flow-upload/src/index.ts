@@ -38,6 +38,8 @@ export type {
   UploadTransport,
   UploadUserFile,
   UploadMessages,
+  UploadPagination,
+  UploadPaginationConfig,
   UploadTheme,
   ThemeAdapter,
 } from './types'

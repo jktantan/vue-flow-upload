@@ -157,7 +157,7 @@ createApp(App).use(createFlowUploadI18n({ locale: 'en-US' }))
 ## 常用属性（摘要）
 
 | 属性                                                                   | 说明                                                                             | 默认值                       |
-|------------------------------------------------------------------------|----------------------------------------------------------------------------------|------------------------------|
+| ---------------------------------------------------------------------- | -------------------------------------------------------------------------------- | ---------------------------- |
 | `action` / `transport`                                                 | 内置普通上传 URL / 自定义协议；同时传入时 `transport` 优先                       | —                            |
 | `create-action`、`delete-action`                                       | 上传前创建文件记录 / 按 `fileId` 清理远端文件及上传会话                          | —                            |
 | `v-model`、`default-file-list`                                         | 受控文件列表 / 非受控初始列表；远端回显建议提供 `uid`、`fileId`、`url`、`status` | `[]`                         |
@@ -195,25 +195,36 @@ createApp(App).use(createFlowUploadI18n({ locale: 'en-US' }))
 import { ref } from 'vue'
 
 const files = ref([])
+const loading = ref(false)
 const pagination = ref({ total: 0, currentPage: 1, pageSize: 20 })
+const paginationEnabled = ref(true)
 
 async function loadFiles(currentPage: number, pageSize: number) {
-  const result = await api.get('/api/files', { params: { pageNum: currentPage, pageSize } })
-  files.value = result.rows
-  pagination.value = { ...pagination.value, currentPage, pageSize, total: result.total }
+  loading.value = true
+  try {
+    const result = await api.get('/api/files', {
+      params: { pagination: paginationEnabled.value, currentPage, pageSize },
+    })
+    files.value = result.files
+    pagination.value = { ...pagination.value, currentPage, pageSize, total: result.total }
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 
 <template>
   <FlowUpload
     v-model="files"
-    v-model:pagination="pagination"
+    :pagination="paginationEnabled ? pagination : false"
+    :loading="loading"
+    @update:pagination="(value) => (pagination = value)"
     @pagination-change="loadFiles"
   />
 </template>
 ```
 
-后端字段名（如 `pageNum/pageSize` 或 `page/limit`）与响应结构由业务请求层适配；组件不规定它们。关闭分页时，调用方直接传入完整文件列表。
+后端字段名与响应结构由业务请求层适配；建议在每次请求中都传入分页开关（如 `pagination`）以及页码参数，使同一个列表接口在开关两种情况下均返回相同结构。关闭分页时传 `:pagination="false"`，组件不会渲染 footer。
 
 ## 文件后处理状态
 

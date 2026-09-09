@@ -157,7 +157,15 @@ export function localUploadApi(): Plugin {
       const rows = db
         .prepare('SELECT * FROM files WHERE path IS NOT NULL ORDER BY created_at DESC')
         .all() as FileRow[]
-      return json(response, 200, { files: rows.map(fileResult), total: rows.length })
+      // The list endpoint always returns the same shape. The client tells us
+      // whether it needs a page, so both modes use this one endpoint.
+      const paginationEnabled = url.searchParams.get('pagination') === 'true'
+      const currentPage = positiveInteger(url.searchParams.get('currentPage'), 1)
+      const pageSize = positiveInteger(url.searchParams.get('pageSize'), 10)
+      const files = paginationEnabled
+        ? rows.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+        : rows
+      return json(response, 200, { files: files.map(fileResult), total: rows.length })
     }
     if (method === 'POST' && path === '/api/archives') {
       const input = await bodyJson(request)
@@ -422,6 +430,10 @@ function string(value: unknown) {
 }
 function number(value: unknown) {
   return typeof value === 'number' && Number.isFinite(value) ? value : 0
+}
+function positiveInteger(value: string | null, fallback: number) {
+  const parsed = Number(value)
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback
 }
 function json(response: ServerResponse, status: number, payload: unknown) {
   response.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' })
