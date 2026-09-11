@@ -42,17 +42,21 @@ function triggerDownload(url?: string, blob?: Blob, fileName = 'download') {
 }
 
 function delay(milliseconds: number, signal: AbortSignal) {
-  // Make polling waits abortable so cancelling an archive stops immediately.
+  // 轮询等待支持取消，且正常完成时移除监听器，避免长期任务累积过期闭包。
+  // Make polling waits abortable and remove the listener after normal completion to avoid stale closures in long tasks.
+  if (signal.aborted) return Promise.reject(makeUploadError('ABORTED', '下载任务已取消', false))
   return new Promise<void>((resolve, reject) => {
-    const timer = window.setTimeout(resolve, milliseconds)
-    signal.addEventListener(
-      'abort',
-      () => {
-        window.clearTimeout(timer)
-        reject(makeUploadError('ABORTED', '下载任务已取消', false))
-      },
-      { once: true },
-    )
+    /** 轮询计时器到期后先解除取消监听再继续下一次请求。 Clears the cancellation listener before proceeding to the next polling request. */
+    const timer = window.setTimeout(() => {
+      signal.removeEventListener('abort', handleAbort)
+      resolve()
+    }, milliseconds)
+    /** 归档取消会立即停止当前等待。 Archive cancellation immediately stops the current wait. */
+    function handleAbort() {
+      window.clearTimeout(timer)
+      reject(makeUploadError('ABORTED', '下载任务已取消', false))
+    }
+    signal.addEventListener('abort', handleAbort, { once: true })
   })
 }
 

@@ -2,7 +2,7 @@
 import type { UploadFileItem, UploadMessages } from '../types'
 import { fileIconUrl, formatSize, isImage } from '../utils/file'
 
-/** Maps detailed queue states to the smaller set of visual state-icon variants. */
+/** 将细化队列状态映射为较小的视觉图标状态集合。 Maps detailed queue states to the smaller set of visual state-icon variants. */
 function statusKind(status: UploadFileItem['status']) {
   if (status === 'success') return 'success'
   if (status === 'failed' || status === 'rejected') return 'error'
@@ -12,10 +12,10 @@ function statusKind(status: UploadFileItem['status']) {
 }
 
 /**
- * Render-only contract supplied by FlowUpload. Action callbacks receive a uid
- * so this component never mutates upload state itself.
+ * FlowUpload 提供的纯渲染契约；操作回调接收 uid，组件绝不自行修改上传状态。
+ * Render-only contract supplied by FlowUpload. Action callbacks receive a uid so this component never mutates upload state itself.
  */
-defineProps<{
+interface UploadFileListProps {
   files: UploadFileItem[]
   show: boolean
   listType?: 'list' | 'picture' | 'picture-card'
@@ -36,7 +36,9 @@ defineProps<{
   pause: (uid: string) => void
   resume: (uid: string) => void | Promise<void>
   retry: (uid: string) => void | Promise<void>
-}>()
+}
+/** 经过 TypeScript 约束的文件列表输入。 TypeScript-constrained file-list input. */
+defineProps<UploadFileListProps>()
 </script>
 
 <template>

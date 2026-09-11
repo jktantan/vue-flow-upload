@@ -28,6 +28,12 @@ export async function hashFile(file: File, options: HashOptions = {}) {
 function hashInWorker(file: File, chunkSize: number, options: HashOptions) {
   // Worker 可避免大文件哈希阻塞界面，并把进度消息转发给调用方。 A Worker avoids blocking the UI and forwards progress to the caller.
   return new Promise<string>((resolve, reject) => {
+    // 信号已取消时不能再创建 Worker，否则不会收到一次性 abort 事件而泄漏后台任务。
+    // Do not create a Worker for an already-aborted signal because its one-time abort event would never arrive.
+    if (options.signal?.aborted) {
+      reject(abortError())
+      return
+    }
     const worker = new Worker(new URL('./sha256.worker.ts', import.meta.url), { type: 'module' })
     const abort = () => {
       worker.terminate()

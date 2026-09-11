@@ -2,8 +2,8 @@
 import type { UploadFileItem, UploadMessages } from '../types'
 import UploadFileList from './UploadFileList.vue'
 
-/** Picture-wall mode is a thin presentation wrapper around UploadFileList. */
-defineProps<{
+/** 图片墙展示输入；仅作为 UploadFileList 的无状态表现层包装。 Picture-wall input; only a stateless presentation wrapper around UploadFileList. */
+interface UploadPictureWallProps {
   files: UploadFileItem[]
   show: boolean
   listType: 'picture' | 'picture-card'
@@ -24,7 +24,9 @@ defineProps<{
   pause: (uid: string) => void
   resume: (uid: string) => void | Promise<void>
   retry: (uid: string) => void | Promise<void>
-}>()
+}
+/** 经过 TypeScript 约束的图片墙输入。 TypeScript-constrained picture-wall input. */
+defineProps<UploadPictureWallProps>()
 </script>
 
 <template>

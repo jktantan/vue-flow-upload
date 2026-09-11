@@ -3,8 +3,8 @@ import { computed } from 'vue'
 import type { UploadFileItem, UploadMessages } from '../types'
 import { formatSize } from '../utils/file'
 
-/** Toolbar has no upload state of its own; it renders capabilities and emits intents upward. */
-const props = defineProps<{
+/** 工具栏输入；自身不保存上传状态，只渲染能力并向上发送意图。 Toolbar input; it owns no upload state and only renders capabilities and emits intents. */
+interface UploadToolbarsProps {
   files: UploadFileItem[]
   selectable: boolean
   selected: Set<string>
@@ -19,7 +19,9 @@ const props = defineProps<{
   text: UploadMessages
   autoUpload: boolean
   canUpload: boolean
-}>()
+}
+/** 经过 TypeScript 约束的工具栏输入。 TypeScript-constrained toolbar input. */
+const props = defineProps<UploadToolbarsProps>()
 
 /** Accessible tooltip describing the active accept and size constraints. */
 const selectFileTooltip = computed(() => {
@@ -34,15 +36,23 @@ const selectFileTooltip = computed(() => {
     .replace('{maxSize}', maxSize)
 })
 
-/** UI intents consumed by FlowUpload (selection, submission, batch operations). */
-const emit = defineEmits<{
-  select: []
-  upload: []
-  toggleAll: []
-  downloadSelected: [uids: string[]]
-  downloadAll: []
-  removeSelected: []
-}>()
+/** FlowUpload 消费的工具栏用户意图。 Toolbar user intents consumed by FlowUpload. */
+interface UploadToolbarsEmits {
+  /** 请求打开文件选择器。 Requests opening the file picker. */
+  (event: 'select'): void
+  /** 请求提交待上传文件。 Requests submitting pending files. */
+  (event: 'upload'): void
+  /** 请求切换全部可选文件。 Requests toggling all selectable files. */
+  (event: 'toggleAll'): void
+  /** 请求归档下载指定 uid。 Requests an archive download for selected uids. */
+  (event: 'downloadSelected', uids: string[]): void
+  /** 请求归档下载全部文件。 Requests an archive download for all files. */
+  (event: 'downloadAll'): void
+  /** 请求删除当前选中项。 Requests removal of current selected items. */
+  (event: 'removeSelected'): void
+}
+/** 经过 TypeScript 约束的工具栏事件发送器。 TypeScript-constrained toolbar event emitter. */
+const emit = defineEmits<UploadToolbarsEmits>()
 </script>
 
 <template>

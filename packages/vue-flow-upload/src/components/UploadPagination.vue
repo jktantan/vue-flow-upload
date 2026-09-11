@@ -4,19 +4,26 @@ import { useI18n } from 'vue-i18n-lite'
 import { createFlowUploadI18n, getUploadMessages } from '../i18n'
 import type { UploadPagination } from '../types'
 
-/** Controlled pagination input; the parent remains responsible for loading the selected page. */
-const props = withDefaults(defineProps<UploadPagination>(), {
+/** 受控分页输入；父组件始终负责加载所选页面。 Controlled pagination input; the parent remains responsible for loading the selected page. */
+type UploadPaginationProps = UploadPagination
+/** 经过 TypeScript 约束且填充默认值的分页输入。 TypeScript-constrained pagination input with defaults. */
+const props = withDefaults(defineProps<UploadPaginationProps>(), {
   total: 0,
   currentPage: 1,
   pageSize: 10,
   pageSizes: () => [10, 20, 30, 40],
 })
-/** Emits granular v-model updates and one combined event for non-v-model consumers. */
-const emit = defineEmits<{
-  'update:currentPage': [value: number]
-  'update:pageSize': [value: number]
-  change: [currentPage: number, pageSize: number]
-}>()
+/** 分页组件向父级报告的受控值和组合变更事件。 Controlled-value and combined-change events reported by pagination. */
+interface UploadPaginationEmits {
+  /** 当前页变化时发送。 Sent when the current page changes. */
+  (event: 'update:currentPage', value: number): void
+  /** 每页条数变化时发送。 Sent when the page size changes. */
+  (event: 'update:pageSize', value: number): void
+  /** 页码或页尺寸变化后发送最终组合值。 Sends final combined values after either page number or size changes. */
+  (event: 'change', currentPage: number, pageSize: number): void
+}
+/** 经过 TypeScript 约束的分页事件发送器。 TypeScript-constrained pagination event emitter. */
+const emit = defineEmits<UploadPaginationEmits>()
 /** At least one page is rendered even when the server reports an empty result set. */
 const pageCount = computed(() => Math.max(1, Math.ceil(props.total / props.pageSize)))
 const inheritedI18n = useI18n()

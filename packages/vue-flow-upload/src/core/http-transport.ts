@@ -80,7 +80,14 @@ export function createHttpUploadTransport(options: HttpUploadTransportOptions): 
           }
         }
 
-        context.signal.addEventListener('abort', () => request.abort(), { once: true })
+        /** 上传请求结束后释放取消监听器，避免控制器持有已完成的 XMLHttpRequest。 Release the abort listener after upload completion so controllers do not retain completed XMLHttpRequests. */
+        const abortRequest = () => request.abort()
+        context.signal.addEventListener('abort', abortRequest, { once: true })
+        request.addEventListener(
+          'loadend',
+          () => context.signal.removeEventListener('abort', abortRequest),
+          { once: true },
+        )
         request.send(formData)
       })
     },
@@ -214,6 +221,12 @@ function request<T>(
 ) {
   // 统一处理非 FormData 请求，确保所有端点错误语义一致。 Centralize non-FormData requests for consistent endpoint errors.
   return new Promise<T>((resolve, reject) => {
+    // 请求创建前先检查取消状态，避免已取消的控制面请求仍调用 XHR send。
+    // Check cancellation before creating the request so an aborted control-plane request never calls XHR send.
+    if (context.signal?.aborted) {
+      reject(toError('ABORTED', '上传已取消', false))
+      return
+    }
     const request = new XMLHttpRequest()
     request.open(method, appendQuery(url, context.query))
     request.timeout = options.timeout ?? 60_000
@@ -222,7 +235,9 @@ function request<T>(
       request.setRequestHeader(key, value)
     }
     request.setRequestHeader('Content-Type', contentType)
-    context.signal?.addEventListener('abort', () => request.abort(), { once: true })
+    /** 中止监听器在请求结束后移除，避免长生命周期信号保留已完成 XHR。 Abort listener removed after request completion so long-lived signals do not retain completed XHR instances. */
+    const abortRequest = () => request.abort()
+    context.signal?.addEventListener('abort', abortRequest, { once: true })
     if (onProgress)
       request.upload.onprogress = (event) =>
         event.lengthComputable && onProgress(event.loaded, event.total)
@@ -247,6 +262,13 @@ function request<T>(
         reject(toError('INVALID_RESPONSE', '上传响应无法解析', false, request.status, cause))
       }
     }
+    request.addEventListener(
+      'loadend',
+      () => context.signal?.removeEventListener('abort', abortRequest),
+      {
+        once: true,
+      },
+    )
     request.send(body)
   })
 }

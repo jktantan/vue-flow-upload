@@ -94,8 +94,37 @@ export function useUploadQueue(options: UploadQueueOptions) {
     if (!status || status === 'paused') throw makeUploadError('ABORTED', '上传已取消', false)
   }
 
-  async function retryOperation<T>(operation: () => Promise<T>) {
-    // Retry only transport-classified transient errors, with exponential backoff per chunk.
+  /**
+   * 等待可取消的重试退避；取消后立即拒绝而非等待完整退避周期。
+   * Waits for a cancellable retry backoff, rejecting immediately on cancellation rather than after the full delay.
+   */
+  function waitForRetryDelay(delayMs: number, signal: AbortSignal): Promise<void> {
+    // 退避开始前已取消时无需创建计时器或监听器。
+    // Do not create a timer or listener when cancellation already happened before backoff starts.
+    if (signal.aborted) return Promise.reject(makeUploadError('ABORTED', '上传已取消', false))
+    return new Promise<void>((resolve, reject) => {
+      // 当前退避计时器在取消时被释放，避免暂停后的延迟重试。
+      // The current backoff timer is cleared on cancellation so a paused upload cannot retry later.
+      const timer = window.setTimeout(() => {
+        signal.removeEventListener('abort', handleAbort)
+        resolve()
+      }, delayMs)
+      /** 取消会终止等待并向上传状态机报告标准取消错误。 Cancellation ends the wait and reports a normalized abort error to the upload state machine. */
+      function handleAbort() {
+        window.clearTimeout(timer)
+        reject(makeUploadError('ABORTED', '上传已取消', false))
+      }
+      signal.addEventListener('abort', handleAbort, { once: true })
+    })
+  }
+
+  /**
+   * 执行可重试的传输操作；指数退避和正在进行的请求都受同一个分片取消信号控制。
+   * Runs a retryable transport operation whose exponential backoff and in-flight request share one chunk cancellation signal.
+   */
+  async function retryOperation<T>(operation: () => Promise<T>, signal: AbortSignal) {
+    // 仅重试传输层标记为瞬态的错误，并在每次尝试间支持立即取消。
+    // Retry only errors classified as transient by the transport, with immediate cancellation between attempts.
     let attempt = 0
     while (true) {
       try {
@@ -103,9 +132,7 @@ export function useUploadQueue(options: UploadQueueOptions) {
       } catch (cause) {
         const error = normalizeUploadError(cause)
         if (!error.retriable || attempt >= options.retryCount || isAbortError(cause)) throw cause
-        await new Promise((resolve) =>
-          window.setTimeout(resolve, options.retryBaseDelay * 2 ** attempt),
-        )
+        await waitForRetryDelay(options.retryBaseDelay * 2 ** attempt, signal)
         attempt += 1
       }
     }
@@ -223,31 +250,33 @@ export function useUploadQueue(options: UploadQueueOptions) {
           const start = index * chunkSize
           const chunk = file.slice(start, Math.min(start + chunkSize, file.size))
           try {
-            await retryOperation(async () =>
-              uploadChunk(
-                {
-                  uploadId: session.uploadId,
-                  chunkIndex: index,
-                  totalChunks,
-                  chunk,
-                  chunkSize,
-                  file: fileMeta(file, sha256, fileId),
-                },
-                requestContext(
-                  data,
-                  await options.resolveHeaders(),
-                  await options.resolveQuery(),
-                  controller,
-                  (loaded) => {
-                    progress[index] = Math.min(chunk.size, loaded)
-                    updateProgress(
-                      uid,
-                      progress.reduce((sum, value) => sum + value, 0),
-                      file.size,
-                    )
+            await retryOperation(
+              async () =>
+                uploadChunk(
+                  {
+                    uploadId: session.uploadId,
+                    chunkIndex: index,
+                    totalChunks,
+                    chunk,
+                    chunkSize,
+                    file: fileMeta(file, sha256, fileId),
                   },
+                  requestContext(
+                    data,
+                    await options.resolveHeaders(),
+                    await options.resolveQuery(),
+                    controller,
+                    (loaded) => {
+                      progress[index] = Math.min(chunk.size, loaded)
+                      updateProgress(
+                        uid,
+                        progress.reduce((sum, value) => sum + value, 0),
+                        file.size,
+                      )
+                    },
+                  ),
                 ),
-              ),
+              controller.signal,
             )
             progress[index] = chunk.size
             updateProgress(

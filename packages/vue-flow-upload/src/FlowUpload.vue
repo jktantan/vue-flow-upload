@@ -21,7 +21,7 @@ import { useFilePreview } from './composables/useFilePreview'
 import { useFileSelectionState } from './composables/useFileSelectionState'
 import { useUploadQueue } from './composables/useUploadQueue'
 import { createUid, matchesAccept, normalizeFileList, toCssSize } from './utils/file'
-import { makeUploadError } from './utils/error'
+import { makeUploadError, normalizeUploadError } from './utils/error'
 import type {
   UploadData,
   DownloadScope,
@@ -38,160 +38,180 @@ import type {
   UploadPaginationConfig,
 } from './types'
 
-const props = withDefaults(
-  defineProps<{
-    /** 受控文件列表；传入后会覆盖内部状态。 Controlled file list; when supplied it replaces internal state. */
-    modelValue?: UploadUserFile[]
-    /** 非受控模式的初始文件列表。 Initial file list for uncontrolled mode. */
-    defaultFileList?: UploadUserFile[]
-    /** 自定义传输适配器；省略它并提供 `action` 时使用标准 XHR 上传。 Custom transport adapter; omit it and provide `action` for standard XHR upload. */
-    transport?: UploadTransport
-    /** 内置普通上传端点。 Built-in normal-upload endpoint. */
-    action?: string
-    /** 可选的预建文件记录端点，需返回 `fileId`。 Optional endpoint that pre-creates a server file record and returns its `fileId`. */
-    createAction?: string
-    /** 按 fileId 幂等删除文件及其上传会话的端点。 Endpoint that idempotently deletes a file and all of its upload sessions by fileId. */
-    deleteAction?: string
-    /** 内置普通上传使用的 HTTP 方法。 HTTP method used by the built-in normal upload. */
-    method?: 'POST' | 'PUT'
-    /** 下载与服务端打包下载的适配器。 Adapter for direct downloads and server-side archive downloads. */
-    downloadTransport?: DownloadTransport
-    /** 每次上传附带的业务数据，可为异步工厂。 Business data sent with each upload; may be an async factory. */
-    data?: UploadData
-    /** multipart 中二进制文件字段名。 Multipart binary-file field name. */
-    fileFieldName?: string
-    /** multipart 中 JSON 业务数据字段名。 Multipart JSON business-data field name. */
-    dataFieldName?: string
-    /** 接受的扩展名或 MIME 类型过滤器。 Accepted extension or MIME-type filter. */
-    accept?: string | string[]
-    /** 单个文件允许的最大字节数。 Maximum allowed size in bytes for one file. */
-    maxSize?: number
-    /** 允许保留在列表中的最大文件数。 Maximum number of files retained in the list. */
-    maxCount?: number
-    /** 原生文件选择器是否允许多选。 Whether the native picker permits multiple selection. */
-    multiple?: boolean
-    /** 选择/拖入后是否立即开始上传。 Whether to start upload immediately after selection/drop. */
-    autoUpload?: boolean
-    /** 超过该字节数时改用分片上传。 Files larger than this byte threshold use multipart upload. */
-    normalUploadThreshold?: number
-    /** 单个分片的字节大小。 Byte size of one upload chunk. */
-    chunkSize?: number
-    /** 每个活动文件同时上传的最大分片数。 Maximum chunks uploaded concurrently for each active file. */
-    chunkConcurrency?: number
-    /** 同时活动的最大文件数。 Maximum number of active files. */
-    maxConcurrentFiles?: number
-    /** 全部文件共享的最大请求数。 Maximum requests shared by all files. */
-    maxConcurrentRequests?: number
-    /** 可重试请求的最大额外尝试次数。 Maximum additional attempts for a retryable request. */
-    retryCount?: number
-    /** 指数退避的初始等待时间（毫秒）。 Initial exponential-backoff delay in milliseconds. */
-    retryBaseDelay?: number
-    /** 是否恢复服务端未过期的分片会话。 Whether to resume an unexpired server multipart session. */
-    resume?: boolean
-    /** 是否先计算 SHA-256 并尝试秒传。 Whether to calculate SHA-256 and attempt instant upload first. */
-    instantUpload?: boolean
-    /** 是否渲染文件列表。 Whether to render the file list. */
-    showFileList?: boolean
-    /** 是否渲染工具栏和行操作。 Whether to render the toolbar and row actions. */
-    showOperation?: boolean
-    /** 设为 false 或省略即隐藏分页；页面数据由宿主加载。 Set to false or omit to hide pagination; the host loads page data. */
-    pagination?: UploadPaginationConfig
-    /** 是否启用拖入文件。 Whether file drag-and-drop is enabled. */
-    drag?: boolean
-    /** 是否允许选择文件夹（浏览器支持时）。 Whether directory selection is allowed when the browser supports it. */
-    directory?: boolean
-    /** 列表、图片墙或图片卡片的展示模式。 Display mode: list, picture wall, or picture card. */
-    listType?: 'list' | 'picture' | 'picture-card'
-    /** 是否允许图片预览。 Whether image preview is allowed. */
-    preview?: boolean
-    /** 是否显示用于批量操作的选择框。 Whether to show selection controls for batch operations. */
-    selectable?: boolean
-    /** 在列表/图片区域显示加载遮罩。 Shows a loading mask over the list/picture display area. */
-    loading?: boolean
-    /** CSS 宽度；数字按像素处理。 CSS width; numbers are treated as pixels. */
-    width?: string | number
-    /** CSS 高度；`auto` 表示填满有明确高度的父容器。 CSS height; use `auto` to fill a parent with an explicit height. */
-    height?: string | number
-    /** 服务端归档任务的轮询间隔（毫秒）。 Polling interval in milliseconds for a server archive task. */
-    archivePollingInterval?: number
-    /** 服务端归档任务的最长等待时间（毫秒）。 Maximum wait time in milliseconds for a server archive task. */
-    archivePollingTimeout?: number
-    /** “全部下载”时提交给服务端的文件范围或查询范围。 File or query scope submitted for “download all”. */
-    allDownloadScope?: DownloadScope
-    /** 自定义预览处理；提供后替代内置图片查看器。 Custom preview handler; replaces the built-in image viewer when provided. */
-    onPreview?: (file: UploadFileItem) => void | Promise<void>
-    /** 内置主题名或自定义主题适配器。 Built-in theme name or custom theme adapter. */
-    theme?: UploadTheme
-    /** 推荐的国际化配置，文案使用 `VueFlowUpload` 命名空间。 Preferred i18n configuration; messages use the `VueFlowUpload` namespace. */
-    i18n?: FlowUploadI18nOptions
-    /** 已废弃，请使用 `i18n.locale`。 @deprecated Use `i18n.locale` instead. */
-    locale?: string
-    /** 已废弃，请使用 `i18n.messages[locale].VueFlowUpload`。 @deprecated Use `i18n.messages[locale].VueFlowUpload` instead. */
-    messages?: Partial<UploadMessages>
-    /** 总开关；禁用后所有交互能力均关闭。 Master switch; disables every interactive capability. */
-    disabled?: boolean
-    /** 按操作粒度控制选择、上传、删除、预览和下载能力。 Per-operation controls for selection, upload, removal, preview, and download. */
-    permissions?: UploadPermissions
-    /** 客户端校验通过后、创建上传任务前调用；返回 false 会拒绝文件。 Called after client validation and before queueing; false rejects the file. */
-    beforeUpload?: (file: File) => boolean | Promise<boolean>
-    /** 删除前调用；返回 false 会保留文件。 Called before removal; false keeps the file. */
-    beforeRemove?: (file: UploadFileItem, files: UploadFileItem[]) => boolean | Promise<boolean>
-  }>(),
-  {
-    defaultFileList: () => [],
-    fileFieldName: 'file',
-    dataFieldName: 'data',
-    maxCount: Number.POSITIVE_INFINITY,
-    multiple: true,
-    method: 'POST',
-    autoUpload: true,
-    normalUploadThreshold: 10 * 1024 * 1024,
-    chunkSize: 1 * 1024 * 1024,
-    chunkConcurrency: 3,
-    maxConcurrentFiles: 2,
-    maxConcurrentRequests: 6,
-    retryCount: 3,
-    retryBaseDelay: 500,
-    resume: true,
-    instantUpload: true,
-    listType: 'list',
-    showFileList: true,
-    showOperation: true,
-    drag: true,
-    directory: false,
-    preview: true,
-    selectable: false,
-    loading: false,
-    width: 'auto',
-    height: '600px',
-    archivePollingInterval: 2_000,
-    archivePollingTimeout: 10 * 60_000,
-    theme: 'default',
-    locale: 'zh-CN',
-    disabled: false,
-    permissions: () => ({}),
-  },
-)
+/**
+ * 多文件上传组件的公开输入；受控 `modelValue` 始终是外部事实来源。
+ * Public input for the multi-file uploader; controlled `modelValue` is always the external source of truth.
+ */
+interface FlowUploadProps {
+  /** 受控文件列表；传入后会覆盖内部状态。 Controlled file list; when supplied it replaces internal state. */
+  modelValue?: UploadUserFile[]
+  /** 非受控模式的初始文件列表。 Initial file list for uncontrolled mode. */
+  defaultFileList?: UploadUserFile[]
+  /** 自定义传输适配器；省略它并提供 `action` 时使用标准 XHR 上传。 Custom transport adapter; omit it and provide `action` for standard XHR upload. */
+  transport?: UploadTransport
+  /** 内置普通上传端点。 Built-in normal-upload endpoint. */
+  action?: string
+  /** 可选的预建文件记录端点，需返回 `fileId`。 Optional endpoint that pre-creates a server file record and returns its `fileId`. */
+  createAction?: string
+  /** 按 fileId 幂等删除文件及其上传会话的端点。 Endpoint that idempotently deletes a file and all of its upload sessions by fileId. */
+  deleteAction?: string
+  /** 内置普通上传使用的 HTTP 方法。 HTTP method used by the built-in normal upload. */
+  method?: 'POST' | 'PUT'
+  /** 下载与服务端打包下载的适配器。 Adapter for direct downloads and server-side archive downloads. */
+  downloadTransport?: DownloadTransport
+  /** 每次上传附带的业务数据，可为异步工厂。 Business data sent with each upload; may be an async factory. */
+  data?: UploadData
+  /** multipart 中二进制文件字段名。 Multipart binary-file field name. */
+  fileFieldName?: string
+  /** multipart 中 JSON 业务数据字段名。 Multipart JSON business-data field name. */
+  dataFieldName?: string
+  /** 接受的扩展名或 MIME 类型过滤器。 Accepted extension or MIME-type filter. */
+  accept?: string | string[]
+  /** 单个文件允许的最大字节数。 Maximum allowed size in bytes for one file. */
+  maxSize?: number
+  /** 允许保留在列表中的最大文件数。 Maximum number of files retained in the list. */
+  maxCount?: number
+  /** 原生文件选择器是否允许多选。 Whether the native picker permits multiple selection. */
+  multiple?: boolean
+  /** 选择/拖入后是否立即开始上传。 Whether to start upload immediately after selection/drop. */
+  autoUpload?: boolean
+  /** 超过该字节数时改用分片上传。 Files larger than this byte threshold use multipart upload. */
+  normalUploadThreshold?: number
+  /** 单个分片的字节大小。 Byte size of one upload chunk. */
+  chunkSize?: number
+  /** 每个活动文件同时上传的最大分片数。 Maximum chunks uploaded concurrently for each active file. */
+  chunkConcurrency?: number
+  /** 同时活动的最大文件数。 Maximum number of active files. */
+  maxConcurrentFiles?: number
+  /** 全部文件共享的最大请求数。 Maximum requests shared by all files. */
+  maxConcurrentRequests?: number
+  /** 可重试请求的最大额外尝试次数。 Maximum additional attempts for a retryable request. */
+  retryCount?: number
+  /** 指数退避的初始等待时间（毫秒）。 Initial exponential-backoff delay in milliseconds. */
+  retryBaseDelay?: number
+  /** 是否恢复服务端未过期的分片会话。 Whether to resume an unexpired server multipart session. */
+  resume?: boolean
+  /** 是否先计算 SHA-256 并尝试秒传。 Whether to calculate SHA-256 and attempt instant upload first. */
+  instantUpload?: boolean
+  /** 是否渲染文件列表。 Whether to render the file list. */
+  showFileList?: boolean
+  /** 是否渲染工具栏和行操作。 Whether to render the toolbar and row actions. */
+  showOperation?: boolean
+  /** 设为 false 或省略即隐藏分页；页面数据由宿主加载。 Set to false or omit to hide pagination; the host loads page data. */
+  pagination?: UploadPaginationConfig
+  /** 是否启用拖入文件。 Whether file drag-and-drop is enabled. */
+  drag?: boolean
+  /** 是否允许选择文件夹（浏览器支持时）。 Whether directory selection is allowed when the browser supports it. */
+  directory?: boolean
+  /** 列表、图片墙或图片卡片的展示模式。 Display mode: list, picture wall, or picture card. */
+  listType?: 'list' | 'picture' | 'picture-card'
+  /** 是否允许图片预览。 Whether image preview is allowed. */
+  preview?: boolean
+  /** 是否显示用于批量操作的选择框。 Whether to show selection controls for batch operations. */
+  selectable?: boolean
+  /** 在列表/图片区域显示加载遮罩。 Shows a loading mask over the list/picture display area. */
+  loading?: boolean
+  /** CSS 宽度；数字按像素处理。 CSS width; numbers are treated as pixels. */
+  width?: string | number
+  /** CSS 高度；`auto` 表示填满有明确高度的父容器。 CSS height; use `auto` to fill a parent with an explicit height. */
+  height?: string | number
+  /** 服务端归档任务的轮询间隔（毫秒）。 Polling interval in milliseconds for a server archive task. */
+  archivePollingInterval?: number
+  /** 服务端归档任务的最长等待时间（毫秒）。 Maximum wait time in milliseconds for a server archive task. */
+  archivePollingTimeout?: number
+  /** “全部下载”时提交给服务端的文件范围或查询范围。 File or query scope submitted for “download all”. */
+  allDownloadScope?: DownloadScope
+  /** 自定义预览处理；提供后替代内置图片查看器。 Custom preview handler; replaces the built-in image viewer when provided. */
+  onPreview?: (file: UploadFileItem) => void | Promise<void>
+  /** 内置主题名或自定义主题适配器。 Built-in theme name or custom theme adapter. */
+  theme?: UploadTheme
+  /** 推荐的国际化配置，文案使用 `VueFlowUpload` 命名空间。 Preferred i18n configuration; messages use the `VueFlowUpload` namespace. */
+  i18n?: FlowUploadI18nOptions
+  /** 已废弃，请使用 `i18n.locale`。 @deprecated Use `i18n.locale` instead. */
+  locale?: string
+  /** 已废弃，请使用 `i18n.messages[locale].VueFlowUpload`。 @deprecated Use `i18n.messages[locale].VueFlowUpload` instead. */
+  messages?: Partial<UploadMessages>
+  /** 总开关；禁用后所有交互能力均关闭。 Master switch; disables every interactive capability. */
+  disabled?: boolean
+  /** 按操作粒度控制选择、上传、删除、预览和下载能力。 Per-operation controls for selection, upload, removal, preview, and download. */
+  permissions?: UploadPermissions
+  /** 客户端校验通过后、创建上传任务前调用；返回 false 会拒绝文件。 Called after client validation and before queueing; false rejects the file. */
+  beforeUpload?: (file: File) => boolean | Promise<boolean>
+  /** 删除前调用；返回 false 会保留文件。 Called before removal; false keeps the file. */
+  beforeRemove?: (file: UploadFileItem, files: UploadFileItem[]) => boolean | Promise<boolean>
+}
 
-/** 向宿主同步文件/分页状态，并报告上传、下载、归档各阶段事件。 Emits file/pagination synchronization plus upload, download, and archive lifecycle events to the host. */
-const emit = defineEmits<{
-  'update:modelValue': [files: UploadFileItem[]]
-  change: [file: UploadFileItem, files: UploadFileItem[]]
-  progress: [file: UploadFileItem, percent: number]
-  success: [file: UploadFileItem, response: UploadSuccessResult]
-  error: [file: UploadFileItem, error: UploadError]
-  remove: [file: UploadFileItem]
-  exceed: [files: File[]]
-  'download-start': [file: UploadFileItem]
-  'download-success': [file: UploadFileItem]
-  'download-error': [file: UploadFileItem, error: UploadError]
-  'archive-start': [taskId: string, fileIds: string[]]
-  'archive-progress': [taskId: string, percent?: number]
-  'archive-success': [taskId: string]
-  'archive-error': [taskId: string, error: UploadError]
-  'update:pagination': [value: UploadPagination]
-  'pagination-change': [currentPage: number, pageSize: number]
-}>()
+/**
+ * 多文件上传组件的公开事件；成功、失败和分页变化均由宿主决定后续业务行为。
+ * Public multi-file uploader events; the host owns follow-up behavior for success, failure, and pagination changes.
+ */
+interface FlowUploadEmits {
+  /** 外部受控文件列表的完整替换值。 Complete replacement value for the controlled file list. */
+  (event: 'update:modelValue', files: UploadFileItem[]): void
+  /** 单个文件状态或元数据变化后发送。 Sent after one file's state or metadata changes. */
+  (event: 'change', file: UploadFileItem, files: UploadFileItem[]): void
+  /** 传输进度变化时发送，百分比范围为 0–100。 Sent when transfer progress changes; percent ranges from 0 to 100. */
+  (event: 'progress', file: UploadFileItem, percent: number): void
+  /** 服务端确认上传完成后发送。 Sent after the server confirms upload completion. */
+  (event: 'success', file: UploadFileItem, response: UploadSuccessResult): void
+  /** 客户端校验或上传失败后发送标准化错误。 Sent with a normalized error after client validation or upload failure. */
+  (event: 'error', file: UploadFileItem, error: UploadError): void
+  /** 文件实际从组件状态移除后发送。 Sent after a file is actually removed from component state. */
+  (event: 'remove', file: UploadFileItem): void
+  /** 当前选择超过 maxCount 时发送未接收的原始文件。 Sent with raw files not accepted because the selection exceeds maxCount. */
+  (event: 'exceed', files: File[]): void
+  /** 单文件下载生命周期事件。 Single-file download lifecycle events. */
+  (event: 'download-start' | 'download-success', file: UploadFileItem): void
+  /** 单文件下载失败事件。 Single-file download failure event. */
+  (event: 'download-error', file: UploadFileItem, error: UploadError): void
+  /** 服务端归档生命周期事件。 Server archive lifecycle events. */
+  (event: 'archive-start', taskId: string, fileIds: string[]): void
+  (event: 'archive-progress', taskId: string, percent?: number): void
+  (event: 'archive-success', taskId: string): void
+  (event: 'archive-error', taskId: string, error: UploadError): void
+  /** 受控分页值和便捷分页变更事件。 Controlled pagination value and convenience pagination-change event. */
+  (event: 'update:pagination', value: UploadPagination): void
+  (event: 'pagination-change', currentPage: number, pageSize: number): void
+}
+
+/** 经过 TypeScript 约束并填充默认值的组件输入。 TypeScript-constrained component input with defaults. */
+const props = withDefaults(defineProps<FlowUploadProps>(), {
+  defaultFileList: () => [],
+  fileFieldName: 'file',
+  dataFieldName: 'data',
+  maxCount: Number.POSITIVE_INFINITY,
+  multiple: true,
+  method: 'POST',
+  autoUpload: true,
+  normalUploadThreshold: 10 * 1024 * 1024,
+  chunkSize: 1 * 1024 * 1024,
+  chunkConcurrency: 3,
+  maxConcurrentFiles: 2,
+  maxConcurrentRequests: 6,
+  retryCount: 3,
+  retryBaseDelay: 500,
+  resume: true,
+  instantUpload: true,
+  listType: 'list',
+  showFileList: true,
+  showOperation: true,
+  drag: true,
+  directory: false,
+  preview: true,
+  selectable: false,
+  loading: false,
+  width: 'auto',
+  height: '600px',
+  archivePollingInterval: 2_000,
+  archivePollingTimeout: 10 * 60_000,
+  theme: 'default',
+  locale: 'zh-CN',
+  disabled: false,
+  permissions: () => ({}),
+})
+
+/** 向宿主同步文件、下载和分页生命周期的事件发送器。 Event emitter for file, download, and pagination lifecycle updates. */
+const emit = defineEmits<FlowUploadEmits>()
 
 /** v-model/defaultFileList 的本地副本；队列状态变化均以不可变方式更新它。 Local copy of v-model/defaultFileList; all queue transitions update this list immutably. */
 const internalFiles = ref<UploadFileItem[]>(
@@ -349,6 +369,8 @@ function handleSelectedFiles(selected: File[]) {
 const toastMessage = ref('')
 /** 当前提示的计时器；清理它可防止旧消息隐藏新消息。 Timer for the current toast; clearing it prevents an earlier message from hiding a newer one. */
 let toastTimer: number | undefined
+/** 组件卸载标记，防止异步文件校验完成后向已销毁实例写回。 Unmount marker that prevents an async file validation from writing back into a destroyed instance. */
+let isUnmounted = false
 /** 等待用户确认、尚未开始远程清理/删除的文件。 Files awaiting user confirmation before remote cleanup/removal begins. */
 const pendingRemoval = ref<UploadFileItem[]>([])
 /** 串行远程删除期间锁定对话框按钮。 Locks dialog buttons while sequential remote deletion is underway. */
@@ -508,7 +530,10 @@ async function addFiles(selected: File[]) {
     }
     localUploadUids.add(item.uid)
     updateFiles([...files.value, item], item)
+    // 拦截器错误必须落入对应文件行，而不能成为未处理的异步拒绝。
+    // Guard errors must land on their file row instead of becoming unhandled async rejections.
     const error = await validate(file)
+    if (isUnmounted) return
     if (error) {
       const rejected = updateFile(item.uid, { status: 'rejected', error })
       if (rejected) emit('error', rejected, error)
@@ -562,12 +587,18 @@ async function validate(file: File): Promise<UploadError | undefined> {
       false,
     )
   }
-  if (props.beforeUpload && !(await props.beforeUpload(file))) {
-    return makeUploadError(
-      'BEFORE_UPLOAD_REJECTED',
-      t('beforeUploadRejected', { name: file.name }),
-      false,
-    )
+  try {
+    if (props.beforeUpload && !(await props.beforeUpload(file))) {
+      return makeUploadError(
+        'BEFORE_UPLOAD_REJECTED',
+        t('beforeUploadRejected', { name: file.name }),
+        false,
+      )
+    }
+  } catch (cause) {
+    // 用户拦截器失败保留其错误上下文，同时按该文件的失败路径上报。
+    // Preserve guard error context while reporting it through this file's normal failure path.
+    return normalizeUploadError(cause)
   }
 }
 
@@ -764,7 +795,13 @@ function onDrop(event: DragEvent) {
   void addFiles(dropped)
 }
 
-onBeforeUnmount(clear)
+onBeforeUnmount(() => {
+  // 卸载先封闭异步写入入口，再取消队列、下载、预览和短提示资源。
+  // On unmount, close async write access before releasing queue, download, preview, and toast resources.
+  isUnmounted = true
+  if (toastTimer !== undefined) window.clearTimeout(toastTimer)
+  clear()
+})
 
 /** 组件实例公开的方法；供 ref 调用上传、暂停、重试、删除与下载操作。 Public instance methods for refs to upload, pause, retry, remove, and download. */
 defineExpose({
