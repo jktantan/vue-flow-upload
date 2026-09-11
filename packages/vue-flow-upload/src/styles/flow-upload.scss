@@ -502,16 +502,26 @@
   grid-template-columns: 24px 41px minmax(0, 1fr) 104px;
 }
 .vfu-list.is-picture-wall {
-  grid-template-columns: repeat(auto-fill, minmax(172px, 1fr));
-  grid-auto-rows: 250px;
+  /* 图片区固定为 192px 正方形，信息区固定为 44px。
+   * The image area is a fixed 192px square and metadata is fixed at 44px. */
+  --vfu-picture-wall-visual-size: 192px;
+  --vfu-picture-wall-body-height: 44px;
+  grid-template-columns: repeat(auto-fill, calc(var(--vfu-picture-wall-visual-size) + 2px));
+  grid-auto-rows: calc(
+    var(--vfu-picture-wall-visual-size) + var(--vfu-picture-wall-body-height) + 2px
+  );
   gap: 12px;
   padding: 12px;
 }
 .vfu-list.is-picture-wall .vfu-file {
+  /* 卡片使用纵向 Flex，上下两区均使用固定尺寸。
+   * The card uses vertical Flex with fixed sizes for both areas. */
   position: relative;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: minmax(0, 1fr) 58px;
+  /* 边框计入卡片固定轨道，内部可用空间恰好等于图片区与信息区之和。
+   * The border is included in the fixed card track, leaving inner space exactly equal to the image and metadata areas. */
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
   gap: 0;
   height: 100%;
   min-height: 0;
@@ -526,9 +536,13 @@
   background: #fff;
 }
 .vfu-list.is-picture-wall .vfu-file__visual {
+  /* 图片区使用固定正方形尺寸，作为 mask 的定位容器。
+   * The image area uses a fixed square size and is the mask's positioning container. */
+  position: relative;
   display: grid;
-  width: 100%;
-  height: 100%;
+  flex: 0 0 var(--vfu-picture-wall-visual-size);
+  width: var(--vfu-picture-wall-visual-size);
+  height: var(--vfu-picture-wall-visual-size);
   min-height: 0;
   place-items: center;
   overflow: hidden;
@@ -547,12 +561,19 @@
   height: 64px;
 }
 .vfu-list.is-picture-wall .vfu-file__body {
-  display: block;
+  /* 文件名在固定信息区内垂直居中，顶边紧贴图片区作为唯一分割线。
+   * The filename is vertically centered in fixed metadata, whose top edge touches the image as the only divider. */
+  position: relative;
+  display: flex;
+  flex: 0 0 var(--vfu-picture-wall-body-height);
+  align-items: center;
   width: 100%;
   box-sizing: border-box;
+  height: var(--vfu-picture-wall-body-height);
   min-height: 0;
+  overflow: hidden;
   border-top: 1px solid #ebeef5;
-  padding: 9px 10px;
+  padding: 0 10px;
 }
 .vfu-list.is-picture-wall .vfu-file__headline {
   display: block;
@@ -566,8 +587,14 @@
   display: none;
 }
 .vfu-list.is-picture-wall .vfu-progress {
+  /* 进度条贴在信息区底部浮动显示，不参与文件名的垂直居中布局。
+   * The progress bar floats at the metadata area's bottom without participating in filename centering. */
+  position: absolute;
+  right: 10px;
+  bottom: 0;
+  left: 10px;
   display: block;
-  margin: 6px 0 0;
+  margin: 0;
 }
 .vfu-select {
   z-index: 1;
@@ -793,14 +820,12 @@
   gap: 4px;
 }
 .vfu-list.is-picture-wall .vfu-file__actions {
+  /* mask 是 visual 的子元素，inset: 0 使其严格覆盖图片区。
+   * The mask is a child of visual, and inset: 0 makes it strictly cover the image area. */
   position: absolute;
   z-index: 1;
-  top: 0;
-  right: 0;
-  bottom: auto;
-  left: 0;
+  inset: 0;
   height: auto;
-  aspect-ratio: 1;
   display: flex;
   width: auto;
   min-height: 0;
