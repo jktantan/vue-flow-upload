@@ -1,6 +1,6 @@
 # vue-flow-upload
 
-> 完整的接入步骤、参数表、事件、实例方法、头像、分片和后端响应示例见 [使用指南](../../docs/usage-guide.md)。
+> 完整的接入步骤、参数表、事件、实例方法、头像和分片示例见 [使用文档](../../docs/guide/getting-started.md)。维护者与后端协作资料见 [`internal-docs/`](../../internal-docs/)。
 
 ## Nuxt 接入
 
@@ -183,7 +183,7 @@ createApp(App).use(createFlowUploadI18n({ locale: 'en-US' }))
 事件：`change(file, files)`、`progress(file, percent)`、`success(file, response)`、`error(file, error)`、`remove(file)`、
 `exceed(files)`；分页开启时还会发出 `update:pagination(value)` 和 `pagination-change(currentPage, pageSize)`；下载与归档还会发出
 `download-start/success/error`、`archive-start/progress/success/error`
-。完整参数和事件表见[使用指南](../../docs/usage-guide.md#5-事件插槽与实例方法)。
+。完整参数和事件表见 [FlowUpload API](../../docs/api/flow-upload.md)。
 
 ## 服务端分页
 
@@ -240,4 +240,4 @@ async function loadFiles(currentPage: number, pageSize: number) {
 通过 `ref` 可调用 `submit()`、`abort(file?)`、`pause(uid)`、`resume(uid)`、`retry(uid)`、`remove(uid)`、`clear()`/
 `clearFiles()`、`handleStart(file)`、`handleRemove(file)`；此外还提供下载与归档方法。
 
-完整后端分片协议见仓库根目录的 [`docs/backend-api.md`](../../docs/backend-api.md)。
+完整后端分片协议见仓库根目录的 [`internal-docs/backend-api.md`](../../internal-docs/backend-api.md)。

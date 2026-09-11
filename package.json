@@ -5,9 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "pnpm --filter playground dev",
-    "build": "pnpm run build:lib && pnpm run build:playground",
+    "build": "pnpm run build:lib && pnpm run build:playground && pnpm run build:docs",
     "build:lib": "pnpm --filter vue-flow-upload build",
     "build:playground": "pnpm --filter playground build",
+    "docs:dev": "vitepress dev docs",
+    "build:docs": "vitepress build docs",
+    "docs:preview": "vitepress preview docs",
     "preview": "pnpm --filter playground preview",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm --filter vue-flow-upload test",
@@ -33,6 +36,7 @@
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.69.0",
     "vite": "^8.2.2",
+    "vitepress": "^1.6.4",
     "vue-tsc": "^3.3.11"
   }
 }
