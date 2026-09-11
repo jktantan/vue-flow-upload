@@ -45,6 +45,11 @@ export function localUploadApi(): Plugin {
         session_id TEXT NOT NULL, chunk_index INTEGER NOT NULL,
         size INTEGER NOT NULL, PRIMARY KEY(session_id, chunk_index)
       );
+      CREATE TABLE IF NOT EXISTS avatars (
+        slot TEXT PRIMARY KEY, file_id TEXT NOT NULL,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(file_id) REFERENCES files(id) ON DELETE CASCADE
+      );
     `)
     return database
   }
@@ -123,6 +128,48 @@ export function localUploadApi(): Plugin {
         }),
       )
     }
+    /**
+     * 读取演示台当前持久化的头像，供刷新页面或切回本地模式时回显。
+     * Reads the workbench's persisted avatar so it can be restored after a refresh or when switching back to local mode.
+     */
+    if (method === 'GET' && path === '/api/avatar/current') {
+      // 固定槽位只允许一个当前头像，避免本地演示的头像选择出现歧义。
+      // The fixed slot permits only one current avatar, avoiding ambiguity in the local demo's avatar selection.
+      const avatarRow = db
+        .prepare(
+          'SELECT files.* FROM avatars INNER JOIN files ON files.id = avatars.file_id WHERE avatars.slot = ?',
+        )
+        .get('current') as FileRow | undefined
+      return json(response, 200, { avatar: avatarRow ? fileResult(avatarRow) : null })
+    }
+    /**
+     * 将已成功写入文件表的记录设为当前头像；文件字节仍由标准上传接口持久化。
+     * Marks an already persisted file record as the current avatar; file bytes remain persisted by the standard upload endpoint.
+     */
+    if (method === 'POST' && path === '/api/avatar/current') {
+      // 请求中的文件标识必须指向已完成写入的文件，避免头像表引用临时记录。
+      // The requested file id must point to a fully written file, preventing avatar rows from referencing transient records.
+      const avatarInput = await bodyJson(request)
+      const avatarFileId = string(avatarInput.fileId)
+      const avatarRow = validId(avatarFileId)
+        ? (db.prepare('SELECT * FROM files WHERE id = ? AND path IS NOT NULL').get(avatarFileId) as
+            | FileRow
+            | undefined)
+        : undefined
+      if (!avatarRow) return json(response, 404, { message: '头像文件不存在或尚未上传完成' })
+      db.prepare(
+        'INSERT OR REPLACE INTO avatars (slot, file_id, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)',
+      ).run('current', avatarFileId)
+      return json(response, 200, { avatar: fileResult(avatarRow) })
+    }
+    /**
+     * 清除当前头像关联而不隐式删除文件；组件的删除传输仍独立负责清理文件资源。
+     * Clears the current-avatar association without implicitly deleting the file; the component's delete transport remains responsible for file cleanup.
+     */
+    if (method === 'DELETE' && path === '/api/avatar/current') {
+      db.prepare('DELETE FROM avatars WHERE slot = ?').run('current')
+      return empty(response, 204)
+    }
     const avatar = path.match(/^\/api\/avatar\/([\w-]+)$/)
     if (method === 'PUT' && avatar) {
       const file = (await multipart(request)).file
@@ -140,6 +187,11 @@ export function localUploadApi(): Plugin {
         destination,
         avatar[1],
       )
+      // 更新成功后重新确认槽位关联，确保替换后的文件可在下一次启动时回显。
+      // Reconfirms the slot association after a successful update so the replacement is restored on the next startup.
+      db.prepare(
+        'INSERT OR REPLACE INTO avatars (slot, file_id, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)',
+      ).run('current', avatar[1])
       return json(
         response,
         200,

@@ -353,24 +353,40 @@
   color: var(--vfu-muted);
   font-size: 12px;
 }
-.vfu-toolbar__left,
-.vfu-toolbar__right {
-  flex: 1 1 0;
+.vfu-toolbar__left {
+  // 批量操作按内容宽度占位；只让中间拖拽提示吸收剩余宽度。
+  // Batch actions reserve their content width; only the centered drag hint absorbs remaining width.
+  flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
   gap: 8px;
 }
 .vfu-toolbar__right {
+  // 主上传操作按内容宽度保留空间，不能参与等比分配后被压缩换行。
+  // The primary upload action reserves its content width and must not be compressed by equal flex distribution.
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   justify-content: flex-end;
 }
 .vfu-toolbar__center {
   display: inline-flex;
-  flex: 0 0 auto;
+  flex: 1 1 0;
+  min-width: 0;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
   color: #e6a23c;
   font-size: 13px;
   font-weight: 500;
+  white-space: nowrap;
+}
+// 中间拖拽提示必须在可用空间不足时截断，不能推挤左右操作按钮。
+// The centered drag hint must truncate when space is insufficient instead of pushing the left and right action buttons.
+.vfu-toolbar__drag {
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 .vfu-button {
@@ -383,6 +399,9 @@
   font: inherit;
   font-weight: 400;
   line-height: 1;
+  // 操作文字必须保持单行；布局空间不足时由拖拽提示省略，而不是拆分按钮文案。
+  // Action labels must remain on one line; when space is tight, the drag hint truncates instead of splitting button copy.
+  white-space: nowrap;
   transition: background-color 0.2s;
 }
 .vfu-button__icon {
