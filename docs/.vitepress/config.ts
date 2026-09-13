@@ -17,6 +17,11 @@ export default defineConfig({
         'vue-flow-upload': fileURLToPath(
           new URL('../../packages/vue-flow-upload/src/index.ts', import.meta.url),
         ),
+        // Viewer.js 属于组件库依赖，文档构建需指向 workspace 包内已安装的副本。
+        // Viewer.js is a component-library dependency; point docs at the workspace package copy.
+        viewerjs: fileURLToPath(
+          new URL('../../packages/vue-flow-upload/node_modules/viewerjs', import.meta.url),
+        ),
       },
     },
     define: {

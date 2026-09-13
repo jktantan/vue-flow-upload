@@ -2,6 +2,9 @@ import DefaultTheme from 'vitepress/theme'
 import type { Theme } from 'vitepress'
 import { vueFlowUpload } from 'vue-flow-upload'
 import '../../../packages/vue-flow-upload/src/styles/flow-upload.scss'
+// 显式引入 Viewer.js 样式，避免 VitePress 外部化组件库时丢失查看器布局规则。
+// Import Viewer.js styles explicitly so VitePress externalization cannot drop the viewer layout rules.
+import 'viewerjs/dist/viewer.css'
 import './style.css'
 
 /**

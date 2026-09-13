@@ -198,7 +198,19 @@ function revokeSource() {
 }
 function previewAvatar() {
   // Viewer receives the resolved displayed image, including local object URLs.
-  if (canPreview.value) viewerApi({ images: [imageSrc.value], options: { title: false } })
+  if (canPreview.value)
+    viewerApi({
+      images: [imageSrc.value],
+      options: {
+        title: false,
+        // Keep Viewer.js transition animation in the avatar preview.
+        // 保留头像预览中的 Viewer.js 过渡动画。
+        transition: true,
+        // 确保头像查看器位于 VitePress 导航和文档内容之上。
+        // Keep the avatar viewer above VitePress navigation and document content.
+        zIndex: 4000,
+      },
+    })
 }
 function browse() {
   // Do not allow programmatic file selection when the component is disabled.

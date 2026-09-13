@@ -33,7 +33,12 @@ export function useFilePreview(options: FilePreviewOptions) {
     else {
       const imageFiles = options.files.value
         .filter(isImage)
-        .map((item) => ({ file: item, url: imageUrl(item) }))
+        .map((item) => ({
+          file: item,
+          // 预览优先使用原图 URL，只有没有原图时才回退到缩略图或本地对象 URL。
+          // Preview the original URL first, falling back to the thumbnail or local object URL.
+          url: item.url ?? imageUrl(item),
+        }))
         .filter((item): item is { file: UploadFileItem; url: string } => !!item.url)
       const initialViewIndex = imageFiles.findIndex((item) => item.file.uid === file.uid)
       if (initialViewIndex >= 0) {
@@ -42,6 +47,12 @@ export function useFilePreview(options: FilePreviewOptions) {
           images: imageFiles.map((item) => item.url),
           options: {
             initialViewIndex,
+            // Keep Viewer.js transition animation; the VitePress compatibility CSS restores its transition target.
+            // 保留 Viewer.js 过渡动画；VitePress 兼容样式会恢复其过渡目标。
+            transition: true,
+            // 确保查看器弹层位于宿主页面导航和内容之上。
+            // Keep the viewer overlay above host navigation and page content.
+            zIndex: 4000,
             title: (image) => fileNames.get(image.src) ?? file.name,
           },
         })

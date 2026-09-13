@@ -64,6 +64,37 @@
   outline-offset: 2px;
 }
 
+/* 查看器弹层必须脱离 VitePress 内容层叠上下文，确保图片和控制按钮可见。
+ * The viewer overlay must escape VitePress content stacking so images and controls remain visible. */
+.viewer-container.viewer-fixed {
+  position: fixed;
+  z-index: 4000;
+  /* 明确 opacity 过渡，确保 Viewer.js 的 transitionend 能在 VitePress 中触发。
+   * Explicitly define the opacity transition so Viewer.js receives transitionend in VitePress. */
+  transition: opacity 0.3s ease;
+}
+
+/* VitePress 的 reduced-motion 规则会把所有 transition-duration 强制为 0，Viewer.js 因此无法完成显示状态机。
+ * VitePress reduced-motion rules force every transition-duration to zero, preventing Viewer.js from completing its show state machine. */
+.viewer-container.viewer-fixed.viewer-transition {
+  transition-duration: 0.3s !important;
+  transition-delay: 0s !important;
+}
+
+/* VitePress 全局规则可能改变第三方查看器的交互层；仅在查看器范围内恢复其行为。
+ * VitePress global rules can alter the third-party viewer interaction layers; restore behavior only within the viewer. */
+.viewer-container.viewer-fixed,
+.viewer-container.viewer-fixed .viewer-canvas,
+.viewer-container.viewer-fixed .viewer-canvas > img,
+.viewer-container.viewer-fixed .viewer-toolbar,
+.viewer-container.viewer-fixed .viewer-button {
+  pointer-events: auto;
+}
+
+.viewer-container.viewer-fixed .viewer-canvas > img {
+  visibility: visible;
+}
+
 @media (max-width: 640px) {
   .vp-doc .demo-shell {
     padding: 14px;

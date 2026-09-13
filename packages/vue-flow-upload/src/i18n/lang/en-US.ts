@@ -18,7 +18,7 @@ export default {
     preview: 'Preview',
     download: 'Download',
     downloadSelected: 'Download',
-    downloadAll: 'Download All',
+    downloadAll: 'Download all',
     closePreview: 'Close preview',
     uploadFailed: 'Upload failed',
     waiting: 'Waiting to upload',
