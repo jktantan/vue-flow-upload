@@ -17,6 +17,6 @@
 
 首次上传走 `action` 或 `transport.uploadFile`。已有头像且配置 `update-action` 时，组件使用 `PUT` 提交 `file`、`fileId` 两个 multipart 字段；首次成功响应必须返回 `fileId`。
 
-`belong-id`、`belong-type` 和 `extra` 会合并到 multipart 的 JSON `data` 字段，分别表示所属业务记录 ID、所属类型和扩展属性；`update-action` 更新请求同样携带该字段。
+`belong-id` 为必填项；`belong-type` 默认为 `default`。两者和 `extra` 会合并到 multipart 的 JSON `data` 字段，分别表示所属业务记录 ID、所属类型和扩展属性；`update-action` 更新请求同样携带该字段。
 
 事件包括 `update:modelValue`、`change`、`success`、`error`、`remove`。可直接体验[头像上传 DEMO](/demos/avatar-upload)。

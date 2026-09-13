@@ -51,9 +51,9 @@ interface AvatarUploadProps {
   /** 每个上传请求携带的静态或惰性业务数据。 Static or lazy business data sent with every upload request. */
   data?: UploadData
   /** 所属业务记录的标识，会写入 JSON 业务数据。 Owner/business record identifier included in JSON business data. */
-  belongId?: string | number
+  belongId: string | number
   /** 所属业务记录的类型，会写入 JSON 业务数据。 Owner/business record type included in JSON business data. */
-  belongType?: string
+  belongType: string
   /** 业务扩展属性对象，会作为 JSON 的 `extra` 字段发送。 Business extension attributes sent as the JSON `extra` field. */
   extra?: Record<string, unknown>
   /** 允许选择的扩展名或 MIME 类型。 Accepted extensions or MIME types. */
@@ -97,6 +97,7 @@ const props = withDefaults(defineProps<AvatarUploadProps>(), {
   height: 300,
   disabled: false,
   preview: true,
+  belongType: 'default',
   permissions: () => ({}),
 })
 /** 经过 TypeScript 约束的组件事件发送器。 TypeScript-constrained component event emitter. */

@@ -156,24 +156,24 @@ createApp(App).use(createFlowUploadI18n({ locale: 'en-US' }))
 
 ## 常用属性（摘要）
 
-| 属性                                                                   | 说明                                                                             | 默认值                       |
-| ---------------------------------------------------------------------- | -------------------------------------------------------------------------------- | ---------------------------- |
-| `action` / `transport`                                                 | 内置普通上传 URL / 自定义协议；同时传入时 `transport` 优先                       | —                            |
-| `create-action`、`delete-action`                                       | 上传前创建文件记录 / 按 `fileId` 清理远端文件及上传会话                          | —                            |
-| `v-model`、`default-file-list`                                         | 受控文件列表 / 非受控初始列表；远端回显建议提供 `uid`、`fileId`、`url`、`status` | `[]`                         |
-| `multiple`、`max-count`、`max-size`、`accept`                          | 选择和校验限制                                                                   | `true`、无限制、无限制、全部 |
-| `auto-upload`                                                          | 选择后立刻上传；关闭后调用实例 `submit()`                                        | `true`                       |
-| `drag`、`directory`                                                    | 启用整组件拖拽上传及操作区提示、浏览器支持的目录选择                             | `true`、`false`              |
-| `width`、`height`                                                      | 上传组件的 CSS 尺寸；数字按 px 处理。`height="auto"` 会填满具有明确高度的父容器  | `auto`、`600px`              |
-| `show-file-list`                                                       | 是否渲染内置列表                                                                 | `true`                       |
-| `pagination`                                                           | `false` 关闭，或传入受控分页状态；翻页后由业务方拉取对应文件并更新 `v-model`     | `false`                      |
-| `list-type`                                                            | `list` 或 `picture`；`picture` 以图片墙卡片展示                                  | `list`                       |
-| `data`                                                                 | 对象或返回对象的异步函数；认证头请在全局 `auth.headers` 中配置                   | `{}`                         |
-| `normal-upload-threshold`、`chunk-size`                                | 超过阈值时走分片；需 transport 支持分片                                          | 10 MiB、1 MiB                |
-| `chunk-concurrency`、`max-concurrent-files`、`max-concurrent-requests` | 分片/文件/请求并发限制                                                           | 3、2、6                      |
-| `resume`、`instant-upload`                                             | 续传和 SHA-256 秒传                                                              | `true`、`true`               |
-| `before-upload`、`before-remove`                                       | 返回 `false` 或 reject 可阻止上传/删除                                           | —                            |
-| `belong-id`、`belong-type`、`extra`                                    | 写入每次上传请求 JSON `data` 的所属 ID、所属类型和扩展属性                       | —                            |
+| 属性                                                                   | 说明                                                                             | 默认值                                       |
+| ---------------------------------------------------------------------- | -------------------------------------------------------------------------------- | -------------------------------------------- |
+| `action` / `transport`                                                 | 内置普通上传 URL / 自定义协议；同时传入时 `transport` 优先                       | —                                            |
+| `create-action`、`delete-action`                                       | 上传前创建文件记录 / 按 `fileId` 清理远端文件及上传会话                          | —                                            |
+| `v-model`、`default-file-list`                                         | 受控文件列表 / 非受控初始列表；远端回显建议提供 `uid`、`fileId`、`url`、`status` | `[]`                                         |
+| `multiple`、`max-count`、`max-size`、`accept`                          | 选择和校验限制                                                                   | `true`、无限制、无限制、全部                 |
+| `auto-upload`                                                          | 选择后立刻上传；关闭后调用实例 `submit()`                                        | `true`                                       |
+| `drag`、`directory`                                                    | 启用整组件拖拽上传及操作区提示、浏览器支持的目录选择                             | `true`、`false`                              |
+| `width`、`height`                                                      | 上传组件的 CSS 尺寸；数字按 px 处理。`height="auto"` 会填满具有明确高度的父容器  | `auto`、`600px`                              |
+| `show-file-list`                                                       | 是否渲染内置列表                                                                 | `true`                                       |
+| `pagination`                                                           | `false` 关闭，或传入受控分页状态；翻页后由业务方拉取对应文件并更新 `v-model`     | `false`                                      |
+| `list-type`                                                            | `list` 或 `picture`；`picture` 以图片墙卡片展示                                  | `list`                                       |
+| `data`                                                                 | 对象或返回对象的异步函数；认证头请在全局 `auth.headers` 中配置                   | `{}`                                         |
+| `normal-upload-threshold`、`chunk-size`                                | 超过阈值时走分片；需 transport 支持分片                                          | 10 MiB、1 MiB                                |
+| `chunk-concurrency`、`max-concurrent-files`、`max-concurrent-requests` | 分片/文件/请求并发限制                                                           | 3、2、6                                      |
+| `resume`、`instant-upload`                                             | 续传和 SHA-256 秒传                                                              | `true`、`true`                               |
+| `before-upload`、`before-remove`                                       | 返回 `false` 或 reject 可阻止上传/删除                                           | —                                            |
+| `belong-id`、`belong-type`、`extra`                                    | 写入每次上传请求 JSON `data` 的所属 ID、所属类型和扩展属性                       | `belong-id` 必填；`belong-type` 为 `default` |
 
 删除规则：`idle`、`validating`、`rejected` 文件直接从列表移除；其他已进入上传流程的状态会显示确认框。确认后组件调用
 `transport.deleteFile(fileId)` 或 `delete-action` 清理后端资源，成功后才移除本地行。因此，为可远程清理的文件配置删除能力，并确保服务端返回稳定的

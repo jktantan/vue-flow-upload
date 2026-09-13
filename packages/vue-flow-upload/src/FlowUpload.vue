@@ -67,9 +67,9 @@ interface FlowUploadProps {
   /** multipart 中 JSON 业务数据字段名。 Multipart JSON business-data field name. */
   dataFieldName?: string
   /** 所属业务记录的标识，会写入 JSON 业务数据。 Owner/business record identifier included in JSON business data. */
-  belongId?: string | number
+  belongId: string | number
   /** 所属业务记录的类型，会写入 JSON 业务数据。 Owner/business record type included in JSON business data. */
-  belongType?: string
+  belongType: string
   /** 业务扩展属性对象，会作为 JSON 的 `extra` 字段发送。 Business extension attributes sent as the JSON `extra` field. */
   extra?: Record<string, unknown>
   /** 接受的扩展名或 MIME 类型过滤器。 Accepted extension or MIME-type filter. */
@@ -186,6 +186,7 @@ const props = withDefaults(defineProps<FlowUploadProps>(), {
   defaultFileList: () => [],
   fileFieldName: 'file',
   dataFieldName: 'data',
+  belongType: 'default',
   maxCount: Number.POSITIVE_INFINITY,
   multiple: true,
   method: 'POST',

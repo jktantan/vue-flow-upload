@@ -4,24 +4,24 @@
 
 ## 常用 Props
 
-| Prop            | 类型                                           | 默认值   | 说明                                                   |
-| --------------- | ---------------------------------------------- | -------- | ------------------------------------------------------ |
-| `v-model`       | `UploadUserFile[]`                             | —        | 受控文件列表。                                         |
-| `action`        | `string`                                       | —        | 内置普通上传 URL。                                     |
-| `transport`     | `UploadTransport`                              | —        | 自定义上传适配器。                                     |
-| `accept`        | `string \| string[]`                           | —        | 扩展名或 MIME 过滤条件。                               |
-| `max-size`      | `number`                                       | —        | 单文件最大字节数。                                     |
-| `max-count`     | `number`                                       | 无限制   | 最多保留的文件数量。                                   |
-| `auto-upload`   | `boolean`                                      | `true`   | 选择后是否立即上传。                                   |
-| `drag`          | `boolean`                                      | `true`   | 是否允许拖入文件。                                     |
-| `multiple`      | `boolean`                                      | `true`   | 是否允许多选。                                         |
-| `disabled`      | `boolean`                                      | `false`  | 禁用全部交互。                                         |
-| `list-type`     | `'list' \| 'picture'`                          | `'list'` | 文件列表显示形式；`picture` 为图片墙。                 |
-| `before-upload` | `(file) => boolean \| Promise<boolean>`        | —        | 返回 `false` 或 reject 时拒绝文件。                    |
-| `before-remove` | `(file, files) => boolean \| Promise<boolean>` | —        | 返回 `false` 或 reject 时阻止删除。                    |
-| `belong-id`     | `string \| number`                             | —        | 所属业务记录 ID，写入上传请求的 JSON `data.belongId`。 |
-| `belong-type`   | `string`                                       | —        | 所属业务类型，写入上传请求的 JSON `data.belongType`。  |
-| `extra`         | `Record<string, unknown>`                      | —        | 扩展属性对象，写入上传请求的 JSON `data.extra`。       |
+| Prop            | 类型                                           | 默认值    | 说明                                                   |
+| --------------- | ---------------------------------------------- | --------- | ------------------------------------------------------ |
+| `v-model`       | `UploadUserFile[]`                             | —         | 受控文件列表。                                         |
+| `action`        | `string`                                       | —         | 内置普通上传 URL。                                     |
+| `transport`     | `UploadTransport`                              | —         | 自定义上传适配器。                                     |
+| `accept`        | `string \| string[]`                           | —         | 扩展名或 MIME 过滤条件。                               |
+| `max-size`      | `number`                                       | —         | 单文件最大字节数。                                     |
+| `max-count`     | `number`                                       | 无限制    | 最多保留的文件数量。                                   |
+| `auto-upload`   | `boolean`                                      | `true`    | 选择后是否立即上传。                                   |
+| `drag`          | `boolean`                                      | `true`    | 是否允许拖入文件。                                     |
+| `multiple`      | `boolean`                                      | `true`    | 是否允许多选。                                         |
+| `disabled`      | `boolean`                                      | `false`   | 禁用全部交互。                                         |
+| `list-type`     | `'list' \| 'picture'`                          | `'list'`  | 文件列表显示形式；`picture` 为图片墙。                 |
+| `before-upload` | `(file) => boolean \| Promise<boolean>`        | —         | 返回 `false` 或 reject 时拒绝文件。                    |
+| `before-remove` | `(file, files) => boolean \| Promise<boolean>` | —         | 返回 `false` 或 reject 时阻止删除。                    |
+| `belong-id`     | `string \| number`                             | 必填      | 所属业务记录 ID，写入上传请求的 JSON `data.belongId`。 |
+| `belong-type`   | `string`                                       | `default` | 所属业务类型，写入上传请求的 JSON `data.belongType`。  |
+| `extra`         | `Record<string, unknown>`                      | —         | 扩展属性对象，写入上传请求的 JSON `data.extra`。       |
 
 ## 大文件 Props
 
