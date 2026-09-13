@@ -50,6 +50,12 @@ interface AvatarUploadProps {
   transport?: UploadTransport
   /** 每个上传请求携带的静态或惰性业务数据。 Static or lazy business data sent with every upload request. */
   data?: UploadData
+  /** 所属业务记录的标识，会写入 JSON 业务数据。 Owner/business record identifier included in JSON business data. */
+  belongId?: string | number
+  /** 所属业务记录的类型，会写入 JSON 业务数据。 Owner/business record type included in JSON business data. */
+  belongType?: string
+  /** 业务扩展属性对象，会作为 JSON 的 `extra` 字段发送。 Business extension attributes sent as the JSON `extra` field. */
+  extra?: Record<string, unknown>
   /** 允许选择的扩展名或 MIME 类型。 Accepted extensions or MIME types. */
   accept?: string | string[]
   /** 单张源图片的最大字节数。 Maximum source-image size in bytes. */
@@ -330,7 +336,15 @@ function parseAvatarUploadResponse(payload: unknown): UploadSuccessResult {
 }
 async function resolveData() {
   // Data may be a lazy async factory so each request gets fresh values.
-  return typeof props.data === 'function' ? await props.data() : (props.data ?? {})
+  // 基础业务数据由调用方提供，再由显式所属字段覆盖同名值。
+  // Caller data is the base, while explicit ownership fields override duplicate keys.
+  const data = typeof props.data === 'function' ? await props.data() : (props.data ?? {})
+  return {
+    ...data,
+    ...(props.belongId !== undefined ? { belongId: props.belongId } : {}),
+    ...(props.belongType !== undefined ? { belongType: props.belongType } : {}),
+    ...(props.extra !== undefined ? { extra: props.extra } : {}),
+  }
 }
 async function resolveHeaders() {
   // Authentication headers are intentionally owned by the global plugin configuration.
@@ -362,9 +376,13 @@ async function upload() {
     let response: UploadSuccessResult = {}
     if (existing && props.updateAction) {
       // updateAction has an explicit REST contract: update the current server file by id.
+      // 更新头像也必须携带与首次上传相同的 JSON 业务上下文。
+      // Avatar replacement carries the same JSON business context as initial upload.
+      const data = await resolveData()
       const formData = new FormData()
       formData.append('file', cropped)
       formData.append('fileId', existing.fileId ?? '')
+      formData.append('data', JSON.stringify(data))
       const result = await fetch(
         appendQuery(
           resolveRequestUrl(

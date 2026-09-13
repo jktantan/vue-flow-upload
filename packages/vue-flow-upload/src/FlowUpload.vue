@@ -66,6 +66,12 @@ interface FlowUploadProps {
   fileFieldName?: string
   /** multipart 中 JSON 业务数据字段名。 Multipart JSON business-data field name. */
   dataFieldName?: string
+  /** 所属业务记录的标识，会写入 JSON 业务数据。 Owner/business record identifier included in JSON business data. */
+  belongId?: string | number
+  /** 所属业务记录的类型，会写入 JSON 业务数据。 Owner/business record type included in JSON business data. */
+  belongType?: string
+  /** 业务扩展属性对象，会作为 JSON 的 `extra` 字段发送。 Business extension attributes sent as the JSON `extra` field. */
+  extra?: Record<string, unknown>
   /** 接受的扩展名或 MIME 类型过滤器。 Accepted extension or MIME-type filter. */
   accept?: string | string[]
   /** 单个文件允许的最大字节数。 Maximum allowed size in bytes for one file. */
@@ -721,7 +727,15 @@ function clear() {
 async function resolveData() {
   // data 可以是静态值或异步函数，使调用方能为每次请求附加最新凭据/元数据。
   // Data may be static or async so callers can attach fresh credentials/metadata per request.
-  return typeof props.data === 'function' ? await props.data() : (props.data ?? {})
+  // 基础业务数据由调用方提供，再由显式所属字段覆盖同名值。
+  // Caller data is the base, while explicit ownership fields override duplicate keys.
+  const data = typeof props.data === 'function' ? await props.data() : (props.data ?? {})
+  return {
+    ...data,
+    ...(props.belongId !== undefined ? { belongId: props.belongId } : {}),
+    ...(props.belongType !== undefined ? { belongType: props.belongType } : {}),
+    ...(props.extra !== undefined ? { extra: props.extra } : {}),
+  }
 }
 
 async function resolveHeaders() {

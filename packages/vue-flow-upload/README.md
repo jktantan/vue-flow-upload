@@ -173,6 +173,7 @@ createApp(App).use(createFlowUploadI18n({ locale: 'en-US' }))
 | `chunk-concurrency`、`max-concurrent-files`、`max-concurrent-requests` | 分片/文件/请求并发限制                                                           | 3、2、6                      |
 | `resume`、`instant-upload`                                             | 续传和 SHA-256 秒传                                                              | `true`、`true`               |
 | `before-upload`、`before-remove`                                       | 返回 `false` 或 reject 可阻止上传/删除                                           | —                            |
+| `belong-id`、`belong-type`、`extra`                                    | 写入每次上传请求 JSON `data` 的所属 ID、所属类型和扩展属性                       | —                            |
 
 删除规则：`idle`、`validating`、`rejected` 文件直接从列表移除；其他已进入上传流程的状态会显示确认框。确认后组件调用
 `transport.deleteFile(fileId)` 或 `delete-action` 清理后端资源，成功后才移除本地行。因此，为可远程清理的文件配置删除能力，并确保服务端返回稳定的

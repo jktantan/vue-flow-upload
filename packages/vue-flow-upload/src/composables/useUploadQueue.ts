@@ -179,7 +179,7 @@ export function useUploadQueue(options: UploadQueueOptions) {
     options.updateFile(uid, { status: 'preparing' })
     const created = transport.createFile
       ? await transport.createFile(
-          fileMeta(file.file!, undefined, file.fileId),
+          { ...fileMeta(file.file!, undefined, file.fileId), data },
           requestMeta(data, await options.resolveHeaders(), await options.resolveQuery()),
         )
       : { fileId: file.fileId! }

@@ -50,7 +50,10 @@ export interface UploadChunkInput {
 /** 组件与任意上传后端/协议之间的适配器边界。 Adapter boundary between components and any upload backend/protocol. */
 export interface UploadTransport {
   /** Creates or confirms the server-side file record before bytes are uploaded. */
-  createFile?(input: FileMeta, context: RequestContext): Promise<{ fileId: string }>
+  createFile?(
+    input: FileMeta & { data: Record<string, unknown> },
+    context: RequestContext,
+  ): Promise<{ fileId: string }>
   uploadFile(
     input: { file: File; fileId: string; data: Record<string, unknown> },
     context: UploadRequestContext,
