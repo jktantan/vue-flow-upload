@@ -405,6 +405,9 @@
   transition: background-color 0.2s;
 }
 .vfu-button__icon {
+  // VitePress 将文档中的 SVG 默认设为 block；恢复为行内图标以避免按钮文字换行。
+  // VitePress defaults document SVGs to block; restore an inline icon so button labels stay on one line.
+  display: inline-block;
   width: 15px;
   height: 15px;
   margin-right: 5px;
