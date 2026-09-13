@@ -167,7 +167,7 @@ createApp(App).use(createFlowUploadI18n({ locale: 'en-US' }))
 | `width`、`height`                                                      | 上传组件的 CSS 尺寸；数字按 px 处理。`height="auto"` 会填满具有明确高度的父容器  | `auto`、`600px`              |
 | `show-file-list`                                                       | 是否渲染内置列表                                                                 | `true`                       |
 | `pagination`                                                           | `false` 关闭，或传入受控分页状态；翻页后由业务方拉取对应文件并更新 `v-model`     | `false`                      |
-| `list-type`                                                            | `list`、`picture`、`picture-card`；后两者以图片墙卡片展示                        | `list`                       |
+| `list-type`                                                            | `list` 或 `picture`；`picture` 以图片墙卡片展示                                  | `list`                       |
 | `data`                                                                 | 对象或返回对象的异步函数；认证头请在全局 `auth.headers` 中配置                   | `{}`                         |
 | `normal-upload-threshold`、`chunk-size`                                | 超过阈值时走分片；需 transport 支持分片                                          | 10 MiB、1 MiB                |
 | `chunk-concurrency`、`max-concurrent-files`、`max-concurrent-requests` | 分片/文件/请求并发限制                                                           | 3、2、6                      |

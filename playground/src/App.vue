@@ -6,6 +6,7 @@ import {
   createHttpUploadTransport,
   type DownloadTransport,
   type UploadFileItem,
+  type UploadListType,
   type UploadPermissions,
   type UploadTransport,
 } from 'vue-flow-upload'
@@ -152,7 +153,7 @@ const archivePollingIntervalMs = ref(2_000)
 const archivePollingTimeoutMs = ref(10 * 60_000)
 const loading = ref(false)
 /** 文件列表的视觉布局类型。 Visual layout type for the file list. */
-const listType = ref<'list' | 'picture' | 'picture-card'>('list')
+const listType = ref<UploadListType>('list')
 const paginationEnabled = ref(true)
 /** 上传组件的分页配置；宿主负责根据分页事件加载对应数据。 Upload component pagination configuration; the host loads corresponding data after pagination events. */
 const pagination = ref({
@@ -597,7 +598,6 @@ function handleAvatarSuccess(file: UploadFileItem): void {
               <legend>列表类型</legend>
               <label><input v-model="listType" type="radio" value="list" /> 列表</label>
               <label><input v-model="listType" type="radio" value="picture" /> 图片墙</label>
-              <label><input v-model="listType" type="radio" value="picture-card" /> 图片卡片</label>
             </fieldset>
             <div class="switch-grid">
               <label class="switch"><input v-model="autoUpload" type="checkbox" /> 自动上传</label>

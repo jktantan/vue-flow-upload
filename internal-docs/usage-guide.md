@@ -134,7 +134,7 @@ const files = ref<UploadFileItem[]>([])
 | `auto-upload`      | `boolean` / `true`                                 | 选择后立即上传；关闭时调用实例 `submit()` 或点击开始上传。                             |
 | `show-file-list`   | `boolean` / `true`                                 | 是否显示内置文件列表。                                                                 |
 | `show-operation`   | `boolean` / `true`                                 | 是否显示工具栏和文件行操作。                                                           |
-| `list-type`        | `'list' \| 'picture' \| 'picture-card'` / `'list'` | 文件列表或图片墙样式。                                                                 |
+| `list-type`        | `'list' \| 'picture'` / `'list'`                  | 文件列表或图片墙样式。                                                                 |
 | `preview`          | `boolean` / `true`                                 | 是否允许内置图片预览。                                                                 |
 | `selectable`       | `boolean` / `false`                                | 是否显示勾选框，用于批量下载和删除。                                                   |
 | `loading`          | `boolean` / `false`                                | 在文件区显示加载遮罩，适合列表回显请求期间使用。                                       |

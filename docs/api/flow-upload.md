@@ -16,7 +16,7 @@
 | `drag`          | `boolean`                                      | `true`   | 是否允许拖入文件。                  |
 | `multiple`      | `boolean`                                      | `true`   | 是否允许多选。                      |
 | `disabled`      | `boolean`                                      | `false`  | 禁用全部交互。                      |
-| `list-type`     | `'list' \| 'picture' \| 'picture-card'`        | `'list'` | 文件列表显示形式。                  |
+| `list-type`     | `'list' \| 'picture'`                          | `'list'` | 文件列表显示形式；`picture` 为图片墙。 |
 | `before-upload` | `(file) => boolean \| Promise<boolean>`        | —        | 返回 `false` 或 reject 时拒绝文件。 |
 | `before-remove` | `(file, files) => boolean \| Promise<boolean>` | —        | 返回 `false` 或 reject 时阻止删除。 |
 

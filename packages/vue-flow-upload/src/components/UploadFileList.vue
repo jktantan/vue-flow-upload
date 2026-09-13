@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { UploadFileItem, UploadMessages } from '../types'
+import type { UploadFileItem, UploadListType, UploadMessages } from '../types'
 import { fileIconUrl, formatSize, isImage } from '../utils/file'
 
 /** 将细化队列状态映射为较小的视觉图标状态集合。 Maps detailed queue states to the smaller set of visual state-icon variants. */
@@ -18,7 +18,7 @@ function statusKind(status: UploadFileItem['status']) {
 interface UploadFileListProps {
   files: UploadFileItem[]
   show: boolean
-  listType?: 'list' | 'picture' | 'picture-card'
+  listType?: UploadListType
   selectable: boolean
   selected: Set<string>
   canUpload: boolean
@@ -46,7 +46,7 @@ defineProps<UploadFileListProps>()
   <ul
     v-if="show && files.length"
     class="vfu-list"
-    :class="{ 'is-picture-wall': listType === 'picture' || listType === 'picture-card' }"
+    :class="{ 'is-picture-wall': listType === 'picture' }"
     aria-live="polite"
   >
     <li

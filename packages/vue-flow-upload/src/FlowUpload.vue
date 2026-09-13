@@ -36,6 +36,7 @@ import type {
   UploadUserFile,
   UploadPagination,
   UploadPaginationConfig,
+  UploadListType,
 } from './types'
 
 /**
@@ -103,8 +104,8 @@ interface FlowUploadProps {
   drag?: boolean
   /** 是否允许选择文件夹（浏览器支持时）。 Whether directory selection is allowed when the browser supports it. */
   directory?: boolean
-  /** 列表、图片墙或图片卡片的展示模式。 Display mode: list, picture wall, or picture card. */
-  listType?: 'list' | 'picture' | 'picture-card'
+  /** 列表或图片墙的展示模式。 Display mode: list or picture wall. */
+  listType?: UploadListType
   /** 是否允许图片预览。 Whether image preview is allowed. */
   preview?: boolean
   /** 是否显示用于批量操作的选择框。 Whether to show selection controls for batch operations. */
@@ -879,7 +880,7 @@ defineExpose({
         <p>{{ text.noData }}</p>
       </div>
       <UploadPictureWall
-        v-if="listType === 'picture' || listType === 'picture-card'"
+        v-if="listType === 'picture'"
         :files="displayedFiles"
         :show="showFileList"
         :list-type="listType"

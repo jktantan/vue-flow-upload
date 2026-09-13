@@ -15,6 +15,12 @@ export type UploadStatus =
   | 'canceled'
   | 'rejected'
 
+/**
+ * 文件列表的视觉布局类型；图片模式统一使用图片墙展示。
+ * Visual layout for the file list; the picture mode consistently renders a picture wall.
+ */
+export type UploadListType = 'list' | 'picture'
+
 /** 写入文件行和公开 error 事件的标准化错误。 Normalized error passed to row state and the public error event. */
 export interface UploadError {
   /** Stable machine-readable reason such as HTTP_404 or FILE_TOO_LARGE. */

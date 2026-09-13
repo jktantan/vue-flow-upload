@@ -40,6 +40,7 @@ export type {
   UploadMessages,
   UploadPagination,
   UploadPaginationConfig,
+  UploadListType,
   UploadTheme,
   ThemeAdapter,
 } from './types'

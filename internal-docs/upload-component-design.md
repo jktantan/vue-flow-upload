@@ -73,7 +73,7 @@ MiB）、`chunkConcurrency`（3）、`maxConcurrentFiles`（2）、`maxConcurren
 
 ## 4. 视图、删除与下载
 
-- `listType=list` 使用文件列表；`picture/picture-card` 使用图片墙；本地预览使用对象 URL，完成后优先使用服务端
+- `listType=list` 使用文件列表；`picture` 使用图片墙；本地预览使用对象 URL，完成后优先使用服务端
   `url/thumbnailUrl`。
 - `theme` 可传 `'default'`、`'element-plus'`、`'ant-design-vue'` 或 `ThemeAdapter`。当前主题适配器仅提供名称/类名/变量映射，不会自动安装第三方组件库。
 - 成功、上传中、失败等已进入上传流程的文件删除前显示确认框，并要求 `deleteFile`；未开始或校验拒绝的文件直接移除。没有删除能力时远程清理失败且文件保留。

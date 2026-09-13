@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import type { UploadFileItem, UploadMessages } from '../types'
+import type { UploadFileItem, UploadListType, UploadMessages } from '../types'
 import UploadFileList from './UploadFileList.vue'
 
 /** 图片墙展示输入；仅作为 UploadFileList 的无状态表现层包装。 Picture-wall input; only a stateless presentation wrapper around UploadFileList. */
 interface UploadPictureWallProps {
   files: UploadFileItem[]
   show: boolean
-  listType: 'picture' | 'picture-card'
+  listType: Extract<UploadListType, 'picture'>
   selectable: boolean
   selected: Set<string>
   canUpload: boolean
