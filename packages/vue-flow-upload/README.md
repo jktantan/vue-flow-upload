@@ -155,6 +155,10 @@ const downloadTransport = createHttpDownloadTransport({
 
 下载地址职责：`downloadUrl` 下载单个 `{fileId}` 文件；`archive.createUrl` 创建批量归档任务；`archive.taskUrl` 轮询 `{taskId}` 状态和最终下载地址；`archive.cancelUrl` 取消未完成任务。将 `downloadTransport` 传给组件的 `download-transport` 即可启用下载。适配器会接收组件解析的认证头和 query；如需相对地址的 API 前缀、跨域 Cookie 或自定义超时，请在创建时配置 `baseUrl`、`credentials`、`timeout`。完整约定见 [下载传输适配器](../../docs/api/download-transport.md)。
 
+### 文件查询 HTTP 适配器
+
+`createHttpFileQueryTransport({ queryUrl })` 负责文件元数据查询，不复用上传或下载地址。它以 JSON `POST` 向 `queryUrl` 发送 `{ data, filters, pagination }`：`data` 包含 `belongId`、`belongType`、`extra`；`pagination.enabled` 明确表示是否分页。分页请求还发送 `currentPage`、`pageSize` 并要求响应返回 `files`、`currentPage`、`pageSize`、`total`；非分页请求和响应均使用 `{ enabled: false }`。将其传给 `query-transport` 后，组件会自动处理首次加载、筛选变化、分页、取消与过期结果。完整约定见 [文件查询传输适配器](../../docs/api/query-transport.md)。
+
 ## 国际化
 
 内置语言使用 `VueFlowUpload.*` 命名空间。为多个组件统一语言时，在宿主应用安装一个 i18n 实例：

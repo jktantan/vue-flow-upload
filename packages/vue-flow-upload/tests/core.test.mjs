@@ -3,6 +3,7 @@ import test from 'node:test'
 import {
   createFlowUploadI18n,
   createHttpDownloadTransport,
+  createHttpFileQueryTransport,
   ChunkScheduler,
   hashFile,
   resolveMessages,
@@ -53,6 +54,12 @@ class DownloadTransportXmlHttpRequest {
   getResponseHeader(name) {
     return this.responseHeaders.get(name) ?? null
   }
+
+  /** 测试不需要派发 loadend，只需接受适配器注册与移除监听。 Tests need not dispatch loadend; they only accept adapter listener registration and removal. */
+  addEventListener() {}
+
+  /** 测试不需要派发 loadend，只需接受适配器注册与移除监听。 Tests need not dispatch loadend; they only accept adapter listener registration and removal. */
+  removeEventListener() {}
 
   /** 异步完成请求，使其匹配真实 XHR 的事件时序。 Completes the request asynchronously to match real XHR event timing. */
   send(body) {
@@ -208,6 +215,89 @@ test('HTTP download transport maps direct download and archive lifecycle endpoin
     assert.equal(DownloadTransportXmlHttpRequest.requests[3].method, 'DELETE')
   } finally {
     /** 恢复全局 XHR，确保本测试不会影响其他测试。 Restores global XHR so this test cannot affect other tests. */
+    globalThis.XMLHttpRequest = originalXmlHttpRequest
+  }
+})
+
+test('HTTP file query transport sends explicit pagination and validates the response', async () => {
+  /** 保存并替换浏览器 XHR，以验证查询适配器的请求体与标准化结果。 Saves and replaces browser XHR to verify query-adapter payloads and normalized results. */
+  const originalXmlHttpRequest = globalThis.XMLHttpRequest
+  globalThis.XMLHttpRequest = DownloadTransportXmlHttpRequest
+  DownloadTransportXmlHttpRequest.requests = []
+  DownloadTransportXmlHttpRequest.responses = [
+    {
+      status: 200,
+      responseText: JSON.stringify({
+        files: [{ name: 'report.pdf', size: 12, type: 'application/pdf', status: 'success' }],
+        pagination: { enabled: true, currentPage: 2, pageSize: 20, total: 41 },
+      }),
+    },
+  ]
+  try {
+    /** 内置查询适配器始终以 JSON POST 发送归属数据、筛选和分页模式。 The built-in query adapter always POSTs ownership data, filters, and pagination mode as JSON. */
+    const transport = createHttpFileQueryTransport({ queryUrl: '/files/query', baseUrl: '/api' })
+    const controller = new AbortController()
+    const result = await transport.queryFiles(
+      {
+        filters: { keyword: 'report' },
+        pagination: { enabled: true, currentPage: 2, pageSize: 20 },
+      },
+      {
+        data: { belongId: 'order-1', belongType: 'order' },
+        headers: { Authorization: 'Bearer example' },
+        query: { source: 'test' },
+        signal: controller.signal,
+      },
+    )
+    assert.equal(result.pagination.enabled, true)
+    assert.equal(result.files[0].name, 'report.pdf')
+    assert.equal(DownloadTransportXmlHttpRequest.requests[0].method, 'POST')
+    assert.match(DownloadTransportXmlHttpRequest.requests[0].url, /api\/files\/query\?source=test/)
+    assert.equal(
+      DownloadTransportXmlHttpRequest.requests[0].headers.get('Content-Type'),
+      'application/json',
+    )
+    assert.equal(
+      DownloadTransportXmlHttpRequest.requests[0].body,
+      JSON.stringify({
+        data: { belongId: 'order-1', belongType: 'order' },
+        filters: { keyword: 'report' },
+        pagination: { enabled: true, currentPage: 2, pageSize: 20 },
+      }),
+    )
+  } finally {
+    /** 恢复全局 XHR，确保查询测试不会影响其他传输测试。 Restores global XHR so the query test cannot affect other transport tests. */
+    globalThis.XMLHttpRequest = originalXmlHttpRequest
+  }
+})
+
+test('HTTP file query transport rejects a response with a mismatched pagination mode', async () => {
+  /** 保存并替换浏览器 XHR，以验证错误响应不会进入组件文件状态。 Saves and replaces browser XHR to verify invalid responses cannot enter component file state. */
+  const originalXmlHttpRequest = globalThis.XMLHttpRequest
+  globalThis.XMLHttpRequest = DownloadTransportXmlHttpRequest
+  DownloadTransportXmlHttpRequest.requests = []
+  DownloadTransportXmlHttpRequest.responses = [
+    {
+      status: 200,
+      responseText: JSON.stringify({
+        files: [],
+        pagination: { enabled: false },
+      }),
+    },
+  ]
+  try {
+    /** 分页请求收到非分页响应时必须生成标准 INVALID_RESPONSE 错误。 A paginated request receiving a non-paginated response must produce a standard INVALID_RESPONSE error. */
+    const transport = createHttpFileQueryTransport({ queryUrl: '/files/query' })
+    const controller = new AbortController()
+    await assert.rejects(
+      transport.queryFiles(
+        { pagination: { enabled: true, currentPage: 1, pageSize: 20 } },
+        { data: {}, headers: {}, signal: controller.signal },
+      ),
+      { code: 'INVALID_RESPONSE' },
+    )
+  } finally {
+    /** 恢复全局 XHR，确保失败路径测试不会泄漏到其他用例。 Restores global XHR so the failure-path test cannot leak into other cases. */
     globalThis.XMLHttpRequest = originalXmlHttpRequest
   }
 })

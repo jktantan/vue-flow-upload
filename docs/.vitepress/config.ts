@@ -63,6 +63,7 @@ export default defineConfig({
           { text: 'AvatarUpload', link: '/api/avatar-upload' },
           { text: '上传传输适配器', link: '/api/transport' },
           { text: '下载传输适配器', link: '/api/download-transport' },
+          { text: '文件查询传输适配器', link: '/api/query-transport' },
         ],
       },
       {

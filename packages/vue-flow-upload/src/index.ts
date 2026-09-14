@@ -6,6 +6,7 @@ export type { UploadAuthConfig, UploadDefaults, VueFlowUploadOptions } from './c
 export { FlowUpload, AvatarUpload }
 export { createHttpUploadTransport } from './core/http-transport'
 export { createHttpDownloadTransport } from './core/http-download-transport'
+export { createHttpFileQueryTransport } from './core/http-query-transport'
 export { ChunkScheduler } from './core/chunk-scheduler'
 export { hashFile } from './core/hash-service'
 export {
@@ -22,6 +23,7 @@ export type {
   HttpDownloadTransportOptions,
   HttpDownloadUrl,
 } from './core/http-download-transport'
+export type { HttpFileQueryTransportOptions } from './core/http-query-transport'
 export type { ChunkSchedulerOptions } from './core/chunk-scheduler'
 export type {
   AvatarShape,
@@ -29,6 +31,11 @@ export type {
   DownloadResource,
   DownloadScope,
   DownloadTransport,
+  FileQueryInput,
+  FileQueryPagination,
+  FileQueryRequestContext,
+  FileQueryResult,
+  FileQueryTransport,
   FileMeta,
   MultipartInitInput,
   MultipartSession,

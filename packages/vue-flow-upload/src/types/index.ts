@@ -1,5 +1,6 @@
 export type * from './avatar'
 export type * from './download'
+export type * from './query'
 export type * from './theme'
 export type * from './transport'
 export type * from './upload'

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /* eslint-disable vue/require-default-prop -- omitted values are semantically distinct in the public API */
-import { computed, getCurrentInstance, inject, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, getCurrentInstance, inject, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n-lite'
 import { ChunkScheduler } from './core/chunk-scheduler'
 import { createFlowUploadI18n, getUploadMessages, type FlowUploadI18nOptions } from './i18n'
@@ -26,6 +26,9 @@ import type {
   UploadData,
   DownloadScope,
   DownloadTransport,
+  FileQueryPagination,
+  FileQueryResult,
+  FileQueryTransport,
   UploadError,
   UploadFileItem,
   UploadPermissions,
@@ -60,6 +63,12 @@ interface FlowUploadProps {
   method?: 'POST' | 'PUT'
   /** 下载与服务端打包下载的适配器。 Adapter for direct downloads and server-side archive downloads. */
   downloadTransport?: DownloadTransport
+  /** 文件列表查询适配器；提供后组件可自行加载、筛选和翻页。 File-list query adapter; when supplied the component can load, filter, and paginate itself. */
+  queryTransport?: FileQueryTransport
+  /** 查询适配器的业务筛选条件；深度变化会取消旧请求并从第一页重新查询。 Business filter conditions for the query adapter; deep changes cancel old requests and requery from the first page. */
+  queryFilters?: Record<string, unknown>
+  /** 是否在组件挂载且提供查询适配器时立即查询。 Whether to query immediately when the component mounts with a query adapter. */
+  queryOnMount?: boolean
   /** 每次上传附带的业务数据，可为异步工厂。 Business data sent with each upload; may be an async factory. */
   data?: UploadData
   /** multipart 中二进制文件字段名。 Multipart binary-file field name. */
@@ -176,6 +185,10 @@ interface FlowUploadEmits {
   (event: 'archive-progress', taskId: string, percent?: number): void
   (event: 'archive-success', taskId: string): void
   (event: 'archive-error', taskId: string, error: UploadError): void
+  /** 文件查询生命周期事件；错误不会伪装成上传失败。 File-query lifecycle events; errors are not disguised as upload failures. */
+  (event: 'query-loading', isLoading: boolean): void
+  (event: 'query-success', result: FileQueryResult): void
+  (event: 'query-error', error: UploadError): void
   /** 受控分页值和便捷分页变更事件。 Controlled pagination value and convenience pagination-change event. */
   (event: 'update:pagination', value: UploadPagination): void
   (event: 'pagination-change', currentPage: number, pageSize: number): void
@@ -212,6 +225,7 @@ const props = withDefaults(defineProps<FlowUploadProps>(), {
   height: '600px',
   archivePollingInterval: 2_000,
   archivePollingTimeout: 10 * 60_000,
+  queryOnMount: true,
   theme: 'default',
   locale: 'zh-CN',
   disabled: false,
@@ -225,6 +239,12 @@ const emit = defineEmits<FlowUploadEmits>()
 const internalFiles = ref<UploadFileItem[]>(
   normalizeFileList(props.modelValue ?? props.defaultFileList),
 )
+/** 查询适配器正在请求服务端文件列表时的内部加载状态。 Internal loading state while the query adapter requests server file records. */
+const queryLoading = ref(false)
+/** 当前查询的取消控制器；新筛选、翻页与卸载都会替换它。 Cancellation controller for the current query; new filters, pagination, and unmount replace it. */
+let queryController: AbortController | undefined
+/** 单调递增查询版本，防止忽略取消的外部适配器写回过期结果。 Monotonic query version that blocks stale writes from external adapters that ignore cancellation. */
+let queryVersion = 0
 // Uids created by this instance identify transient upload work. Server pages
 // supplied through v-model are merged with these rows instead of replacing them.
 const localUploadUids = new Set<string>()
@@ -424,6 +444,9 @@ function handlePaginationChange(currentPage: number, pageSize: number) {
   // 此事件通知宿主应从自身数据源加载新页。
   // This event tells the host when it should load a new page from its own data source.
   emit('pagination-change', currentPage, pageSize)
+  // 查询适配器存在时由组件加载目标页；未配置时保持宿主自行加载的原有行为。
+  // When a query adapter exists, the component loads the target page; without one, preserve host-owned loading behavior.
+  if (props.queryTransport) void refreshQuery({ enabled: true, currentPage, pageSize })
 }
 
 function updateFile(uid: string, patch: Partial<UploadFileItem>) {
@@ -457,7 +480,12 @@ const uploadQueue = useUploadQueue({
   resolveQuery,
   updateFile,
   onProgress: (file, percent) => emit('progress', file, percent),
-  onSuccess: (file, response) => emit('success', file, response),
+  onSuccess: (file, response) => {
+    // 上传成功后重查服务端列表，使排序、处理状态和后端补充字段保持权威。
+    // Requery the server list after upload success so ordering, processing state, and backend-enriched fields remain authoritative.
+    emit('success', file, response)
+    if (props.queryTransport) void refreshQuery()
+  },
   onError: (file, error) => emit('error', file, error),
 })
 /** 暴露给行操作、工具栏及组件公开 API 的队列命令。 Queue commands exposed to row actions, toolbar actions, and the public component API. */
@@ -699,6 +727,9 @@ async function removeImmediately(target: UploadFileItem) {
     target,
   )
   emit('remove', target)
+  // 删除成功后重查当前范围，避免分页总数和服务端排序只在本地推测。
+  // Requery the current scope after deletion so pagination totals and server ordering are not only inferred locally.
+  if (props.queryTransport) void refreshQuery()
   return true
 }
 
@@ -721,6 +752,12 @@ function clear() {
   clearPreviews()
   clearSelection()
   clearDownloads()
+  // 清空操作应作废尚未返回的查询，防止调用方主动清空后旧响应重新填充列表。
+  // Clearing invalidates an outstanding query so an old response cannot repopulate a caller-cleared list.
+  queryController?.abort()
+  queryVersion += 1
+  queryLoading.value = false
+  emit('query-loading', false)
   localUploadUids.clear()
   updateFiles([])
 }
@@ -748,6 +785,95 @@ async function resolveQuery() {
   const query = globalConfig.auth?.query
   return typeof query === 'function' ? await query() : (query ?? {})
 }
+
+/**
+ * 查询当前筛选和分页对应的服务端文件，并仅接纳最新请求的结果。
+ * Queries server files for current filters/pagination and accepts results from only the latest request.
+ */
+async function refreshQuery(paginationOverride?: FileQueryPagination) {
+  /** 未配置查询适配器时不发请求，继续由宿主通过 v-model 管理列表。 Without a query adapter, do not request and keep host v-model list management. */
+  const transport = props.queryTransport
+  if (!transport) return
+  queryController?.abort()
+  const controller = new AbortController()
+  queryController = controller
+  const requestVersion = ++queryVersion
+  /** 分页开启时始终向后端传完整页码；关闭时显式传 enabled:false。 When pagination is enabled, always send a complete page; when disabled, explicitly send enabled:false. */
+  const requestPagination: FileQueryPagination =
+    paginationOverride ??
+    (pagination.value
+      ? {
+          enabled: true,
+          currentPage: pagination.value.currentPage ?? 1,
+          pageSize: pagination.value.pageSize ?? 10,
+        }
+      : { enabled: false })
+  queryLoading.value = true
+  emit('query-loading', true)
+  try {
+    const result = await transport.queryFiles(
+      { pagination: requestPagination, filters: props.queryFilters },
+      {
+        data: await resolveData(),
+        headers: await resolveHeaders(),
+        query: await resolveQuery(),
+        signal: controller.signal,
+      },
+    )
+    /** 取消后的请求或旧版本绝不能覆盖当前筛选结果。 An aborted request or old version must never overwrite the current filtered result. */
+    if (isUnmounted || controller.signal.aborted || requestVersion !== queryVersion) return
+    const serverFiles = normalizeFileList(result.files)
+    const localPendingFiles = internalFiles.value.filter(
+      (file) => localUploadUids.has(file.uid) && !['processing', 'success'].includes(file.status),
+    )
+    updateFiles([...localPendingFiles, ...serverFiles])
+    if (result.pagination.enabled)
+      emit('update:pagination', {
+        ...pagination.value,
+        currentPage: result.pagination.currentPage,
+        pageSize: result.pagination.pageSize,
+        total: result.pagination.total,
+      })
+    emit('query-success', result)
+  } catch (cause) {
+    /** 已取消的旧查询是正常控制流，不向宿主报告为错误。 An aborted stale query is normal control flow and is not reported as an error. */
+    if (!controller.signal.aborted && !isUnmounted && requestVersion === queryVersion)
+      emit('query-error', normalizeUploadError(cause))
+  } finally {
+    /** 只有当前查询可以关闭加载态，避免先结束的旧请求闪烁遮罩。 Only the current query may clear loading, preventing earlier requests from flickering the mask. */
+    if (requestVersion === queryVersion) {
+      queryLoading.value = false
+      emit('query-loading', false)
+    }
+  }
+}
+
+/** 筛选条件变化时回到第一页，避免新条件沿用旧条件的越界页码。 Resets to the first page on filter changes so new conditions do not retain an out-of-range page. */
+watch(
+  () => props.queryFilters,
+  () => {
+    if (!props.queryTransport) return
+    const pageSize = pagination.value?.pageSize ?? 10
+    if (pagination.value) emit('update:pagination', { ...pagination.value, currentPage: 1 })
+    void refreshQuery(
+      pagination.value ? { enabled: true, currentPage: 1, pageSize } : { enabled: false },
+    )
+  },
+  { deep: true },
+)
+
+/** 运行时挂载或替换查询适配器时拉取当前列表，便于延迟注入后端能力。 Loads the current list when a query adapter is mounted or replaced at runtime, enabling delayed backend injection. */
+watch(
+  () => props.queryTransport,
+  (transport, previousTransport) => {
+    if (transport && transport !== previousTransport && props.queryOnMount) void refreshQuery()
+  },
+)
+
+/** 首次挂载按配置加载远端列表；不配置适配器或关闭开关时不改变既有 v-model 行为。 Loads the remote list on first mount when configured; without an adapter or with the switch off, existing v-model behavior remains unchanged. */
+onMounted(() => {
+  if (props.queryTransport && props.queryOnMount) void refreshQuery()
+})
 
 function statusText(status: UploadFileItem['status']) {
   // 集中维护状态到文案的映射，确保列表行和自定义插槽使用相同文本。
@@ -815,6 +941,7 @@ onBeforeUnmount(() => {
   // 卸载先封闭异步写入入口，再取消队列、下载、预览和短提示资源。
   // On unmount, close async write access before releasing queue, download, preview, and toast resources.
   isUnmounted = true
+  queryController?.abort()
   if (toastTimer !== undefined) window.clearTimeout(toastTimer)
   clear()
 })
@@ -835,6 +962,7 @@ defineExpose({
   downloadSelected,
   downloadAll,
   cancelArchive,
+  refreshQuery,
 })
 </script>
 
@@ -948,7 +1076,12 @@ defineExpose({
           <slot name="file" v-bind="slotProps" />
         </template>
       </UploadFileList>
-      <div v-if="loading" class="vfu-upload__loading-mask" role="status" aria-live="polite">
+      <div
+        v-if="loading || queryLoading"
+        class="vfu-upload__loading-mask"
+        role="status"
+        aria-live="polite"
+      >
         <img :src="loadingSvg" alt="" aria-hidden="true" />
       </div>
     </div>
