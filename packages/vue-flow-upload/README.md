@@ -120,7 +120,7 @@ Cookie，`headers` 控制认证请求头，`query` 添加统一 URL 参数。它
 `http(s)` 地址不会拼接 `baseUrl`。不要在组件上重复配置认证信息，也不要把敏感 Token 放在 query 中。
 
 ```ts
-import { createHttpUploadTransport } from 'vue-flow-upload'
+import { createHttpDownloadTransport, createHttpUploadTransport } from 'vue-flow-upload'
 
 const transport = createHttpUploadTransport({
   url: '/uploads/file',
@@ -132,7 +132,18 @@ const transport = createHttpUploadTransport({
     cancelUrl: '/uploads/{uploadId}',
   },
 })
+
+const downloadTransport = createHttpDownloadTransport({
+  downloadUrl: '/uploads/files/{fileId}/download',
+  archive: {
+    createUrl: '/uploads/archives',
+    taskUrl: '/uploads/archives/{taskId}',
+    cancelUrl: '/uploads/archives/{taskId}',
+  },
+})
 ```
+
+将 `downloadTransport` 传给组件的 `download-transport` 即可启用单文件下载和批量归档。适配器会接收组件解析的认证头和 query；如需相对地址的 API 前缀、跨域 Cookie 或自定义超时，请在创建时配置 `baseUrl`、`credentials`、`timeout`。它将文件响应读取为 Blob，并优先使用服务端 `Content-Disposition` 文件名。归档创建端点需返回 `{ taskId, status }`，成功轮询结果还需返回 `downloadUrl`。完整端点约定见 [传输适配器](../../docs/api/transport.md)。
 
 ## 国际化
 
