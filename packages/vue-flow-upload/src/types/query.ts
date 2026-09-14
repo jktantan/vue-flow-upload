@@ -23,19 +23,17 @@ export type FileQueryPagination = FileQueryWithoutPagination | FileQueryWithPagi
 export interface FileQueryInput {
   /** 后端必须据此决定返回完整列表或分页结果。 Directs the backend to return a complete list or a paginated result. */
   pagination: FileQueryPagination
-  /** 由宿主定义的搜索词、状态、日期等业务筛选条件。 Host-defined business filters such as keywords, status, and dates. */
-  filters?: Record<string, unknown>
 }
 
 /** 文件查询适配器收到的认证、归属与取消上下文。 Authentication, ownership, and cancellation context received by a file-query adapter. */
 export interface FileQueryRequestContext {
   /** 组件和插件解析后的认证请求头。 Authentication request headers resolved by the component and plugin. */
   headers: Record<string, string>
-  /** 包含 belongId、belongType、extra 的业务归属数据。 Business ownership data containing belongId, belongType, and extra. */
-  data: Record<string, unknown>
-  /** 每个请求附加到 URL 的公共查询参数。 Shared query parameters appended to every request URL. */
-  query?: Record<string, string | number | boolean>
-  /** 新筛选、翻页或卸载时中止旧请求的信号。 Signal that aborts stale requests on new filters, pagination, or unmount. */
+  /** 包含 belongId、belongType 与项目特定匹配条件 extra 的业务查询对象。 Business query containing belongId, belongType, and project-specific match conditions in extra. */
+  query: Record<string, unknown>
+  /** 每个请求附加到 URL 的公共认证查询参数。 Shared authentication query parameters appended to every request URL. */
+  urlQuery?: Record<string, string | number | boolean>
+  /** 新 extra、翻页或卸载时中止旧请求的信号。 Signal that aborts stale requests on new extra, pagination, or unmount. */
   signal: AbortSignal
 }
 

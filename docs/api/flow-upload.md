@@ -4,28 +4,27 @@
 
 ## 常用 Props
 
-| Prop                 | 类型                                           | 默认值    | 说明                                                   |
-| -------------------- | ---------------------------------------------- | --------- | ------------------------------------------------------ |
-| `v-model`            | `UploadUserFile[]`                             | —         | 受控文件列表。                                         |
-| `action`             | `string`                                       | —         | 内置 XHR `transport` 的普通上传 URL 快捷写法。         |
-| `transport`          | `UploadTransport`                              | —         | 上传协议适配器；可使用任意 HTTP 客户端或直传 SDK。     |
-| `download-transport` | `DownloadTransport`                            | —         | 下载单文件和创建服务端归档任务的协议适配器。           |
-| `query-transport`    | `FileQueryTransport`                           | —         | 文件列表查询适配器；传入后组件可加载、筛选和翻页。     |
-| `query-filters`      | `Record<string, unknown>`                      | —         | 查询业务筛选条件；深度变化会从第一页重新加载。         |
-| `query-on-mount`     | `boolean`                                      | `true`    | 是否在挂载时使用查询适配器加载文件列表。               |
-| `accept`             | `string \| string[]`                           | —         | 扩展名或 MIME 过滤条件。                               |
-| `max-size`           | `number`                                       | —         | 单文件最大字节数。                                     |
-| `max-count`          | `number`                                       | 无限制    | 最多保留的文件数量。                                   |
-| `auto-upload`        | `boolean`                                      | `true`    | 选择后是否立即上传。                                   |
-| `drag`               | `boolean`                                      | `true`    | 是否允许拖入文件。                                     |
-| `multiple`           | `boolean`                                      | `true`    | 是否允许多选。                                         |
-| `disabled`           | `boolean`                                      | `false`   | 禁用全部交互。                                         |
-| `list-type`          | `'list' \| 'picture'`                          | `'list'`  | 文件列表显示形式；`picture` 为图片墙。                 |
-| `before-upload`      | `(file) => boolean \| Promise<boolean>`        | —         | 返回 `false` 或 reject 时拒绝文件。                    |
-| `before-remove`      | `(file, files) => boolean \| Promise<boolean>` | —         | 返回 `false` 或 reject 时阻止删除。                    |
-| `belong-id`          | `string \| number`                             | 必填      | 所属业务记录 ID，写入上传请求的 JSON `data.belongId`。 |
-| `belong-type`        | `string`                                       | `default` | 所属业务类型，写入上传请求的 JSON `data.belongType`。  |
-| `extra`              | `Record<string, unknown>`                      | —         | 扩展属性对象，写入上传请求的 JSON `data.extra`。       |
+| Prop                 | 类型                                           | 默认值    | 说明                                                                                                             |
+| -------------------- | ---------------------------------------------- | --------- | ---------------------------------------------------------------------------------------------------------------- |
+| `v-model`            | `UploadUserFile[]`                             | —         | 受控文件列表。                                                                                                   |
+| `action`             | `string`                                       | —         | 内置 XHR `transport` 的普通上传 URL 快捷写法。                                                                   |
+| `transport`          | `UploadTransport`                              | —         | 上传协议适配器；可使用任意 HTTP 客户端或直传 SDK。                                                               |
+| `download-transport` | `DownloadTransport`                            | —         | 下载单文件和创建服务端归档任务的协议适配器。                                                                     |
+| `query-transport`    | `FileQueryTransport`                           | —         | 文件列表查询适配器；传入后组件可加载、筛选和翻页。                                                               |
+| `query-on-mount`     | `boolean`                                      | `true`    | 是否在挂载时使用查询适配器加载文件列表。                                                                         |
+| `accept`             | `string \| string[]`                           | —         | 扩展名或 MIME 过滤条件。                                                                                         |
+| `max-size`           | `number`                                       | —         | 单文件最大字节数。                                                                                               |
+| `max-count`          | `number`                                       | 无限制    | 最多保留的文件数量。                                                                                             |
+| `auto-upload`        | `boolean`                                      | `true`    | 选择后是否立即上传。                                                                                             |
+| `drag`               | `boolean`                                      | `true`    | 是否允许拖入文件。                                                                                               |
+| `multiple`           | `boolean`                                      | `true`    | 是否允许多选。                                                                                                   |
+| `disabled`           | `boolean`                                      | `false`   | 禁用全部交互。                                                                                                   |
+| `list-type`          | `'list' \| 'picture'`                          | `'list'`  | 文件列表显示形式；`picture` 为图片墙。                                                                           |
+| `before-upload`      | `(file) => boolean \| Promise<boolean>`        | —         | 返回 `false` 或 reject 时拒绝文件。                                                                              |
+| `before-remove`      | `(file, files) => boolean \| Promise<boolean>` | —         | 返回 `false` 或 reject 时阻止删除。                                                                              |
+| `belong-id`          | `string \| number`                             | 必填      | 所属业务记录 ID，写入上传请求的 JSON `data.belongId`。                                                           |
+| `belong-type`        | `string`                                       | `default` | 所属业务类型，写入上传请求的 JSON `data.belongType`。                                                            |
+| `extra`              | `Record<string, unknown>`                      | —         | 扩展属性对象，写入上传请求的 JSON `data.extra`；query-transport 用其做项目特定匹配，深度变化会从第一页重新加载。 |
 
 ## 大文件 Props
 

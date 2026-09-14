@@ -157,7 +157,7 @@ const downloadTransport = createHttpDownloadTransport({
 
 ### 文件查询 HTTP 适配器
 
-`createHttpFileQueryTransport({ queryUrl })` 负责文件元数据查询，不复用上传或下载地址。它以 JSON `POST` 向 `queryUrl` 发送 `{ data, filters, pagination }`：`data` 包含 `belongId`、`belongType`、`extra`；`pagination.enabled` 明确表示是否分页。分页请求还发送 `currentPage`、`pageSize` 并要求响应返回 `files`、`currentPage`、`pageSize`、`total`；非分页请求和响应均使用 `{ enabled: false }`。将其传给 `query-transport` 后，组件会自动处理首次加载、筛选变化、分页、取消与过期结果。完整约定见 [文件查询传输适配器](../../docs/api/query-transport.md)。
+`createHttpFileQueryTransport({ queryUrl })` 负责文件元数据查询，不复用上传或下载地址。它以 JSON `POST` 向 `queryUrl` 发送 `{ query, pagination }`：`query` 包含 `belongId`、`belongType`、`extra`，其中 `extra` 是上传扩展数据，也是查询时项目特定的匹配条件；不再维护第二套筛选字段。`pagination.enabled` 明确表示是否分页。分页请求还发送 `currentPage`、`pageSize` 并要求响应返回 `files`、`currentPage`、`pageSize`、`total`；非分页请求和响应均使用 `{ enabled: false }`。将其传给 `query-transport` 后，组件会自动处理首次加载、`extra` 变化、分页、取消与过期结果。完整约定见 [文件查询传输适配器](../../docs/api/query-transport.md)。
 
 ## 国际化
 

@@ -3,7 +3,7 @@ import { appendQuery, resolveRequestUrl } from './http-transport'
 
 /** 内置 HTTP 文件查询适配器的配置。 Configuration for the built-in HTTP file-query adapter. */
 export interface HttpFileQueryTransportOptions {
-  /** 接收归属数据、筛选条件和分页参数的 JSON POST 地址。 JSON POST endpoint receiving ownership data, filters, and pagination. */
+  /** 接收归属数据（其中 extra 用于项目特定匹配）和分页参数的 JSON POST 地址。 JSON POST endpoint receiving ownership data (with extra for project-specific matching) and pagination. */
   queryUrl: string
   /** 相对查询地址前附加的 API 根路径或源站。 API base path or origin prepended to a relative query URL. */
   baseUrl?: string
@@ -21,14 +21,10 @@ export function createHttpFileQueryTransport(
 ): FileQueryTransport {
   return {
     queryFiles(input, context) {
-      /** 请求体将业务归属与筛选/分页分区，避免后端混淆保留字段。 The request body separates business ownership from filters/pagination so backends cannot confuse reserved fields. */
-      const payload = {
-        data: context.data,
-        filters: input.filters ?? {},
-        pagination: input.pagination,
-      }
+      /** 查询复用上传数据，但请求字段命名为 query；后端以 query.extra 匹配项目特定条件。 Queries reuse upload data but name the request field query; the backend matches project-specific conditions through query.extra. */
+      const payload = { query: context.query, pagination: input.pagination }
       return new Promise<FileQueryResult>((resolve, reject) => {
-        /** 已取消的查询不能再创建网络请求，避免旧筛选覆盖新结果。 An aborted query never creates a request, preventing old filters from overwriting newer results. */
+        /** 已取消的查询不能再创建网络请求，避免旧 extra 条件覆盖新结果。 An aborted query never creates a request, preventing old extra conditions from overwriting newer results. */
         if (context.signal.aborted) {
           reject(toQueryError('ABORTED', '查询请求已取消', false))
           return
@@ -36,7 +32,7 @@ export function createHttpFileQueryTransport(
         const request = new XMLHttpRequest()
         request.open(
           'POST',
-          appendQuery(resolveRequestUrl(options.queryUrl, options.baseUrl), context.query),
+          appendQuery(resolveRequestUrl(options.queryUrl, options.baseUrl), context.urlQuery),
         )
         request.timeout = options.timeout ?? 60_000
         request.withCredentials = options.credentials === 'include'

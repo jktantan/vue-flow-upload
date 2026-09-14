@@ -65,8 +65,6 @@ interface FlowUploadProps {
   downloadTransport?: DownloadTransport
   /** 文件列表查询适配器；提供后组件可自行加载、筛选和翻页。 File-list query adapter; when supplied the component can load, filter, and paginate itself. */
   queryTransport?: FileQueryTransport
-  /** 查询适配器的业务筛选条件；深度变化会取消旧请求并从第一页重新查询。 Business filter conditions for the query adapter; deep changes cancel old requests and requery from the first page. */
-  queryFilters?: Record<string, unknown>
   /** 是否在组件挂载且提供查询适配器时立即查询。 Whether to query immediately when the component mounts with a query adapter. */
   queryOnMount?: boolean
   /** 每次上传附带的业务数据，可为异步工厂。 Business data sent with each upload; may be an async factory. */
@@ -241,7 +239,7 @@ const internalFiles = ref<UploadFileItem[]>(
 )
 /** 查询适配器正在请求服务端文件列表时的内部加载状态。 Internal loading state while the query adapter requests server file records. */
 const queryLoading = ref(false)
-/** 当前查询的取消控制器；新筛选、翻页与卸载都会替换它。 Cancellation controller for the current query; new filters, pagination, and unmount replace it. */
+/** 当前查询的取消控制器；新 extra、翻页与卸载都会替换它。 Cancellation controller for the current query; new extra, pagination, and unmount replace it. */
 let queryController: AbortController | undefined
 /** 单调递增查询版本，防止忽略取消的外部适配器写回过期结果。 Monotonic query version that blocks stale writes from external adapters that ignore cancellation. */
 let queryVersion = 0
@@ -787,8 +785,8 @@ async function resolveQuery() {
 }
 
 /**
- * 查询当前筛选和分页对应的服务端文件，并仅接纳最新请求的结果。
- * Queries server files for current filters/pagination and accepts results from only the latest request.
+ * 查询当前 extra 和分页对应的服务端文件，并仅接纳最新请求的结果。
+ * Queries server files for current extra and pagination and accepts results from only the latest request.
  */
 async function refreshQuery(paginationOverride?: FileQueryPagination) {
   /** 未配置查询适配器时不发请求，继续由宿主通过 v-model 管理列表。 Without a query adapter, do not request and keep host v-model list management. */
@@ -812,15 +810,15 @@ async function refreshQuery(paginationOverride?: FileQueryPagination) {
   emit('query-loading', true)
   try {
     const result = await transport.queryFiles(
-      { pagination: requestPagination, filters: props.queryFilters },
+      { pagination: requestPagination },
       {
-        data: await resolveData(),
+        query: await resolveData(),
         headers: await resolveHeaders(),
-        query: await resolveQuery(),
+        urlQuery: await resolveQuery(),
         signal: controller.signal,
       },
     )
-    /** 取消后的请求或旧版本绝不能覆盖当前筛选结果。 An aborted request or old version must never overwrite the current filtered result. */
+    /** 取消后的请求或旧版本绝不能覆盖当前 extra 匹配结果。 An aborted request or old version must never overwrite the current extra-matched result. */
     if (isUnmounted || controller.signal.aborted || requestVersion !== queryVersion) return
     const serverFiles = normalizeFileList(result.files)
     const localPendingFiles = internalFiles.value.filter(
@@ -848,9 +846,9 @@ async function refreshQuery(paginationOverride?: FileQueryPagination) {
   }
 }
 
-/** 筛选条件变化时回到第一页，避免新条件沿用旧条件的越界页码。 Resets to the first page on filter changes so new conditions do not retain an out-of-range page. */
+/** extra 变化时回到第一页，避免新匹配条件沿用旧条件的越界页码。 Resets to the first page on extra changes so new match conditions do not retain an out-of-range page. */
 watch(
-  () => props.queryFilters,
+  () => props.extra,
   () => {
     if (!props.queryTransport) return
     const pageSize = pagination.value?.pageSize ?? 10

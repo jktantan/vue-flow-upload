@@ -234,18 +234,17 @@ test('HTTP file query transport sends explicit pagination and validates the resp
     },
   ]
   try {
-    /** 内置查询适配器始终以 JSON POST 发送归属数据、筛选和分页模式。 The built-in query adapter always POSTs ownership data, filters, and pagination mode as JSON. */
+    /** 内置查询适配器始终以 JSON POST 发送归属数据（含 extra 匹配条件）和分页模式。 The built-in query adapter always POSTs ownership data, including extra match conditions, and pagination mode as JSON. */
     const transport = createHttpFileQueryTransport({ queryUrl: '/files/query', baseUrl: '/api' })
     const controller = new AbortController()
     const result = await transport.queryFiles(
       {
-        filters: { keyword: 'report' },
         pagination: { enabled: true, currentPage: 2, pageSize: 20 },
       },
       {
-        data: { belongId: 'order-1', belongType: 'order' },
+        query: { belongId: 'order-1', belongType: 'order', extra: { keyword: 'report' } },
         headers: { Authorization: 'Bearer example' },
-        query: { source: 'test' },
+        urlQuery: { source: 'test' },
         signal: controller.signal,
       },
     )
@@ -260,8 +259,7 @@ test('HTTP file query transport sends explicit pagination and validates the resp
     assert.equal(
       DownloadTransportXmlHttpRequest.requests[0].body,
       JSON.stringify({
-        data: { belongId: 'order-1', belongType: 'order' },
-        filters: { keyword: 'report' },
+        query: { belongId: 'order-1', belongType: 'order', extra: { keyword: 'report' } },
         pagination: { enabled: true, currentPage: 2, pageSize: 20 },
       }),
     )
@@ -292,7 +290,7 @@ test('HTTP file query transport rejects a response with a mismatched pagination 
     await assert.rejects(
       transport.queryFiles(
         { pagination: { enabled: true, currentPage: 1, pageSize: 20 } },
-        { data: {}, headers: {}, signal: controller.signal },
+        { query: {}, headers: {}, signal: controller.signal },
       ),
       { code: 'INVALID_RESPONSE' },
     )
