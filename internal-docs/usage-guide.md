@@ -123,26 +123,26 @@ const files = ref<UploadFileItem[]>([])
 
 ### 选择、校验与显示
 
-| 参数               | 类型 / 默认值                                      | 用途                                                                                   |
-| ------------------ | -------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| `accept`           | `string \| string[]`                               | 扩展名、精确 MIME 或 `image/*` 过滤条件。服务端仍必须校验。                            |
-| `max-size`         | `number`                                           | 单文件最大字节数。                                                                     |
-| `max-count`        | `number` / 无限                                    | 最多保留的文件数；超出的本次选择文件触发 `exceed`。                                    |
-| `multiple`         | `boolean` / `true`                                 | 是否允许原生文件选择器多选。                                                           |
-| `drag`             | `boolean` / `true`                                 | 是否允许向组件拖入文件。                                                               |
-| `directory`        | `boolean` / `false`                                | 请求浏览器允许选择文件夹；浏览器不支持时无效。                                         |
-| `auto-upload`      | `boolean` / `true`                                 | 选择后立即上传；关闭时调用实例 `submit()` 或点击开始上传。                             |
-| `show-file-list`   | `boolean` / `true`                                 | 是否显示内置文件列表。                                                                 |
-| `show-operation`   | `boolean` / `true`                                 | 是否显示工具栏和文件行操作。                                                           |
-| `list-type`        | `'list' \| 'picture'` / `'list'`                  | 文件列表或图片墙样式。                                                                 |
-| `preview`          | `boolean` / `true`                                 | 是否允许内置图片预览。                                                                 |
-| `selectable`       | `boolean` / `false`                                | 是否显示勾选框，用于批量下载和删除。                                                   |
-| `loading`          | `boolean` / `false`                                | 在文件区显示加载遮罩，适合列表回显请求期间使用。                                       |
-| `width` / `height` | CSS 尺寸 / `'auto'`、`'600px'`                     | 根容器尺寸；数字自动转换为 px。                                                        |
-| `disabled`         | `boolean` / `false`                                | 禁用全部交互。                                                                         |
-| `permissions`      | `UploadPermissions`                                | 细粒度控制 `select/upload/remove/retry/preview/download/downloadAll`。未填写表示允许。 |
-| `before-upload`    | `(file) => boolean \| Promise<boolean>`            | 返回 `false` 或 reject 时将文件标记为 `rejected`。                                     |
-| `before-remove`    | `(file, files) => boolean \| Promise<boolean>`     | 返回 `false` 或 reject 时取消删除。                                                    |
+| 参数               | 类型 / 默认值                                  | 用途                                                                                   |
+| ------------------ | ---------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `accept`           | `string \| string[]`                           | 扩展名、精确 MIME 或 `image/*` 过滤条件。服务端仍必须校验。                            |
+| `max-size`         | `number`                                       | 单文件最大字节数。                                                                     |
+| `max-count`        | `number` / 无限                                | 最多保留的文件数；超出的本次选择文件触发 `exceed`。                                    |
+| `multiple`         | `boolean` / `true`                             | 是否允许原生文件选择器多选。                                                           |
+| `drag`             | `boolean` / `true`                             | 是否允许向组件拖入文件。                                                               |
+| `directory`        | `boolean` / `false`                            | 请求浏览器允许选择文件夹；浏览器不支持时无效。                                         |
+| `auto-upload`      | `boolean` / `true`                             | 选择后立即上传；关闭时调用实例 `submit()` 或点击开始上传。                             |
+| `show-file-list`   | `boolean` / `true`                             | 是否显示内置文件列表。                                                                 |
+| `show-operation`   | `boolean` / `true`                             | 是否显示工具栏和文件行操作。                                                           |
+| `list-type`        | `'list' \| 'picture'` / `'list'`               | 文件列表或图片墙样式。                                                                 |
+| `preview`          | `boolean` / `true`                             | 是否允许内置图片预览。                                                                 |
+| `selectable`       | `boolean` / `false`                            | 是否显示勾选框，用于批量下载和删除。                                                   |
+| `loading`          | `boolean` / `false`                            | 在文件区显示加载遮罩，适合列表回显请求期间使用。                                       |
+| `width` / `height` | CSS 尺寸 / `'auto'`、`'600px'`                 | 根容器尺寸；数字自动转换为 px。                                                        |
+| `disabled`         | `boolean` / `false`                            | 禁用全部交互。                                                                         |
+| `permissions`      | `UploadPermissions`                            | 细粒度控制 `select/upload/remove/retry/preview/download/downloadAll`。未填写表示允许。 |
+| `before-upload`    | `(file) => boolean \| Promise<boolean>`        | 返回 `false` 或 reject 时将文件标记为 `rejected`。                                     |
+| `before-remove`    | `(file, files) => boolean \| Promise<boolean>` | 返回 `false` 或 reject 时取消删除。                                                    |
 
 ### 大文件、秒传与下载
 
