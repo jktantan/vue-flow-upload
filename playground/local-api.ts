@@ -153,8 +153,7 @@ export function localUploadApi(): Plugin {
       const avatarFileId = string(avatarInput.fileId)
       const avatarRow = validId(avatarFileId)
         ? (db.prepare('SELECT * FROM files WHERE id = ? AND path IS NOT NULL').get(avatarFileId) as
-            | FileRow
-            | undefined)
+            FileRow | undefined)
         : undefined
       if (!avatarRow) return json(response, 404, { message: '头像文件不存在或尚未上传完成' })
       db.prepare(

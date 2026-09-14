@@ -48,6 +48,11 @@ const PLAYGROUND_NETWORK_ERROR_MESSAGES = {
   'en-US': 'Network connection interrupted. Please retry.',
 } as const
 
+/** 演示台上传和头像共享的固定业务归属标识。 Fixed business-owner identifier shared by playground uploads and avatars. */
+const PLAYGROUND_BELONG_ID = 'playground-demo'
+/** 演示台上传和头像共享的固定业务归属类型。 Fixed business-owner type shared by playground uploads and avatars. */
+const PLAYGROUND_BELONG_TYPE = 'playground'
+
 const files = ref<UploadFileItem[]>([
   {
     uid: 'sample-pending',
@@ -550,7 +555,9 @@ function handleAvatarSuccess(file: UploadFileItem): void {
       <div>
         <p class="eyebrow">Vue Flow Upload · 验证台</p>
         <h1>改一个参数，立刻看结果</h1>
-        <p class="workbench__intro">左侧配置始终映射到真实组件 props；右侧预览不使用另一套演示实现。</p>
+        <p class="workbench__intro">
+          左侧配置始终映射到真实组件 props；右侧预览不使用另一套演示实现。
+        </p>
       </div>
       <div class="workbench__status" :data-mode="mode">
         <span class="status-dot" aria-hidden="true"></span>
@@ -573,7 +580,9 @@ function handleAvatarSuccess(file: UploadFileItem): void {
               <label><input v-model="mode" type="radio" value="mock" /> Mock</label>
               <label><input v-model="mode" type="radio" value="local" /> 本地 SQLite</label>
             </fieldset>
-            <p class="control-hint">SQLite 模式会真实写入 `.playground/upload.sqlite` 和上传目录。</p>
+            <p class="control-hint">
+              SQLite 模式会真实写入 `.playground/upload.sqlite` 和上传目录。
+            </p>
             <button type="button" class="action-button" :disabled="loading" @click="testLoading">
               {{ loading ? '加载中…' : '触发 loading（3 秒）' }}
             </button>
@@ -594,8 +603,12 @@ function handleAvatarSuccess(file: UploadFileItem): void {
           <div class="control-group__content">
             <label class="field-label">accept <input v-model="accept" type="text" /></label>
             <div class="field-grid">
-              <label class="field-label">最大尺寸 MiB <input v-model.number="maxSizeMiB" min="0" type="number" /></label>
-              <label class="field-label">最大数量 <input v-model.number="maxCount" min="1" type="number" /></label>
+              <label class="field-label"
+                >最大尺寸 MiB <input v-model.number="maxSizeMiB" min="0" type="number"
+              /></label>
+              <label class="field-label"
+                >最大数量 <input v-model.number="maxCount" min="1" type="number"
+              /></label>
               <label class="field-label">宽度 <input v-model="uploadWidth" type="text" /></label>
               <label class="field-label">高度 <input v-model="uploadHeight" type="text" /></label>
             </div>
@@ -609,10 +622,16 @@ function handleAvatarSuccess(file: UploadFileItem): void {
               <label class="switch"><input v-model="drag" type="checkbox" /> 拖拽上传</label>
               <label class="switch"><input v-model="multiple" type="checkbox" /> 允许多选</label>
               <label class="switch"><input v-model="directory" type="checkbox" /> 选择目录</label>
-              <label class="switch"><input v-model="showFileList" type="checkbox" /> 显示文件列表</label>
-              <label class="switch"><input v-model="showOperation" type="checkbox" /> 显示操作项</label>
+              <label class="switch"
+                ><input v-model="showFileList" type="checkbox" /> 显示文件列表</label
+              >
+              <label class="switch"
+                ><input v-model="showOperation" type="checkbox" /> 显示操作项</label
+              >
               <label class="switch"><input v-model="preview" type="checkbox" /> 允许预览</label>
-              <label class="switch"><input v-model="selectable" type="checkbox" /> 支持批量选择</label>
+              <label class="switch"
+                ><input v-model="selectable" type="checkbox" /> 支持批量选择</label
+              >
               <label class="switch"><input v-model="disabled" type="checkbox" /> 禁用组件</label>
             </div>
           </div>
@@ -621,17 +640,38 @@ function handleAvatarSuccess(file: UploadFileItem): void {
         <details class="control-group">
           <summary>队列、分片与重试</summary>
           <div class="control-group__content field-grid">
-            <label class="field-label">普通上传阈值 MiB <input v-model.number="normalUploadThresholdMiB" min="0" type="number" /></label>
-            <label class="field-label">分片大小 KiB <input v-model.number="chunkSizeKiB" min="1" type="number" /></label>
-            <label class="field-label">单文件分片并发 <input v-model.number="chunkConcurrency" min="1" type="number" /></label>
-            <label class="field-label">文件并发 <input v-model.number="maxConcurrentFiles" min="1" type="number" /></label>
-            <label class="field-label">请求并发 <input v-model.number="maxConcurrentRequests" min="1" type="number" /></label>
-            <label class="field-label">重试次数 <input v-model.number="retryCount" min="0" type="number" /></label>
-            <label class="field-label">首个退避 ms <input v-model.number="retryBaseDelayMs" min="0" type="number" /></label>
-            <label class="field-label">归档轮询 ms <input v-model.number="archivePollingIntervalMs" min="1" type="number" /></label>
-            <label class="field-label">归档超时 ms <input v-model.number="archivePollingTimeoutMs" min="1" type="number" /></label>
+            <label class="field-label"
+              >普通上传阈值 MiB
+              <input v-model.number="normalUploadThresholdMiB" min="0" type="number"
+            /></label>
+            <label class="field-label"
+              >分片大小 KiB <input v-model.number="chunkSizeKiB" min="1" type="number"
+            /></label>
+            <label class="field-label"
+              >单文件分片并发 <input v-model.number="chunkConcurrency" min="1" type="number"
+            /></label>
+            <label class="field-label"
+              >文件并发 <input v-model.number="maxConcurrentFiles" min="1" type="number"
+            /></label>
+            <label class="field-label"
+              >请求并发 <input v-model.number="maxConcurrentRequests" min="1" type="number"
+            /></label>
+            <label class="field-label"
+              >重试次数 <input v-model.number="retryCount" min="0" type="number"
+            /></label>
+            <label class="field-label"
+              >首个退避 ms <input v-model.number="retryBaseDelayMs" min="0" type="number"
+            /></label>
+            <label class="field-label"
+              >归档轮询 ms <input v-model.number="archivePollingIntervalMs" min="1" type="number"
+            /></label>
+            <label class="field-label"
+              >归档超时 ms <input v-model.number="archivePollingTimeoutMs" min="1" type="number"
+            /></label>
             <label class="switch"><input v-model="resume" type="checkbox" /> 断点续传</label>
-            <label class="switch"><input v-model="instantUpload" type="checkbox" /> SHA-256 秒传</label>
+            <label class="switch"
+              ><input v-model="instantUpload" type="checkbox" /> SHA-256 秒传</label
+            >
           </div>
         </details>
 
@@ -639,18 +679,35 @@ function handleAvatarSuccess(file: UploadFileItem): void {
           <summary>主题、语言、分页与回调</summary>
           <div class="control-group__content">
             <div class="field-grid">
-              <label class="field-label">主题
-                <select v-model="theme"><option value="default">default</option><option value="element-plus">element-plus</option><option value="ant-design-vue">ant-design-vue</option></select>
+              <label class="field-label"
+                >主题
+                <select v-model="theme">
+                  <option value="default">default</option>
+                  <option value="element-plus">element-plus</option>
+                  <option value="ant-design-vue">ant-design-vue</option>
+                </select>
               </label>
-              <label class="field-label">语言
-                <select v-model="locale"><option value="zh-CN">zh-CN</option><option value="en-US">en-US</option></select>
+              <label class="field-label"
+                >语言
+                <select v-model="locale">
+                  <option value="zh-CN">zh-CN</option>
+                  <option value="en-US">en-US</option>
+                </select>
               </label>
             </div>
             <div class="switch-grid">
-              <label class="switch"><input v-model="paginationEnabled" type="checkbox" /> 启用分页</label>
-              <label class="switch"><input v-model="rejectBeforeUpload" type="checkbox" /> before-upload 拒绝</label>
-              <label class="switch"><input v-model="rejectBeforeRemove" type="checkbox" /> before-remove 拦截</label>
-              <label class="switch"><input v-model="useCustomPreview" type="checkbox" /> 自定义预览回调</label>
+              <label class="switch"
+                ><input v-model="paginationEnabled" type="checkbox" /> 启用分页</label
+              >
+              <label class="switch"
+                ><input v-model="rejectBeforeUpload" type="checkbox" /> before-upload 拒绝</label
+              >
+              <label class="switch"
+                ><input v-model="rejectBeforeRemove" type="checkbox" /> before-remove 拦截</label
+              >
+              <label class="switch"
+                ><input v-model="useCustomPreview" type="checkbox" /> 自定义预览回调</label
+              >
             </div>
           </div>
         </details>
@@ -658,24 +715,44 @@ function handleAvatarSuccess(file: UploadFileItem): void {
         <details class="control-group">
           <summary>操作权限</summary>
           <div class="control-group__content switch-grid">
-            <label class="switch"><input v-model="permissions.select" type="checkbox" /> 选择</label>
-            <label class="switch"><input v-model="permissions.upload" type="checkbox" /> 上传</label>
-            <label class="switch"><input v-model="permissions.remove" type="checkbox" /> 删除</label>
+            <label class="switch"
+              ><input v-model="permissions.select" type="checkbox" /> 选择</label
+            >
+            <label class="switch"
+              ><input v-model="permissions.upload" type="checkbox" /> 上传</label
+            >
+            <label class="switch"
+              ><input v-model="permissions.remove" type="checkbox" /> 删除</label
+            >
             <label class="switch"><input v-model="permissions.retry" type="checkbox" /> 重试</label>
-            <label class="switch"><input v-model="permissions.preview" type="checkbox" /> 预览</label>
-            <label class="switch"><input v-model="permissions.download" type="checkbox" /> 下载</label>
-            <label class="switch"><input v-model="permissions.downloadAll" type="checkbox" /> 全部下载</label>
+            <label class="switch"
+              ><input v-model="permissions.preview" type="checkbox" /> 预览</label
+            >
+            <label class="switch"
+              ><input v-model="permissions.download" type="checkbox" /> 下载</label
+            >
+            <label class="switch"
+              ><input v-model="permissions.downloadAll" type="checkbox" /> 全部下载</label
+            >
           </div>
         </details>
 
         <details class="control-group">
           <summary>AvatarUpload</summary>
           <div class="control-group__content">
-            <p class="control-hint">本地 SQLite 模式下，首次上传、替换、删除和刷新回读均走本地 API。</p>
+            <p class="control-hint">
+              本地 SQLite 模式下，首次上传、替换、删除和刷新回读均走本地 API。
+            </p>
             <div class="field-grid">
-              <label class="field-label">宽度 px <input v-model.number="avatarWidthPx" min="1" type="number" /></label>
-              <label class="field-label">高度 px <input v-model.number="avatarHeightPx" min="1" type="number" /></label>
-              <label class="field-label">最大尺寸 MiB <input v-model.number="avatarMaxSizeMiB" min="1" type="number" /></label>
+              <label class="field-label"
+                >宽度 px <input v-model.number="avatarWidthPx" min="1" type="number"
+              /></label>
+              <label class="field-label"
+                >高度 px <input v-model.number="avatarHeightPx" min="1" type="number"
+              /></label>
+              <label class="field-label"
+                >最大尺寸 MiB <input v-model.number="avatarMaxSizeMiB" min="1" type="number"
+              /></label>
               <label class="field-label">
                 轮廓
                 <select v-model="avatarShape">
@@ -684,16 +761,24 @@ function handleAvatarSuccess(file: UploadFileItem): void {
                 </select>
               </label>
             </div>
-            <label class="switch"><input v-model="avatarReadOnly" type="checkbox" /> 只读（仍可预览）</label>
-            <label class="field-label">更新端点 <input v-model="avatarUpdateAction" type="text" /></label>
+            <label class="switch"
+              ><input v-model="avatarReadOnly" type="checkbox" /> 只读（仍可预览）</label
+            >
+            <label class="field-label"
+              >更新端点 <input v-model="avatarUpdateAction" type="text"
+            /></label>
           </div>
         </details>
       </aside>
 
       <section class="preview-panel" aria-label="实时组件预览">
-        <div class="preview-panel__head"><span>实时预览</span><code>{{ files.length }} files</code></div>
+        <div class="preview-panel__head">
+          <span>实时预览</span><code>{{ files.length }} files</code>
+        </div>
         <FlowUpload
           v-model="files"
+          :belong-id="PLAYGROUND_BELONG_ID"
+          :belong-type="PLAYGROUND_BELONG_TYPE"
           :pagination="paginationEnabled ? pagination : false"
           :transport="activeTransport"
           :download-transport="activeDownloadTransport"
@@ -738,9 +823,14 @@ function handleAvatarSuccess(file: UploadFileItem): void {
         />
 
         <section class="avatar-demo">
-          <div><h2>头像上传</h2><p>裁剪后上传；本地模式切回或刷新会从 SQLite 回读。</p></div>
+          <div>
+            <h2>头像上传</h2>
+            <p>裁剪后上传；本地模式切回或刷新会从 SQLite 回读。</p>
+          </div>
           <AvatarUpload
             v-model="avatar"
+            :belong-id="PLAYGROUND_BELONG_ID"
+            :belong-type="PLAYGROUND_BELONG_TYPE"
             :transport="activeTransport"
             :update-action="mode === 'local' ? avatarUpdateAction : undefined"
             accept="image/*"

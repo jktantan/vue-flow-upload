@@ -53,8 +53,8 @@ interface AvatarUploadProps {
   data?: UploadData
   /** 所属业务记录的标识，会写入 JSON 业务数据。 Owner/business record identifier included in JSON business data. */
   belongId: string | number
-  /** 所属业务记录的类型，会写入 JSON 业务数据。 Owner/business record type included in JSON business data. */
-  belongType: string
+  /** 所属业务记录的类型，会写入 JSON 业务数据；省略时为 `default`。 Owner/business record type included in JSON business data; defaults to `default` when omitted. */
+  belongType?: string
   /** 业务扩展属性对象，会作为 JSON 的 `extra` 字段发送。 Business extension attributes sent as the JSON `extra` field. */
   extra?: Record<string, unknown>
   /** 允许选择的扩展名或 MIME 类型。 Accepted extensions or MIME types. */
