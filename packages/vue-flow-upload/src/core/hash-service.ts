@@ -1,4 +1,11 @@
-import { IncrementalSha256 } from './sha256'
+import {
+  createHashAbortError,
+  hashFileWithLocalImplementation,
+  hashFileWithWasm,
+  hashSmallFileWithWebCrypto,
+  throwIfHashingAborted,
+} from './file-hash'
+import type { HashStrategy } from '../types'
 
 declare const __VFU_ENABLE_HASH_WORKER__: boolean
 
@@ -6,6 +13,8 @@ export interface HashOptions {
   chunkSize?: number
   signal?: AbortSignal
   onProgress?: (loaded: number, total: number) => void
+  /** 实际完成哈希的客户端实现；用于开发诊断，不影响摘要结果。 Client implementation that completes hashing; used for diagnostics and does not affect the digest result. */
+  onStrategy?: (strategy: HashStrategy) => void
 }
 
 /** 分块计算文件 SHA-256，优先使用 Worker，失败时回退到主线程。 Calculates chunked SHA-256 in a Worker first, then falls back to the main thread. */
@@ -42,6 +51,7 @@ function hashInWorker(file: File, chunkSize: number, options: HashOptions) {
     options.signal?.addEventListener('abort', abort, { once: true })
     worker.onmessage = ({ data }) => {
       if (data.type === 'progress') options.onProgress?.(data.loaded, data.total)
+      if (data.type === 'strategy') options.onStrategy?.(data.strategy)
       if (data.type === 'complete') {
         options.signal?.removeEventListener('abort', abort)
         worker.terminate()
@@ -58,19 +68,33 @@ function hashInWorker(file: File, chunkSize: number, options: HashOptions) {
 }
 
 async function hashOnMainThread(file: File, chunkSize: number, options: HashOptions) {
-  // 回退模式每块后让出事件循环，降低对交互渲染的影响。 Yield after each chunk in fallback mode to reduce UI impact.
-  const hash = new IncrementalSha256()
-  for (let offset = 0; offset < file.size; offset += chunkSize) {
-    if (options.signal?.aborted) throw abortError()
-    const end = Math.min(offset + chunkSize, file.size)
-    hash.update(new Uint8Array(await file.slice(offset, end).arrayBuffer()))
-    options.onProgress?.(end, file.size)
-    await new Promise<void>((resolve) => setTimeout(resolve, 0))
+  // 主线程同样优先原生摘要；完成后再次检查取消，避免取消任务写回完成结果。
+  // The main thread also prefers native digest; check cancellation again afterward to prevent a canceled task from reporting completion.
+  throwIfHashingAborted(options.signal)
+  const nativeSha256 = await hashSmallFileWithWebCrypto(file)
+  throwIfHashingAborted(options.signal)
+  if (nativeSha256) {
+    options.onStrategy?.('web-crypto')
+    options.onProgress?.(file.size, file.size)
+    return nativeSha256
   }
-  return hash.digest()
+  try {
+    // 大文件使用 WASM 增量路径；每个分块后让出事件循环以维持回退模式的交互性。
+    // Large files use the incremental WASM path and yield after each chunk to preserve fallback-mode responsiveness.
+    return await hashFileWithWasm(file, { ...options, chunkSize, shouldYieldAfterChunk: true })
+  } catch (error) {
+    if (options.signal?.aborted) throw error
+    // CSP 或 WASM 初始化失败时回退本地实现，保证浏览器兼容性不影响上传。
+    // Fall back locally on CSP or WASM initialization failure so browser compatibility does not prevent uploads.
+    return hashFileWithLocalImplementation(file, {
+      ...options,
+      chunkSize,
+      shouldYieldAfterChunk: true,
+    })
+  }
 }
 
 function abortError() {
   // 保持与上传取消相同的错误标识，供统一错误处理识别。 Match upload cancellation's error shape for shared error handling.
-  return Object.assign(new Error('Hashing canceled'), { code: 'ABORTED', name: 'AbortError' })
+  return createHashAbortError()
 }

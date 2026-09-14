@@ -21,6 +21,9 @@ export type UploadStatus =
  */
 export type UploadListType = 'list' | 'picture'
 
+/** 实际完成 SHA-256 计算的客户端实现，用于诊断运行时策略。 Client implementation that actually completed SHA-256 calculation, used to diagnose runtime strategy. */
+export type HashStrategy = 'web-crypto' | 'wasm' | 'local'
+
 /** 写入文件行和公开 error 事件的标准化错误。 Normalized error passed to row state and the public error event. */
 export interface UploadError {
   /** Stable machine-readable reason such as HTTP_404 or FILE_TOO_LARGE. */
@@ -71,6 +74,8 @@ export interface UploadFileItem {
   uploadId?: string
   /** Content hash used by instant upload and resumable multipart sessions. */
   sha256?: string
+  /** 实际完成 SHA-256 计算的客户端实现；仅在本次上传需要哈希时写入。 Client implementation that completed SHA-256 calculation; populated only when this upload needs hashing. */
+  hashStrategy?: HashStrategy
   /** Primary remote URL or a local object URL used for display/preview. */
   url?: string
   /** Smaller remote image representation, preferred for list thumbnails. */

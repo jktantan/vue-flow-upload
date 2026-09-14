@@ -55,6 +55,10 @@
 | `query-success`     | `(result)`         | 文件查询成功并写入列表。     |
 | `query-error`       | `(error)`          | 文件查询失败，取消请求除外。 |
 
+## 文件状态诊断字段
+
+当文件需要计算 SHA-256 时，`v-model` 中对应的 `UploadFileItem.hashStrategy` 会记录最终完成摘要的实现：`web-crypto`（浏览器原生）、`wasm`（`hash-wasm`）或 `local`（本地 TypeScript 回退）。该字段仅用于诊断，不影响服务端协议或摘要值。
+
 ## Slots 与实例方法
 
 `#tip` 显示在选择区域下方；`#file` 可完全替换单个文件行。

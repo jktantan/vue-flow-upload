@@ -303,7 +303,15 @@ export function useUploadQueue(options: UploadQueueOptions) {
     if (!options.canUpload.value) return
     let target = options.files.value.find((file) => file.uid === uid)
     if (!target?.file || target.status === 'uploading') return
-    if (!options.updateFile(uid, { status: 'queued', percent: 0, error: undefined })) return
+    if (
+      !options.updateFile(uid, {
+        status: 'queued',
+        percent: 0,
+        error: undefined,
+        hashStrategy: undefined,
+      })
+    )
+      return
     try {
       const transport = requireTransport()
       const data = await options.resolveData()
@@ -320,6 +328,7 @@ export function useUploadQueue(options: UploadQueueOptions) {
           sha256 = await hashFile(target.file, {
             signal: controller.signal,
             onProgress: (loaded, total) => updateProgress(uid, loaded, total),
+            onStrategy: (hashStrategy) => options.updateFile(uid, { hashStrategy }),
           })
         } finally {
           untrackController(uid, controller)

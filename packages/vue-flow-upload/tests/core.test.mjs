@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { createHash } from 'node:crypto'
 import test from 'node:test'
 import {
   createFlowUploadI18n,
@@ -128,15 +129,51 @@ test('scheduler rejects queued work for a canceled file without interrupting act
   assert.equal(await active, 'done')
 })
 
-test('hashFile hashes incrementally and reports final progress outside worker environments', async () => {
+test('hashFile uses the native digest for small files and reports completion progress', async () => {
+  // 小文件内容，用于验证浏览器原生摘要路径的标准 SHA-256 输出。
+  // Small file content used to verify the standard SHA-256 output from the browser-native digest path.
   const file = new File(['abc'], 'sample.txt', { type: 'text/plain' })
+  // 已上报的加载字节数，用于确认非流式原生 API 仅在完成时报告进度。
+  // Reported loaded byte counts, confirming the non-streaming native API reports progress only on completion.
   const progress = []
+  // 已报告的最终哈希实现，用于验证诊断状态与实际路径一致。
+  // Reported final hash implementations, verifying diagnostic state matches the actual path.
+  const strategies = []
   const digest = await hashFile(file, {
     chunkSize: 1,
     onProgress: (loaded) => progress.push(loaded),
+    onStrategy: (strategy) => strategies.push(strategy),
   })
   assert.equal(digest, 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad')
-  assert.deepEqual(progress, [1, 2, 3])
+  assert.deepEqual(progress, [3])
+  assert.deepEqual(strategies, ['web-crypto'])
+})
+
+test('hashFile uses incremental hashing above the native digest memory threshold', async () => {
+  // 超出 16 MiB 原生摘要阈值的稳定测试内容，用于覆盖 WASM 增量路径。
+  // Stable test content above the 16 MiB native-digest threshold, covering the incremental WASM path.
+  const content = new Uint8Array(16 * 1024 * 1024 + 1).fill(0x61)
+  // 大文件对象，避免将整文件传给 Web Crypto。
+  // Large file object that must avoid passing the whole file to Web Crypto.
+  const file = new File([content], 'large-sample.bin', { type: 'application/octet-stream' })
+  // 分块进度记录，用于确认增量路径会在完成前报告进度。
+  // Chunked progress record, confirming the incremental path reports progress before completion.
+  const progress = []
+  // 已报告的最终哈希实现，用于确认超过阈值时选择 WASM。
+  // Reported final hash implementations, confirming WASM is selected above the threshold.
+  const strategies = []
+  const digest = await hashFile(file, {
+    chunkSize: 2 * 1024 * 1024,
+    onProgress: (loaded) => progress.push(loaded),
+    onStrategy: (strategy) => strategies.push(strategy),
+  })
+  // Node 原生摘要作为独立的预期值来源。
+  // Node's native digest serves as an independent source for the expected value.
+  const expectedDigest = createHash('sha256').update(content).digest('hex')
+  assert.equal(digest, expectedDigest)
+  assert.equal(progress.at(-1), file.size)
+  assert.ok(progress.length > 1)
+  assert.deepEqual(strategies, ['wasm'])
 })
 
 test('HTTP download transport maps direct download and archive lifecycle endpoints', async () => {

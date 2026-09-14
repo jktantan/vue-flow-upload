@@ -93,6 +93,8 @@ const files = ref<UploadFileItem[]>([
     },
   },
 ])
+/** 已完成哈希且包含实际实现记录的文件，用于演示台诊断面板。 Files with completed hashes and an implementation record, used by the playground diagnostics panel. */
+const hashedFiles = computed(() => files.value.filter((file) => file.hashStrategy))
 /** 是否在选择后立即启动上传队列。 Whether the upload queue starts immediately after file selection. */
 const autoUpload = ref(true)
 const mode = ref<'mock' | 'local'>('mock')
@@ -116,7 +118,7 @@ const disabled = ref(false)
 /** 文件选择接受条件，直接映射到组件 accept prop。 File-picker acceptance rule mapped directly to the component accept prop. */
 const accept = ref('image/*,.pdf,.zip')
 /** 单个文件允许的最大尺寸，单位为 MiB。 Maximum allowed size for a single file in MiB. */
-const maxSizeMiB = ref(20)
+const maxSizeMiB = ref(100)
 /** 文件列表中允许保留的最大条数。 Maximum number of rows retained in the file list. */
 const maxCount = ref(5)
 /** 根容器宽度；数字或 CSS 尺寸均可输入。 Root container width; accepts a number or CSS size. */
@@ -192,6 +194,19 @@ function testLoading() {
     loading.value = false
     loadingTimer = undefined
   }, 3_000)
+}
+
+/**
+ * 将内部哈希策略转换为演示台可读标签，便于验证当前浏览器实际走过的路径。
+ * Converts an internal hash strategy into a readable playground label so the actual browser path can be verified.
+ */
+function hashStrategyLabel(file: UploadFileItem): string {
+  // 文件最终采用的哈希实现；无记录的服务端文件不会进入诊断面板。
+  // Final hashing implementation used by the file; server-loaded files without a record do not enter the diagnostics panel.
+  const strategy = file.hashStrategy
+  if (strategy === 'web-crypto') return '浏览器原生 Web Crypto'
+  if (strategy === 'wasm') return 'WASM（hash-wasm）'
+  return '本地 TypeScript 回退'
 }
 
 onBeforeUnmount(() => {
@@ -822,6 +837,20 @@ function handleAvatarSuccess(file: UploadFileItem): void {
           @pagination-change="handlePaginationChange"
         />
 
+        <section v-if="hashedFiles.length" class="hash-diagnostics" aria-label="哈希执行路径">
+          <div class="hash-diagnostics__head">
+            <h2>哈希执行路径</h2>
+            <span>实际运行结果</span>
+          </div>
+          <ul>
+            <li v-for="file in hashedFiles" :key="file.uid">
+              <code :title="file.name">{{ file.name }}</code>
+              <strong :class="`is-${file.hashStrategy}`">{{ hashStrategyLabel(file) }}</strong>
+            </li>
+          </ul>
+          <p>≤ 16 MiB 优先 Web Crypto；更大文件优先 WASM；WASM 不可用时显示本地回退。</p>
+        </section>
+
         <section class="avatar-demo">
           <div>
             <h2>头像上传</h2>
@@ -969,6 +998,68 @@ h1 {
   margin-top: 28px;
   padding-top: 22px;
   border-top: 1px solid #e5e7eb;
+}
+.hash-diagnostics {
+  margin-top: 20px;
+  border: 1px solid #dbe5f5;
+  border-radius: 8px;
+  padding: 14px;
+  background: #f8fbff;
+}
+.hash-diagnostics__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.hash-diagnostics h2 {
+  margin: 0;
+  color: #202938;
+  font-size: 14px;
+}
+.hash-diagnostics__head span,
+.hash-diagnostics p {
+  margin: 0;
+  color: #748094;
+  font-size: 12px;
+}
+.hash-diagnostics ul {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0;
+  padding: 0;
+  list-style: none;
+}
+.hash-diagnostics li {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.hash-diagnostics code {
+  overflow: hidden;
+  color: #4f5d73;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hash-diagnostics strong {
+  flex: none;
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 12px;
+}
+.hash-diagnostics .is-web-crypto {
+  background: #e6f7ed;
+  color: #198754;
+}
+.hash-diagnostics .is-wasm {
+  background: #e9f1ff;
+  color: #2f6bff;
+}
+.hash-diagnostics .is-local {
+  background: #fff4df;
+  color: #a96600;
 }
 .avatar-demo h2 {
   margin: 0;
