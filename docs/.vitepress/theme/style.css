@@ -122,6 +122,23 @@
   visibility: visible;
 }
 
+/* 复用 VitePress 原生语言菜单，仅将当前语言代码直接显示在按钮中，避免新增第二个语言下拉。
+ * Reuse the native VitePress language menu and show the current language code in its button, avoiding a second language dropdown. */
+.VPNavBarTranslations .option-icon {
+  display: none;
+}
+
+.VPNavBarTranslations .text::before {
+  content: 'CN';
+  color: var(--vp-c-text-1);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+html[lang='en-US'] .VPNavBarTranslations .text::before {
+  content: 'EN';
+}
+
 @media (max-width: 640px) {
   .vp-doc .demo-shell {
     padding: 14px;

@@ -81,6 +81,8 @@ interface AvatarUploadProps {
   preview?: boolean
   /** 按操作粒度限制选择、删除和预览。 Per-operation restrictions for selecting, deleting, and previewing. */
   permissions?: UploadPermissions
+  /** 组件内置文案的语言；未传入时优先继承宿主 i18n。 Language for component-owned copy; when omitted, the host i18n takes precedence. */
+  locale?: string
   /** 客户端校验后、打开裁剪器前执行的可选拦截器。 Optional guard run after client validation and before opening the cropper. */
   beforeUpload?: (file: File) => boolean | Promise<boolean>
 }
@@ -160,10 +162,12 @@ const canPreview = computed(
  * The mask renders only when it contains preview, replacement, or removal actions; read-only avatars without preview behave as pure display.
  */
 const hasMaskActions = computed(() => canPreview.value || !props.readOnly)
-/** Host i18n instance takes precedence over this component's fallback dictionary. */
+/** 宿主 i18n 优先于组件按 locale 创建的后备字典。 Host i18n takes precedence over the component fallback dictionary created for locale. */
 const inheritedI18n = useI18n()
-const localI18n = createFlowUploadI18n()
-const text = computed(() => getUploadMessages(inheritedI18n ?? localI18n))
+/** 根据 AvatarUpload locale 创建隔离语言实例，避免影响其他组件。 Creates an isolated locale instance for AvatarUpload without affecting other components. */
+const localI18n = computed(() => createFlowUploadI18n({ locale: props.locale }))
+/** 模板使用的完整头像消息字典。 Complete avatar message dictionary used by the template. */
+const text = computed(() => getUploadMessages(inheritedI18n ?? localI18n.value))
 const cardStyle = computed(() => ({
   width: toCssSize(props.width),
   height: toCssSize(props.height),

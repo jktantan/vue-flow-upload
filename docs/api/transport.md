@@ -40,8 +40,60 @@ const transport = createHttpUploadTransport({
 
 `{fileId}`、`{uploadId}` 和 `{index}` 是模板占位符；动态 ID 会由内置适配器编码后写入 URL。
 
-## 自定义实现
+## 开发自定义上传适配器
 
-最小适配器只需要实现普通上传的 `uploadFile`；需要秒传、分片与断点续传时，额外实现 `checkFile`、`initMultipart`、`uploadChunk`、`completeMultipart` 和 `cancelMultipart`。
+当项目使用 Axios、Fetch 封装、签名直传或对象存储 SDK 时，实现 `UploadTransport` 并传给 `transport`。最小实现只需要 `uploadFile`；其他方法按后端能力增量实现。
 
-每个方法都会收到 `AbortSignal` 与进度回调。应将取消信号传给网络层，并在失败时抛出或 reject 含有 `code`、`message`、`retriable` 的错误，以便组件正确处理取消和重试。
+| 方法                | 何时调用             | 必须返回                                       |
+| ------------------- | -------------------- | ---------------------------------------------- |
+| `uploadFile`        | 普通文件上传         | `UploadSuccessResult`；建议包含稳定 `fileId`。 |
+| `createFile`        | 上传前预创建远端记录 | `{ fileId }`。                                 |
+| `checkFile`         | SHA-256 秒传检查     | `{ exists, file? }`。                          |
+| `initMultipart`     | 创建或恢复分片会话   | `{ uploadId, uploadedChunks? }`。              |
+| `uploadChunk`       | 上传一个分片         | `void`。                                       |
+| `completeMultipart` | 服务端合并分片       | `UploadSuccessResult`。                        |
+| `cancelMultipart`   | 取消未完成分片会话   | `void`。                                       |
+| `deleteFile`        | 删除已持久化文件     | `void`。                                       |
+
+```ts
+import type { UploadSuccessResult, UploadTransport } from 'vue-flow-upload'
+
+// 项目请求层应验证 response.ok，并保留业务错误码与 HTTP 状态。
+// The project request layer should validate response.ok and preserve business error codes and HTTP status.
+async function parseUploadResult(response: Response): Promise<UploadSuccessResult> {
+  // 服务端 JSON 是未知输入，解析器负责验证最小字段。
+  // Server JSON is unknown input; the parser validates minimum fields.
+  const payload: unknown = await response.json()
+  if (!payload || typeof payload !== 'object') throw new Error('上传响应不是对象')
+  return payload as UploadSuccessResult
+}
+
+const uploadTransport: UploadTransport = {
+  async uploadFile({ file, fileId, data }, context) {
+    // FormData 保持文件与业务数据的既有字段约定。
+    // FormData preserves the established fields for file and business data.
+    const formData = new FormData()
+    formData.append(context.fileFieldName, file)
+    formData.append('fileId', fileId)
+    formData.append(context.dataFieldName, JSON.stringify(data))
+    const response = await fetch('/api/files/upload', {
+      method: 'POST',
+      headers: context.headers,
+      body: formData,
+      signal: context.signal,
+    })
+    if (!response.ok)
+      throw {
+        code: `HTTP_${response.status}`,
+        message: '上传失败',
+        retriable: response.status >= 500,
+      }
+    // Fetch 不提供稳定上传进度时，至少在完成时报告全部字节。
+    // When Fetch has no stable upload progress, report all bytes at completion at minimum.
+    context.onProgress(file.size, file.size)
+    return parseUploadResult(response)
+  },
+}
+```
+
+将 `context.signal` 传给请求层；使用 XHR 或 Axios 时，将原始字节进度转换为 `context.onProgress(loaded, total)`。失败必须抛出 `{ code, message, retriable, status?, cause? }` 结构；不要吞掉网络、取消或服务端错误。若示例中的响应解析器无法满足后端结构，应替换为项目自己的运行时校验器。

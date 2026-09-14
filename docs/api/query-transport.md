@@ -65,3 +65,42 @@ const queryTransport = createHttpFileQueryTransport({
 ```
 
 自定义协议实现 `FileQueryTransport.queryFiles(input, context)`。`context.query` 包含 `belongId`、`belongType` 和 `extra`；后端必须使用 `query.extra` 处理项目特定匹配。`context.urlQuery` 仅用于认证等 URL 参数。`context.signal` 必须传给网络层，以便组件在 `extra`、翻页或卸载时取消过期请求。
+
+## 开发自定义查询适配器
+
+当项目使用 GET 查询、GraphQL、RPC 或统一请求封装时，实现 `FileQueryTransport` 并传给 `query-transport`。适配器必须让返回结果的分页模式与 `input.pagination.enabled` 一致。
+
+```ts
+import type { FileQueryResult, FileQueryTransport } from 'vue-flow-upload'
+
+// 解析器必须验证 files 数组与 pagination.enabled；分页模式不一致应抛出错误。
+// The parser must validate the files array and pagination.enabled; a mismatched pagination mode must throw.
+async function parseFileQueryResult(response: Response): Promise<FileQueryResult> {
+  const payload: unknown = await response.json()
+  if (!payload || typeof payload !== 'object') throw new Error('查询响应不是对象')
+  if (!('files' in payload) || !Array.isArray(payload.files)) throw new Error('查询响应缺少 files')
+  if (!('pagination' in payload) || typeof payload.pagination !== 'object' || !payload.pagination)
+    throw new Error('查询响应缺少 pagination')
+  return payload as FileQueryResult
+}
+
+const queryTransport: FileQueryTransport = {
+  async queryFiles(input, context) {
+    // 业务查询条件始终放在 query；公共认证参数仅附加到 URL。
+    // Business query conditions always belong in query; shared auth parameters are appended only to the URL.
+    const url = new URL('/api/files/query', window.location.origin)
+    for (const [key, value] of Object.entries(context.urlQuery ?? {}))
+      url.searchParams.set(key, String(value))
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { ...context.headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: context.query, pagination: input.pagination }),
+      signal: context.signal,
+    })
+    if (!response.ok) throw new Error(`查询失败（${response.status}）`)
+    return parseFileQueryResult(response)
+  },
+}
+```
+
+若接口只支持 GET，可将 `context.query` 和 `input.pagination` 序列化为后端约定的 URL 参数；但不要省略 `pagination.enabled`。新 `extra`、翻页或卸载会中止 `context.signal`，适配器必须透传它，且不能将已取消或过期结果写回其他状态。

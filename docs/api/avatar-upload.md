@@ -16,6 +16,7 @@
 | `read-only`        | `boolean`              | `false`    | 禁止选择、替换和删除；若 `preview` 为真仍可预览。 |
 | `shape`            | `'square' \| 'circle'` | `'square'` | 卡片和裁剪框的视觉轮廓；圆形建议使用等宽高。      |
 | `preview`          | `boolean`              | `true`     | 是否允许预览当前头像。                            |
+| `locale`           | `string`               | 继承宿主   | 组件内置操作文案的语言。                          |
 
 首次上传走 `action` 或 `transport.uploadFile`。已有头像且配置 `update-action` 时，组件使用 `PUT` 提交 `file`、`fileId` 两个 multipart 字段；首次成功响应必须返回 `fileId`。
 

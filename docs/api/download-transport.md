@@ -43,3 +43,60 @@ const downloadTransport = createHttpDownloadTransport({
 ```
 
 归档状态只接受 `pending`、`processing`、`success`、`failed` 或 `canceled`。后端响应结构不同可提供 `parseArchiveResponse`；下载响应不直接返回 Blob 时可提供 `parseDownloadResponse`。
+
+## 开发自定义下载适配器
+
+当下载需要短期签名 URL、对象存储 SDK、公司请求层或非标准归档协议时，实现 `DownloadTransport` 并传给 `download-transport`。
+
+| 方法             | 何时调用                                 | 必须返回                                          |
+| ---------------- | ---------------------------------------- | ------------------------------------------------- |
+| `downloadFile`   | 用户下载单个成功文件                     | 至少包含 `blob` 或 `url` 的 `DownloadResource`。  |
+| `createArchive`  | 下载选中项或全部文件                     | 初始 `ArchiveTask`，必须包含 `taskId`、`status`。 |
+| `getArchiveTask` | 初始任务仍为 `pending` / `processing` 时 | 最新 `ArchiveTask`；成功时必须含 `downloadUrl`。  |
+| `cancelArchive`  | 用户取消未完成归档时                     | `void`；可选。                                    |
+
+```ts
+import type { ArchiveTask, DownloadTransport } from 'vue-flow-upload'
+
+// 解析器应校验 taskId、status 等字段；不要将未知 JSON 直接断言为 ArchiveTask。
+// The parser should validate taskId, status, and related fields; do not directly assert unknown JSON as ArchiveTask.
+async function parseArchiveTask(response: Response): Promise<ArchiveTask> {
+  const payload: unknown = await response.json()
+  if (!payload || typeof payload !== 'object') throw new Error('归档响应不是对象')
+  if (!('taskId' in payload) || typeof payload.taskId !== 'string')
+    throw new Error('归档响应缺少 taskId')
+  if (!('status' in payload) || typeof payload.status !== 'string')
+    throw new Error('归档响应缺少 status')
+  return payload as ArchiveTask
+}
+
+const downloadTransport: DownloadTransport = {
+  async downloadFile({ fileId, fileName }, context) {
+    // 单文件接口返回二进制，因此读取 Blob 而不是 JSON。
+    // The single-file endpoint returns binary content, so read Blob rather than JSON.
+    const response = await fetch(`/api/files/${encodeURIComponent(fileId)}/download`, {
+      headers: context.headers,
+    })
+    if (!response.ok) throw new Error(`下载失败（${response.status}）`)
+    return { blob: await response.blob(), fileName }
+  },
+  async createArchive(input, context) {
+    const response = await fetch('/api/archives', {
+      method: 'POST',
+      headers: { ...context.headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    })
+    if (!response.ok) throw new Error(`创建归档失败（${response.status}）`)
+    return parseArchiveTask(response)
+  },
+  async getArchiveTask(taskId, context) {
+    const response = await fetch(`/api/archives/${encodeURIComponent(taskId)}`, {
+      headers: context.headers,
+    })
+    if (!response.ok) throw new Error(`查询归档失败（${response.status}）`)
+    return parseArchiveTask(response)
+  },
+}
+```
+
+`DownloadTransport` 现有契约没有取消信号；归档轮询由组件停止。自定义实现仍应保留 HTTP 状态与原始失败原因，并抛出 `{ code, message, retriable, status?, cause? }` 结构，便于 `download-error` 与 `archive-error` 正确报告。
