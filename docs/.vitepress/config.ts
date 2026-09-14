@@ -12,6 +12,17 @@ export default defineConfig({
   description: 'Vue 3 上传组件的使用说明、配置参考与在线示例。',
   /** Markdown 页面使用的 Vite 配置，用源码别名确保示例始终验证当前组件实现。 Vite settings for Markdown pages; the source alias ensures demos always validate the current component implementation. */
   vite: {
+    /**
+     * 文档中的 SCSS 使用 Dart Sass 现代编译接口，避免 Vite 5 默认旧接口在 Sass 2.0 移除前持续发出弃用警告。
+     * Documentation SCSS uses Dart Sass's modern compiler API, preventing Vite 5's legacy default from emitting deprecation warnings before Sass 2.0 removes it.
+     */
+    css: {
+      preprocessorOptions: {
+        scss: {
+          api: 'modern-compiler',
+        },
+      },
+    },
     resolve: {
       alias: {
         'vue-flow-upload': fileURLToPath(

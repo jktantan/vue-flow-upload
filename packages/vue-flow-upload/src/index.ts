@@ -18,6 +18,7 @@ export { resolveTheme } from './themes'
 export type { HttpUploadTransportOptions } from './core/http-transport'
 export type { ChunkSchedulerOptions } from './core/chunk-scheduler'
 export type {
+  AvatarShape,
   ArchiveTask,
   DownloadResource,
   DownloadScope,

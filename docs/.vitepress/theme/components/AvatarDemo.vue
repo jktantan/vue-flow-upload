@@ -1,9 +1,20 @@
 <script setup lang="ts">
 import { onBeforeUnmount, ref } from 'vue'
-import { AvatarUpload, type UploadFileItem, type UploadTransport } from 'vue-flow-upload'
+import {
+  AvatarUpload,
+  type AvatarShape,
+  type UploadFileItem,
+  type UploadTransport,
+} from 'vue-flow-upload'
 
 /** 文档头像示例维护的受控头像列表。 Controlled avatar list maintained by the documentation avatar demo. */
 const avatarFiles = ref<UploadFileItem[]>([])
+/** 示例中实时控制头像卡片和裁剪框的轮廓。 Shape that controls the avatar card and crop box in real time. */
+const avatarShape = ref<AvatarShape>('circle')
+/** 示例中锁定选择、替换与删除操作的只读开关。 Read-only switch that locks selection, replacement, and deletion in the demo. */
+const avatarReadOnly = ref(false)
+/** 示例中控制大图查看入口是否可用的预览开关。 Preview switch that controls whether the full-image viewer is available in the demo. */
+const avatarPreview = ref(true)
 /** 模拟上传计时器；离开页面时清理以避免异步回写。 Simulated upload timer; cleared on navigation to prevent async writes. */
 let uploadTimer: number | undefined
 
@@ -45,6 +56,17 @@ onBeforeUnmount(() => {
 
 <template>
   <section class="demo-shell" aria-label="头像上传交互示例">
+    <div class="avatar-demo-controls" aria-label="头像示例配置">
+      <label>
+        形状
+        <select v-model="avatarShape">
+          <option value="circle">圆形</option>
+          <option value="square">方形</option>
+        </select>
+      </label>
+      <label><input v-model="avatarReadOnly" type="checkbox" /> 只读</label>
+      <label><input v-model="avatarPreview" type="checkbox" /> 允许预览</label>
+    </div>
     <p class="demo-caption">选择一张图片，在裁剪框中调整后确认；上传过程仅在浏览器内模拟。</p>
     <AvatarUpload
       v-model="avatarFiles"
@@ -53,6 +75,9 @@ onBeforeUnmount(() => {
       :max-size="5 * 1024 * 1024"
       :width="190"
       :height="190"
+      :read-only="avatarReadOnly"
+      :preview="avatarPreview"
+      :shape="avatarShape"
     />
   </section>
 </template>

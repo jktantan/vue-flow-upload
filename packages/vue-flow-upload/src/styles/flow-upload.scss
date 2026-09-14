@@ -47,6 +47,16 @@
   cursor: not-allowed;
   opacity: 0.7;
 }
+.vfu-avatar-card.is-read-only {
+  /* 只读头像不暗化，但需要明确不支持替换或删除的指针反馈。
+   * Read-only avatars remain fully visible but signal that replacement and deletion are unavailable. */
+  cursor: default;
+}
+.vfu-avatar-card.is-circle {
+  /* 圆形仅是展示遮罩；裁剪和上传仍使用方形 1:1 图像。
+   * The circle is display-only; cropping and uploading still use square 1:1 images. */
+  border-radius: 50%;
+}
 .vfu-avatar-mask {
   position: absolute;
   inset: 0;
@@ -131,6 +141,12 @@
 .vfu-avatar-cropper .cropper-container {
   width: 100% !important;
   height: 100% !important;
+}
+.vfu-avatar-cropper.is-circle .cropper-view-box,
+.vfu-avatar-cropper.is-circle .cropper-face {
+  /* 裁剪器用同一遮罩预览圆形最终展示范围。
+   * The cropper uses the same mask to preview the circular display area. */
+  border-radius: 50%;
 }
 .vfu-avatar-empty {
   width: 100%;

@@ -5,6 +5,7 @@ import {
   AvatarUpload,
   createHttpUploadTransport,
   type DownloadTransport,
+  type AvatarShape,
   type UploadFileItem,
   type UploadListType,
   type UploadPermissions,
@@ -172,6 +173,10 @@ const avatarWidthPx = ref(240)
 const avatarHeightPx = ref(240)
 /** 头像源文件允许的最大尺寸，单位为 MiB。 Maximum allowed avatar source-file size in MiB. */
 const avatarMaxSizeMiB = ref(5)
+/** 是否将头像演示锁定为只读；只读仍可验证预览交互。 Whether the avatar demo is locked read-only; preview interaction remains testable. */
+const avatarReadOnly = ref(false)
+/** 头像卡片和裁剪框的展示轮廓。 Display outline used by the avatar card and crop box. */
+const avatarShape = ref<AvatarShape>('square')
 let loadingTimer: number | undefined
 let listRequestId = 0
 
@@ -671,7 +676,15 @@ function handleAvatarSuccess(file: UploadFileItem): void {
               <label class="field-label">宽度 px <input v-model.number="avatarWidthPx" min="1" type="number" /></label>
               <label class="field-label">高度 px <input v-model.number="avatarHeightPx" min="1" type="number" /></label>
               <label class="field-label">最大尺寸 MiB <input v-model.number="avatarMaxSizeMiB" min="1" type="number" /></label>
+              <label class="field-label">
+                轮廓
+                <select v-model="avatarShape">
+                  <option value="square">square</option>
+                  <option value="circle">circle</option>
+                </select>
+              </label>
             </div>
+            <label class="switch"><input v-model="avatarReadOnly" type="checkbox" /> 只读（仍可预览）</label>
             <label class="field-label">更新端点 <input v-model="avatarUpdateAction" type="text" /></label>
           </div>
         </details>
@@ -735,6 +748,8 @@ function handleAvatarSuccess(file: UploadFileItem): void {
             :width="avatarWidthPx"
             :height="avatarHeightPx"
             :disabled="disabled"
+            :read-only="avatarReadOnly"
+            :shape="avatarShape"
             :preview="preview"
             :permissions="permissions"
             @success="handleAvatarSuccess"

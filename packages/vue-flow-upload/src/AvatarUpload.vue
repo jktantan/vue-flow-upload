@@ -19,6 +19,7 @@ import { vueFlowUploadConfigKey } from './config'
 import { normalizeUploadError } from './utils/error'
 import { createUid, matchesAccept, normalizeFileList, toCssSize } from './utils/file'
 import type {
+  AvatarShape,
   UploadData,
   UploadError,
   UploadFileItem,
@@ -66,6 +67,16 @@ interface AvatarUploadProps {
   height?: string | number
   /** 禁用所有交互。 Disables all interaction. */
   disabled?: boolean
+  /**
+   * 只读时保留预览（若允许），但禁止选择、替换和删除；它不改变受控 v-model 的外部更新能力。
+   * Read-only mode preserves preview when allowed but blocks selection, replacement, and deletion; it does not prevent external controlled v-model updates.
+   */
+  readOnly?: boolean
+  /**
+   * 头像卡片和裁剪框的视觉轮廓；`circle` 仅应用圆形遮罩，上传结果仍为 1:1 方图。
+   * Visual outline for the avatar card and crop box; `circle` applies only a circular mask while uploads remain 1:1 square images.
+   */
+  shape?: AvatarShape
   /** 是否允许打开当前头像的预览。 Whether previewing the current avatar is allowed. */
   preview?: boolean
   /** 按操作粒度限制选择、删除和预览。 Per-operation restrictions for selecting, deleting, and previewing. */
@@ -96,6 +107,8 @@ const props = withDefaults(defineProps<AvatarUploadProps>(), {
   width: 300,
   height: 300,
   disabled: false,
+  readOnly: false,
+  shape: 'square',
   preview: true,
   belongType: 'default',
   permissions: () => ({}),
@@ -130,12 +143,23 @@ const input = ref<HTMLInputElement>()
 const avatar = computed(() => files.value[0])
 /** Remote thumbnail/URL wins; otherwise show the package default placeholder. */
 const imageSrc = computed(() => avatar.value?.url || avatar.value?.thumbnailUrl || defaultAvatar)
-/** Permission-derived UI capabilities. */
-const canSelect = computed(() => !props.disabled && props.permissions.select !== false)
-const canRemove = computed(() => !props.disabled && props.permissions.remove !== false)
+/** 由禁用、只读及细粒度权限共同决定的选择能力。 Selection capability derived from disabled, read-only, and granular permissions. */
+const canSelect = computed(
+  () => !props.disabled && !props.readOnly && props.permissions.select !== false,
+)
+/** 由禁用、只读及细粒度权限共同决定的删除能力。 Removal capability derived from disabled, read-only, and granular permissions. */
+const canRemove = computed(
+  () => !props.disabled && !props.readOnly && props.permissions.remove !== false,
+)
+/** 只读不等同于禁用，因此预览能力只受 disabled、preview 和预览权限影响。 Read-only differs from disabled, so preview is governed only by disabled, preview, and preview permission. */
 const canPreview = computed(
   () => !props.disabled && props.preview && props.permissions.preview !== false,
 )
+/**
+ * 遮罩仅在包含预览、替换或删除等可操作按钮时渲染；只读且不可预览时应作为纯头像展示。
+ * The mask renders only when it contains preview, replacement, or removal actions; read-only avatars without preview behave as pure display.
+ */
+const hasMaskActions = computed(() => canPreview.value || !props.readOnly)
 /** Host i18n instance takes precedence over this component's fallback dictionary. */
 const inheritedI18n = useI18n()
 const localI18n = createFlowUploadI18n()
@@ -157,7 +181,10 @@ const transport = computed(
         })
       : undefined),
 )
-/** Reactive cropper input; the fixed 1:1 ratio produces a square avatar. */
+/**
+ * 裁剪器输入始终保持 1:1；圆形仅改变裁剪框的视觉遮罩，避免改变上传文件格式或生成透明像素。
+ * Cropper input stays 1:1; the circle changes only the crop-box mask, avoiding changes to upload format or generated transparent pixels.
+ */
 const cropperProps = computed(() => ({
   img: source.value,
   options: { aspectRatio: 1, viewMode: 1 as const },
@@ -485,9 +512,16 @@ async function remove() {
       :disabled="!canSelect"
       @change="select"
     />
-    <div class="vfu-avatar-card" :class="{ 'is-disabled': disabled }">
+    <div
+      class="vfu-avatar-card"
+      :class="{
+        'is-circle': shape === 'circle',
+        'is-disabled': disabled,
+        'is-read-only': readOnly,
+      }"
+    >
       <img :src="imageSrc" :alt="text.avatar" />
-      <div class="vfu-avatar-mask">
+      <div v-if="hasMaskActions" class="vfu-avatar-mask">
         <button
           v-if="canPreview"
           class="vfu-action"
@@ -500,6 +534,7 @@ async function remove() {
             <circle cx="12" cy="12" r="2.8" />
           </svg></button
         ><button
+          v-if="!readOnly"
           class="vfu-action"
           type="button"
           :data-tooltip="text.avatarUpdate"
@@ -511,7 +546,7 @@ async function remove() {
             <path d="m12.5 7.5 4 4" />
           </svg></button
         ><button
-          v-if="avatar"
+          v-if="avatar && !readOnly"
           class="vfu-action is-danger"
           type="button"
           :data-tooltip="text.remove"
@@ -529,7 +564,7 @@ async function remove() {
       <section class="vfu-avatar-editor">
         <div
           class="vfu-avatar-cropper"
-          :class="{ 'is-dragging': dragging }"
+          :class="{ 'is-circle': shape === 'circle', 'is-dragging': dragging }"
           @dragover="onDragOver"
           @dragleave="onDragLeave"
           @drop="onDrop"

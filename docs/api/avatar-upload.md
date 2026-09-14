@@ -1,22 +1,30 @@
 # AvatarUpload
 
-`AvatarUpload` 是单头像组件：选择图片后先进行 1:1 裁剪，并将结果输出为 512 × 512 图片。它只渲染 `v-model` 列表中的第一项。
+`AvatarUpload` 是单头像组件：选择图片后先进行 1:1 裁剪，并将结果输出为 512 × 512 图片。它只渲染 `v-model` 列表中的第一项。圆形是卡片与裁剪框的视觉遮罩，上传到服务端的文件始终是方形图片。
 
-| Prop               | 类型                 | 默认值  | 说明                                              |
-| ------------------ | -------------------- | ------- | ------------------------------------------------- |
-| `v-model`          | `UploadUserFile[]`   | —       | 单元素头像列表。                                  |
-| `action`           | `string`             | —       | 首次上传的内置端点。                              |
-| `update-action`    | `string`             | —       | 已有头像替换时的 PUT 端点，可用 `{fileId}` 占位。 |
-| `delete-action`    | `string`             | —       | 删除已有头像的内置端点。                          |
-| `transport`        | `UploadTransport`    | —       | 自定义上传与删除适配器。                          |
-| `accept`           | `string \| string[]` | —       | 可选图片类型。                                    |
-| `max-size`         | `number`             | —       | 源图片最大字节数。                                |
-| `width` / `height` | `string \| number`   | `300`   | 头像卡片尺寸。                                    |
-| `disabled`         | `boolean`            | `false` | 禁用全部交互。                                    |
-| `preview`          | `boolean`            | `true`  | 是否允许预览当前头像。                            |
+| Prop               | 类型                   | 默认值     | 说明                                              |
+| ------------------ | ---------------------- | ---------- | ------------------------------------------------- |
+| `v-model`          | `UploadUserFile[]`     | —          | 单元素头像列表。                                  |
+| `action`           | `string`               | —          | 首次上传的内置端点。                              |
+| `update-action`    | `string`               | —          | 已有头像替换时的 PUT 端点，可用 `{fileId}` 占位。 |
+| `delete-action`    | `string`               | —          | 删除已有头像的内置端点。                          |
+| `transport`        | `UploadTransport`      | —          | 自定义上传与删除适配器。                          |
+| `accept`           | `string \| string[]`   | —          | 可选图片类型。                                    |
+| `max-size`         | `number`               | —          | 源图片最大字节数。                                |
+| `width` / `height` | `string \| number`     | `300`      | 头像卡片尺寸。                                    |
+| `disabled`         | `boolean`              | `false`    | 禁用全部交互。                                    |
+| `read-only`        | `boolean`              | `false`    | 禁止选择、替换和删除；若 `preview` 为真仍可预览。 |
+| `shape`            | `'square' \| 'circle'` | `'square'` | 卡片和裁剪框的视觉轮廓；圆形建议使用等宽高。      |
+| `preview`          | `boolean`              | `true`     | 是否允许预览当前头像。                            |
 
 首次上传走 `action` 或 `transport.uploadFile`。已有头像且配置 `update-action` 时，组件使用 `PUT` 提交 `file`、`fileId` 两个 multipart 字段；首次成功响应必须返回 `fileId`。
 
 `belong-id` 为必填项；`belong-type` 默认为 `default`。两者和 `extra` 会合并到 multipart 的 JSON `data` 字段，分别表示所属业务记录 ID、所属类型和扩展属性；`update-action` 更新请求同样携带该字段。
+
+只读展示可使用 `read-only`，它等价于锁定选择、替换和删除操作，但不会关闭预览：
+
+```vue
+<AvatarUpload v-model="avatarFiles" read-only shape="circle" />
+```
 
 事件包括 `update:modelValue`、`change`、`success`、`error`、`remove`。可直接体验[头像上传 DEMO](/demos/avatar-upload)。

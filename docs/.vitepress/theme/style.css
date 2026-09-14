@@ -45,6 +45,33 @@
   font-size: 13px;
 }
 
+/* 头像示例把三个常用展示开关放在上传组件上方，便于直接比较交互组合。
+ * The avatar demo places its three common display controls above the uploader for direct comparison. */
+.vp-doc .avatar-demo-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  margin-bottom: 16px;
+}
+
+.vp-doc .avatar-demo-controls label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--vp-c-text-1);
+  font-size: 13px;
+}
+
+.vp-doc .avatar-demo-controls select {
+  min-height: 30px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 6px;
+  padding: 0 8px;
+  color: var(--vp-c-text-1);
+  background: var(--vp-c-bg);
+}
+
 .vp-doc .demo-action {
   min-height: 32px;
   padding: 0 12px;
@@ -98,5 +125,11 @@
 @media (max-width: 640px) {
   .vp-doc .demo-shell {
     padding: 14px;
+  }
+
+  .vp-doc .avatar-demo-controls {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 9px;
   }
 }

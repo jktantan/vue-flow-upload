@@ -68,6 +68,7 @@ const avatar = ref<UploadFileItem[]>([])
     update-action="/avatar/{fileId}"
     delete-action="/avatar/{fileId}"
     accept="image/*"
+    shape="circle"
   />
 </template>
 ```
@@ -75,6 +76,12 @@ const avatar = ref<UploadFileItem[]>([])
 首次上传走 `action`；已有头像并配置 `update-action` 时，组件会向替换 `{fileId}` 后的 URL 发出 `PUT`，并提交 `file`、`fileId`
 两个 multipart 字段。首次响应必须返回 `fileId`，否则无法生成后续更新 URL。`baseUrl` 会加到相对地址前，完整 `http(s)` URL
 不受影响。若使用自定义 `transport` 处理更新，请不要传 `update-action`。
+
+`shape` 控制头像卡片和裁剪框的视觉轮廓，可选 `square`（默认）或 `circle`；圆形仅是展示遮罩，上传结果仍是 512 × 512 方形图片。`read-only` 会禁止选择、替换和删除，但 `preview` 保持开启时仍可预览已有头像：
+
+```vue
+<AvatarUpload v-model="avatar" read-only shape="circle" />
+```
 
 面向 Vue 3 的上传组件：普通文件上传开箱即用，并为大文件提供分片、断点续传、SHA-256 秒传、并发调度、失败重试和下载归档。
 
@@ -106,8 +113,7 @@ const files = ref<UploadFileItem[]>([])
 </template>
 ```
 
-`action` 使用内置 XHR，支持 `method`、`data`、`create-action`、`delete-action` 与全局 `auth` 配置；它只实现普通上传。秒传、分片、续传或非标准响应结构需要
-`transport`。两者同时提供时，`transport` 优先。
+`action` 是内置 XHR `transport` 的普通上传 URL 快捷写法，支持 `method`、`data`、`create-action`、`delete-action` 与全局 `auth` 配置；它只实现普通上传。秒传、分片、续传、非标准响应结构或项目请求封装需要 `transport`。两者同时提供时，`transport` 优先，因此一个组件实例只应维护一种协议入口。
 
 认证配置只在 `app.use(vueFlowUpload, config)` 初始化时设置：`baseUrl` 为内置 HTTP 端点添加统一前缀，`credentials` 控制
 Cookie，`headers` 控制认证请求头，`query` 添加统一 URL 参数。它们会应用到所有内置上传、分片、合并、删除和头像请求；完整

@@ -1,14 +1,14 @@
 # FlowUpload
 
-`FlowUpload` 用于多文件上传。传 `action` 时使用内置 XHR；传 `transport` 时由宿主完全控制请求协议，且 `transport` 优先。
+`FlowUpload` 用于多文件上传。`action` 是内置 XHR `transport` 的普通上传快捷写法；传入 `transport` 时由宿主完全控制请求协议，且它优先。
 
 ## 常用 Props
 
 | Prop            | 类型                                           | 默认值    | 说明                                                   |
 | --------------- | ---------------------------------------------- | --------- | ------------------------------------------------------ |
 | `v-model`       | `UploadUserFile[]`                             | —         | 受控文件列表。                                         |
-| `action`        | `string`                                       | —         | 内置普通上传 URL。                                     |
-| `transport`     | `UploadTransport`                              | —         | 自定义上传适配器。                                     |
+| `action`        | `string`                                       | —         | 内置 XHR `transport` 的普通上传 URL 快捷写法。         |
+| `transport`     | `UploadTransport`                              | —         | 上传协议适配器；可使用任意 HTTP 客户端或直传 SDK。     |
 | `accept`        | `string \| string[]`                           | —         | 扩展名或 MIME 过滤条件。                               |
 | `max-size`      | `number`                                       | —         | 单文件最大字节数。                                     |
 | `max-count`     | `number`                                       | 无限制    | 最多保留的文件数量。                                   |

@@ -1,6 +1,8 @@
 # 上传传输适配器
 
-当接口不只是普通上传，或后端响应需要转换时，使用 `transport`。它优先于 `action`，因此一个组件实例只需要维护一种协议入口。
+`transport` 是组件唯一的上传协议边界：它描述“如何创建、上传、校验、分片和删除文件”，而不限定具体的 HTTP 客户端。它可以使用 XHR、Fetch、Axios、项目请求封装，或直接上传到对象存储。
+
+`action` 不是另一套传输机制，而是内置 `createHttpUploadTransport({ url: action })` 的普通上传快捷写法。标准 `multipart/form-data` 接口可用 `action` 少写配置；响应转换、签名上传、秒传、分片或续传等场景应直接传入 `transport`。两者同时提供时，`transport` 优先，因此一个组件实例只应维护一种协议入口。
 
 ## HTTP 适配器
 
