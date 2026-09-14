@@ -119,8 +119,10 @@ const files = ref<UploadFileItem[]>([])
 Cookie，`headers` 控制认证请求头，`query` 添加统一 URL 参数。它们会应用到所有内置上传、分片、合并、删除和头像请求；完整
 `http(s)` 地址不会拼接 `baseUrl`。不要在组件上重复配置认证信息，也不要把敏感 Token 放在 query 中。
 
+### 上传 HTTP 适配器
+
 ```ts
-import { createHttpDownloadTransport, createHttpUploadTransport } from 'vue-flow-upload'
+import { createHttpUploadTransport } from 'vue-flow-upload'
 
 const transport = createHttpUploadTransport({
   url: '/uploads/file',
@@ -132,6 +134,14 @@ const transport = createHttpUploadTransport({
     cancelUrl: '/uploads/{uploadId}',
   },
 })
+```
+
+上传地址职责：`url` 上传普通文件；`checkUrl` 检查秒传；`multipart.initUrl` 创建/恢复分片会话；`multipart.chunkUrl` 上传一个分片；`multipart.completeUrl` 合并分片；`multipart.cancelUrl` 取消会话。完整约定见 [上传传输适配器](../../docs/api/transport.md)。
+
+### 下载 HTTP 适配器
+
+```ts
+import { createHttpDownloadTransport } from 'vue-flow-upload'
 
 const downloadTransport = createHttpDownloadTransport({
   downloadUrl: '/uploads/files/{fileId}/download',
@@ -143,7 +153,7 @@ const downloadTransport = createHttpDownloadTransport({
 })
 ```
 
-将 `downloadTransport` 传给组件的 `download-transport` 即可启用单文件下载和批量归档。适配器会接收组件解析的认证头和 query；如需相对地址的 API 前缀、跨域 Cookie 或自定义超时，请在创建时配置 `baseUrl`、`credentials`、`timeout`。它将文件响应读取为 Blob，并优先使用服务端 `Content-Disposition` 文件名。归档创建端点需返回 `{ taskId, status }`，成功轮询结果还需返回 `downloadUrl`。完整端点约定见 [传输适配器](../../docs/api/transport.md)。
+下载地址职责：`downloadUrl` 下载单个 `{fileId}` 文件；`archive.createUrl` 创建批量归档任务；`archive.taskUrl` 轮询 `{taskId}` 状态和最终下载地址；`archive.cancelUrl` 取消未完成任务。将 `downloadTransport` 传给组件的 `download-transport` 即可启用下载。适配器会接收组件解析的认证头和 query；如需相对地址的 API 前缀、跨域 Cookie 或自定义超时，请在创建时配置 `baseUrl`、`credentials`、`timeout`。完整约定见 [下载传输适配器](../../docs/api/download-transport.md)。
 
 ## 国际化
 

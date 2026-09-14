@@ -62,6 +62,7 @@ export default defineConfig({
           { text: 'FlowUpload', link: '/api/flow-upload' },
           { text: 'AvatarUpload', link: '/api/avatar-upload' },
           { text: '上传传输适配器', link: '/api/transport' },
+          { text: '下载传输适配器', link: '/api/download-transport' },
         ],
       },
       {
