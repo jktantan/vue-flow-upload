@@ -8,7 +8,10 @@ interface UploadRemoveDialogProps {
   busy: boolean
   error?: string
   title: string
-  message: string
+  /** 单文件删除时显示文件名的确认文案，使用 {name} 插值。 Single-file confirmation copy that displays the filename using {name} interpolation. */
+  singleFileMessage: string
+  /** 批量删除时仅显示数量的确认文案，使用 {count} 插值。 Batch-removal confirmation copy that displays only the count using {count} interpolation. */
+  multipleFilesMessage: string
   cancelText: string
   confirmText: string
   processingText: string
@@ -25,8 +28,13 @@ interface UploadRemoveDialogEmits {
 /** 经过 TypeScript 约束的弹窗事件发送器。 TypeScript-constrained dialog event emitter. */
 const emit = defineEmits<UploadRemoveDialogEmits>()
 
-// 将待删除文件名汇总到确认文案，供单个和批量删除共用。 Summarize pending names for both single and batch removal copy.
-const names = computed(() => props.files.map((file) => file.name).join('、'))
+// 按待删文件数量选择确认文案：单文件显示名称，批量删除只显示数量。
+// Selects confirmation copy by pending file count: one file displays its name, while a batch displays only its count.
+const confirmationMessage = computed(() =>
+  props.files.length === 1
+    ? props.singleFileMessage.replace('{name}', props.files[0]?.name ?? '')
+    : props.multipleFilesMessage.replace('{count}', String(props.files.length)),
+)
 </script>
 
 <template>
@@ -37,7 +45,7 @@ const names = computed(() => props.files.map((file) => file.name).join('、'))
         <div class="vfu-confirm__icon" aria-hidden="true">!</div>
         <div class="vfu-confirm__content">
           <h3>{{ title }}</h3>
-          <p>{{ message.replace('{names}', names).replace('{count}', String(files.length)) }}</p>
+          <p>{{ confirmationMessage }}</p>
           <p v-if="error" class="vfu-confirm__error">{{ error }}</p>
         </div>
         <footer>

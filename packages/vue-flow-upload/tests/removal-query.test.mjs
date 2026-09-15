@@ -49,6 +49,63 @@ function mountUpload(props) {
   }
 }
 
+/**
+ * 渲染删除弹窗的说明文本，直接断言单文件与批量删除的插值分支。
+ * Renders deletion-dialog copy so single-file and batch-removal interpolation branches can be asserted directly.
+ */
+function renderRemovalMessage(dialog, files) {
+  // 使用可识别的模板，确保批量分支不会意外带入任一文件名。
+  // Uses recognizable templates to ensure the batch branch cannot accidentally include a filename.
+  const renderDialog = dialog.type.setup(
+    {
+      files,
+      busy: false,
+      error: '',
+      title: 'Removal confirmation',
+      singleFileMessage: 'single:{name}',
+      multipleFilesMessage: 'multiple:{count}',
+      cancelText: 'Cancel',
+      confirmText: 'Remove',
+      processingText: 'Removing',
+    },
+    { emit() {} },
+  )
+  // Teleport 的第一个子节点是遮罩容器，其中确认内容区的第二段是说明文本。
+  // The Teleport's first child is the overlay, whose confirmation-content area's second paragraph is the copy.
+  return renderDialog({}, []).children[0].children[1].children[1].children[1].children
+}
+
+test('removal confirmation shows one filename but only the batch count', async () => {
+  // 先打开真实弹窗以获取已编译的内部确认组件。
+  // Opens the real dialog first to obtain the compiled internal confirmation component.
+  const upload = mountUpload({
+    belongId: 'test',
+    belongType: 'test',
+    permissions: {},
+    queryOnMount: false,
+    modelValue: [{ uid: 'one', fileId: 'one', name: 'invoice.pdf', size: 1, status: 'success' }],
+    transport: { deleteFile: async () => {} },
+  })
+  try {
+    await upload.api.remove('one')
+    // 单个文件说明必须包含其名称。
+    // Single-file copy must include that file's name.
+    const singleMessage = renderRemovalMessage(upload.getDialog(), [
+      { uid: 'one', name: 'invoice.pdf', size: 1, status: 'success' },
+    ])
+    // 批量说明只包含数量，不应展开任何文件名。
+    // Batch copy contains only the count and must not expand any filename.
+    const multipleMessage = renderRemovalMessage(upload.getDialog(), [
+      { uid: 'one', name: 'invoice.pdf', size: 1, status: 'success' },
+      { uid: 'two', name: 'contract.pdf', size: 1, status: 'success' },
+    ])
+    assert.equal(singleMessage, 'single:invoice.pdf')
+    assert.equal(multipleMessage, 'multiple:2')
+  } finally {
+    upload.unmount()
+  }
+})
+
 test('confirmed removal waits for a fresh server query before completing', async () => {
   // 记录删除与查询顺序，并控制后台回读何时完成。
   // Record deletion/query order and control when the server reload completes.

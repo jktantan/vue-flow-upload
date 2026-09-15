@@ -38,7 +38,10 @@ export interface UploadMessages {
   removeSelected: string
   fileCount: string
   removeConfirmTitle: string
-  removeConfirmMessage: string
+  /** 单文件删除确认文案，使用 {name} 插入文件名。 Single-file removal confirmation copy; {name} inserts the filename. */
+  removeSingleConfirmMessage: string
+  /** 批量删除确认文案，使用 {count} 插入文件数量。 Batch-removal confirmation copy; {count} inserts the file count. */
+  removeMultipleConfirmMessage: string
   removeConfirmProcessing: string
   cancel: string
   removeCleanupFailed: string
