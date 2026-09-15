@@ -1,11 +1,41 @@
-.vfu-upload {
-  position: relative;
+/* 上传根节点与 Teleport 弹窗共享同一套默认主题 token，避免组件位置改变导致变量丢失。
+ * Upload roots and Teleport dialogs share default theme tokens so moving a component cannot lose variables. */
+:where(.vfu-upload, .vfu-avatar, .vfu-modal) {
   --vfu-ink: #202938;
   --vfu-muted: #748094;
   --vfu-line: #d9dee7;
   --vfu-signal: #2f6bff;
   --vfu-danger: #e85757;
   --vfu-radius: 6px;
+}
+.vfu-modal {
+  box-sizing: border-box;
+  color: var(--vfu-ink);
+  font:
+    14px/1.45 Inter,
+    ui-sans-serif,
+    system-ui,
+    sans-serif;
+}
+/* 统一 tooltip 的非定位视觉层，调用处只保留与按钮形状相关的定位规则。
+ * Unifies the non-positional tooltip surface; callers retain only button-shape-specific placement rules. */
+@mixin vfu-tooltip-surface {
+  z-index: 12;
+  width: max-content;
+  border-radius: 4px;
+  background: #303133;
+  color: #fff;
+  content: attr(data-tooltip);
+  font-size: 12px;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 0.16s,
+    transform 0.16s;
+  white-space: nowrap;
+}
+.vfu-upload {
+  position: relative;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -22,10 +52,6 @@
   position: relative;
   display: inline-block;
   max-width: 100%;
-  --vfu-muted: #748094;
-  --vfu-line: #d9dee7;
-  --vfu-signal: #2f6bff;
-  --vfu-radius: 6px;
 }
 .vfu-avatar-card {
   position: relative;
@@ -57,32 +83,39 @@
    * The circle is display-only; cropping and uploading still use square 1:1 images. */
   border-radius: 50%;
 }
-.vfu-avatar-mask {
+.vfu-action-mask {
   position: absolute;
+  z-index: 1;
   inset: 0;
   display: flex;
+  width: auto;
+  height: auto;
+  min-height: 0;
   align-items: center;
   justify-content: center;
   gap: 4px;
+  padding: 0;
   background: rgb(0 0 0 / 48%);
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.2s ease;
 }
-.vfu-avatar-card:hover .vfu-avatar-mask,
-.vfu-avatar-card:focus-within .vfu-avatar-mask {
+.vfu-avatar-card:hover .vfu-action-mask,
+.vfu-avatar-card:focus-within .vfu-action-mask,
+.vfu-list.is-picture-wall .vfu-file:hover .vfu-action-mask,
+.vfu-list.is-picture-wall .vfu-file:focus-within .vfu-action-mask {
   opacity: 1;
   pointer-events: auto;
 }
-.vfu-avatar-mask .vfu-action {
+.vfu-action-mask .vfu-action {
   background: rgb(255 255 255 / 92%);
   color: #606266;
 }
-.vfu-avatar-mask .vfu-action:hover:not(:disabled) {
+.vfu-action-mask .vfu-action:hover:not(:disabled) {
   background: #fff;
   color: #409eff;
 }
-.vfu-avatar-mask .vfu-action.is-danger:hover:not(:disabled) {
+.vfu-action-mask .vfu-action.is-danger:hover:not(:disabled) {
   color: #f56c6c;
 }
 .vfu-avatar-notice {
@@ -105,6 +138,23 @@
   place-items: center;
   padding: 20px;
   background: rgb(0 0 0 / 55%);
+  color: var(--vfu-ink);
+  font:
+    14px/1.45 Inter,
+    ui-sans-serif,
+    system-ui,
+    sans-serif;
+}
+.vfu-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgb(0 0 0 / 45%);
+}
+/* 模态内容必须显式高于 backdrop，避免绝对定位遮罩覆盖插槽中的对话框。
+ * Modal content must explicitly sit above the backdrop so the absolute overlay cannot cover slotted dialogs. */
+.vfu-modal > :not(.vfu-modal__backdrop) {
+  position: relative;
+  z-index: 1;
 }
 .vfu-avatar-editor {
   width: min(90vw, 620px);
@@ -115,6 +165,41 @@
   border-radius: var(--vfu-radius);
   background: #fff;
   box-shadow: 0 12px 32px rgb(0 0 0 / 20%);
+}
+.vfu-avatar-editor__header {
+  display: flex;
+  min-height: 52px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--vfu-line);
+}
+.vfu-avatar-editor__header h2 {
+  margin: 0;
+  color: var(--vfu-ink);
+  font-size: 16px;
+  font-weight: 600;
+}
+.vfu-avatar-editor__close {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--vfu-muted);
+  cursor: pointer;
+  font-size: 24px;
+  line-height: 1;
+}
+.vfu-avatar-editor__close:hover:not(:disabled) {
+  background: #f5f7fa;
+  color: var(--vfu-ink);
+}
+.vfu-avatar-editor__close:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 .vfu-avatar-cropper {
   position: relative;
@@ -137,6 +222,37 @@
   font-size: 16px;
   font-weight: 600;
   pointer-events: none;
+}
+.vfu-avatar-upload-mask {
+  position: absolute;
+  inset: 0;
+  z-index: 11;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 10px;
+  background: rgb(35 45 65 / 68%);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+}
+.vfu-progress-indicator {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+}
+.vfu-progress-indicator__spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid rgb(255 255 255 / 35%);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: vfu-avatar-spin 0.8s linear infinite;
+}
+@keyframes vfu-avatar-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 .vfu-avatar-cropper .cropper-container {
   width: 100% !important;
@@ -171,6 +287,32 @@
 .vfu-avatar-editor__footer > div {
   display: flex;
   gap: 8px;
+}
+.vfu-avatar-editor__feedback {
+  min-width: 0;
+}
+.vfu-avatar-editor__feedback p {
+  margin: 3px 0 0;
+  color: var(--vfu-danger);
+  line-height: 1.35;
+}
+@media (prefers-reduced-motion: reduce) {
+  .vfu-progress-indicator__spinner {
+    animation: none;
+  }
+}
+@media (max-width: 560px) {
+  .vfu-avatar-editor__footer {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 12px 16px;
+  }
+  .vfu-avatar-editor__footer > div {
+    width: 100%;
+  }
+  .vfu-avatar-editor__footer .vfu-button {
+    flex: 1;
+  }
 }
 .vfu-avatar-preview {
   position: relative;
@@ -237,10 +379,12 @@
   cursor: progress;
 }
 
-.vfu-upload__loading-mask img {
-  display: block;
-  width: 48px;
-  height: 48px;
+.vfu-upload__loading-mask .vfu-progress-indicator {
+  color: var(--vfu-muted);
+}
+.vfu-upload__loading-mask .vfu-progress-indicator__spinner {
+  border-color: rgb(47 107 255 / 22%);
+  border-top-color: var(--vfu-signal);
 }
 
 .vfu-upload__toast {
@@ -285,11 +429,6 @@
   place-items: center;
   padding: 20px;
 }
-.vfu-confirm__backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgb(0 0 0 / 45%);
-}
 .vfu-confirm__dialog {
   position: relative;
   display: grid;
@@ -333,25 +472,6 @@
   justify-content: flex-end;
   gap: 8px;
   margin-top: 4px;
-}
-.vfu-confirm__dialog footer button {
-  border: 1px solid #dcdfe6;
-  border-radius: 4px;
-  padding: 8px 13px;
-  background: #fff;
-  color: #606266;
-  cursor: pointer;
-  font: inherit;
-  font-size: 13px;
-}
-.vfu-confirm__dialog footer button.is-danger {
-  border-color: #f56c6c;
-  background: #f56c6c;
-  color: #fff;
-}
-.vfu-confirm__dialog footer button:disabled {
-  cursor: not-allowed;
-  opacity: 0.6;
 }
 .vfu-file-input {
   display: none;
@@ -406,10 +526,12 @@
   white-space: nowrap;
 }
 .vfu-button {
-  border: 1px solid var(--vfu-signal);
-  border-radius: var(--vfu-radius);
+  /* 共用按钮在 Teleport 等脱离组件树的场景下也必须保留可用的默认主题。
+   * Shared buttons retain a usable default theme even when Teleport takes them outside a component tree. */
+  border: 1px solid var(--vfu-signal, #2f6bff);
+  border-radius: var(--vfu-radius, 6px);
   padding: 8px 11px;
-  background: var(--vfu-signal);
+  background: var(--vfu-signal, #2f6bff);
   color: white;
   cursor: pointer;
   font: inherit;
@@ -474,26 +596,14 @@
 }
 .vfu-button--tooltip::after {
   position: absolute;
-  z-index: 12;
   bottom: calc(100% + 7px);
   left: 50%;
-  width: max-content;
   max-width: min(320px, calc(100vw - 32px));
-  border-radius: 4px;
   padding: 6px 8px;
-  background: #303133;
-  color: #fff;
-  content: attr(data-tooltip);
-  font-size: 12px;
+  @include vfu-tooltip-surface;
   font-weight: 400;
   line-height: 1.35;
-  opacity: 0;
-  pointer-events: none;
   transform: translate(-50%, 2px);
-  transition:
-    opacity 0.16s,
-    transform 0.16s;
-  white-space: nowrap;
 }
 .vfu-button--tooltip:hover::after,
 .vfu-button--tooltip:focus-visible::after {
@@ -857,39 +967,11 @@
   justify-content: flex-end;
   gap: 4px;
 }
-.vfu-list.is-picture-wall .vfu-file__actions {
-  /* mask 是 visual 的子元素，inset: 0 使其严格覆盖图片区。
-   * The mask is a child of visual, and inset: 0 makes it strictly cover the image area. */
-  position: absolute;
-  z-index: 1;
-  inset: 0;
-  height: auto;
-  display: flex;
-  width: auto;
-  min-height: 0;
-  padding: 0;
+/* 图片墙的遮罩同时复用文件操作类；在该模式下必须覆盖列表模式的右对齐布局。
+ * Picture-wall overlays also reuse the file-action class; this mode overrides the list layout's right alignment. */
+.vfu-list.is-picture-wall .vfu-action-mask {
+  flex: 0 0 auto;
   justify-content: center;
-  background: rgb(0 0 0 / 48%);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.2s ease;
-}
-.vfu-list.is-picture-wall .vfu-file:hover .vfu-file__actions,
-.vfu-list.is-picture-wall .vfu-file:focus-within .vfu-file__actions {
-  opacity: 1;
-  pointer-events: auto;
-}
-.vfu-list.is-picture-wall .vfu-action {
-  background: rgb(255 255 255 / 92%);
-  color: #606266;
-}
-.vfu-list.is-picture-wall .vfu-action:hover:not(:disabled) {
-  background: #fff;
-  color: #409eff;
-}
-.vfu-list.is-picture-wall .vfu-action.is-danger:hover:not(:disabled) {
-  background: #fff;
-  color: #f56c6c;
 }
 .vfu-action {
   position: relative;
@@ -918,25 +1000,13 @@
 }
 .vfu-action::after {
   position: absolute;
-  z-index: 2;
   top: calc(100% + 5px);
   right: 0;
-  width: max-content;
   max-width: 160px;
-  border-radius: 4px;
   padding: 5px 7px;
-  background: #303133;
-  color: #fff;
-  content: attr(data-tooltip);
-  font-size: 12px;
+  @include vfu-tooltip-surface;
   line-height: 1.2;
-  opacity: 0;
-  pointer-events: none;
   transform: translateY(-2px);
-  transition:
-    opacity 0.16s,
-    transform 0.16s;
-  white-space: nowrap;
 }
 .vfu-action:hover::after,
 .vfu-action:focus-visible::after {
@@ -1052,7 +1122,7 @@
 .vfu-dropzone:focus-visible,
 .vfu-button:focus-visible,
 .vfu-action:focus-visible {
-  outline: 2px solid var(--vfu-signal);
+  outline: 2px solid var(--vfu-signal, #2f6bff);
   outline-offset: 2px;
 }
 @media (prefers-reduced-motion: reduce) {

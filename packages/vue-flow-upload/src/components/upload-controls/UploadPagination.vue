@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n-lite'
-import { createFlowUploadI18n, getUploadMessages } from '../i18n'
-import type { UploadPagination } from '../types'
+import { createFlowUploadI18n, getUploadMessages } from '../../i18n'
+import type { UploadPagination } from '../../types'
 
 /** 受控分页输入；父组件始终负责加载所选页面。 Controlled pagination input; the parent remains responsible for loading the selected page. */
 type UploadPaginationProps = UploadPagination

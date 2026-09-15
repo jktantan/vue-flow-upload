@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { UploadFileItem } from '../types'
+import type { UploadFileItem } from '../../types'
+import UploadModal from '../base/UploadModal.vue'
+import UploadButton from '../base/UploadButton.vue'
 
 /** 删除确认弹窗输入；删除副作用始终由 FlowUpload 持有。 Delete-confirmation dialog input; deletion side effects always remain owned by FlowUpload. */
 interface UploadRemoveDialogProps {
@@ -38,23 +40,28 @@ const confirmationMessage = computed(() =>
 </script>
 
 <template>
-  <Teleport to="body">
-    <div v-if="files.length" class="vfu-confirm" role="presentation">
-      <div class="vfu-confirm__backdrop" />
-      <section class="vfu-confirm__dialog" role="alertdialog" aria-modal="true" :aria-label="title">
-        <div class="vfu-confirm__icon" aria-hidden="true">!</div>
-        <div class="vfu-confirm__content">
-          <h3>{{ title }}</h3>
-          <p>{{ confirmationMessage }}</p>
-          <p v-if="error" class="vfu-confirm__error">{{ error }}</p>
-        </div>
-        <footer>
-          <button type="button" :disabled="busy" @click="emit('cancel')">{{ cancelText }}</button>
-          <button class="is-danger" type="button" :disabled="busy" @click="emit('confirm')">
-            {{ busy ? processingText : confirmText }}
-          </button>
-        </footer>
-      </section>
-    </div>
-  </Teleport>
+  <UploadModal
+    :visible="files.length > 0"
+    class="vfu-confirm"
+    :close-on-backdrop="!busy"
+    :close-on-escape="!busy"
+    @close="emit('cancel')"
+  >
+    <section class="vfu-confirm__dialog" role="alertdialog" aria-modal="true" :aria-label="title">
+      <div class="vfu-confirm__icon" aria-hidden="true">!</div>
+      <div class="vfu-confirm__content">
+        <h3>{{ title }}</h3>
+        <p>{{ confirmationMessage }}</p>
+        <p v-if="error" class="vfu-confirm__error">{{ error }}</p>
+      </div>
+      <footer>
+        <UploadButton variant="info" :disabled="busy" @click="emit('cancel')">
+          {{ cancelText }}
+        </UploadButton>
+        <UploadButton variant="danger" :disabled="busy" @click="emit('confirm')">
+          {{ busy ? processingText : confirmText }}
+        </UploadButton>
+      </footer>
+    </section>
+  </UploadModal>
 </template>

@@ -7,6 +7,11 @@ import 'vue-picture-cropper/style.css'
 import { api as viewerApi } from 'v-viewer'
 import { useI18n } from 'vue-i18n-lite'
 import { createFlowUploadI18n, getUploadMessages } from './i18n'
+import AvatarCropDialog from './components/avatar/AvatarCropDialog.vue'
+import UploadActionButton from './components/base/UploadActionButton.vue'
+import UploadActionMask from './components/base/UploadActionMask.vue'
+import UploadIcon from './components/base/UploadIcon.vue'
+import UploadTrigger from './components/upload-controls/UploadTrigger.vue'
 import 'viewerjs/dist/viewer.css'
 import defaultAvatar from './assets/default-avatar.svg?url'
 import {
@@ -129,10 +134,14 @@ const source = ref('')
 const generatedAvatarUrls = new Set<string>()
 /** 控制裁剪对话框是否显示。 Controls the cropper dialog visibility. */
 const editorVisible = ref(false)
-/** 驱动编辑器拖放区域的悬停视觉状态。 Drives the drag-over visual state in the editor drop zone. */
-const dragging = ref(false)
 /** 短暂显示给用户的校验或请求错误信息。 Short-lived, user-facing validation or request error message. */
 const notice = ref('')
+/** 裁剪会话内可恢复的上传失败信息，保留至用户关闭、换图或重试。 Recoverable upload failure for the crop session, retained until close, replacement, or retry. */
+const editorError = ref('')
+/** 裁剪文件生成和远端上传的执行状态；用于锁定弹窗防止竞态。 Crop-file generation and remote-upload state; locks the dialog to prevent races. */
+const isUploading = ref(false)
+/** 自定义传输上报的当前上传百分比；Fetch 更新接口未提供该能力时保持为空。 Current upload percentage reported by custom transport; remains absent when the Fetch update endpoint cannot provide it. */
+const uploadProgressPercent = ref<number>()
 /** 当前提示的计时器；替换或卸载时必须清理。 Timer for the current notice; it must be cleared on replacement or unmount. */
 let noticeTimer: number | undefined
 /** 当前上传请求的取消控制器；卸载时中止请求以防止过期写回。 Cancellation controller for the active upload; aborted on unmount to prevent stale writes. */
@@ -140,7 +149,7 @@ let uploadController: AbortController | undefined
 /** 组件卸载标记；自定义传输忽略取消信号时仍阻止结果写回。 Unmount marker; also blocks writes if a custom transport ignores cancellation. */
 let isUnmounted = false
 /** “选择图片”按钮使用的隐藏原生 input。 Hidden native input used by the “choose image” button. */
-const input = ref<HTMLInputElement>()
+const uploadTrigger = ref<{ browse: () => void }>()
 /** 组件只将第一条记录渲染为当前头像。 The component deliberately renders only the first record as the current avatar. */
 const avatar = computed(() => files.value[0])
 /** Remote thumbnail/URL wins; otherwise show the package default placeholder. */
@@ -252,16 +261,15 @@ function previewAvatar() {
 }
 function browse() {
   // Do not allow programmatic file selection when the component is disabled.
-  if (canSelect.value) input.value?.click()
+  if (canSelect.value) uploadTrigger.value?.browse()
 }
 /**
  * 将原生 input 的首个文件交给统一编辑器入口，并重置 input 以允许重复选择同一文件。
  * Passes the first native-input file to the shared editor entry point and resets the input for re-selection.
  */
-function select(event: Event) {
+function select(files: File[]) {
   // Reset the native input so choosing the same file again emits a change event.
-  void openEditor((event.target as HTMLInputElement).files?.[0])
-  ;(event.target as HTMLInputElement).value = ''
+  void openEditor(files[0])
 }
 /**
  * 完成选择前校验后创建裁剪器源并打开编辑器；异步拦截完成后会重新确认组件仍可写入。
@@ -286,27 +294,23 @@ async function openEditor(file?: File) {
   revokeSource()
   selectedFile.value = file
   source.value = URL.createObjectURL(file)
+  editorError.value = ''
+  uploadProgressPercent.value = undefined
   editorVisible.value = true
 }
-function onDragOver(event: DragEvent) {
-  // preventDefault is required for a browser drop target.
-  event.preventDefault()
-  dragging.value = true
+/** 将裁剪弹窗交出的拖入文件转给统一的选择、校验和资源管理流程。 Routes a crop-dialog dropped file through shared selection, validation, and resource management. */
+function selectDroppedFile(file?: File) {
+  void openEditor(file)
 }
-function onDragLeave(event: DragEvent) {
-  // Ignore transitions between descendants; only a real leave clears the indicator.
-  const target = event.currentTarget as HTMLElement | null
-  if (!target?.contains(event.relatedTarget as Node)) dragging.value = false
-}
-function onDrop(event: DragEvent) {
-  // Reuse the same validation/cropper entry point as native file selection.
-  event.preventDefault()
-  dragging.value = false
-  void openEditor(event.dataTransfer?.files?.[0])
-}
-function closeEditor() {
+/** 关闭裁剪会话并释放原图资源；成功提交可绕过上传中的用户关闭锁。 Closes the crop session and releases source resources; successful submission may bypass the in-progress user-close lock. */
+function closeEditor(shouldForceClose = false) {
   // Closing is also the cleanup boundary for the pending selected file and object URL.
+  // 上传期间不关闭，避免正在进行的网络请求在已销毁的裁剪会话中完成。
+  // Do not close while uploading, preventing a running request from completing in a destroyed crop session.
+  if (isUploading.value && !shouldForceClose) return
   editorVisible.value = false
+  editorError.value = ''
+  uploadProgressPercent.value = undefined
   selectedFile.value = undefined
   revokeSource()
 }
@@ -391,12 +395,29 @@ async function resolveQuery() {
 async function upload() {
   // A crop is always generated at the canonical avatar size before network transfer.
   if (!selectedFile.value) return showNotice(text.value.avatarSelectFirst)
-  const cropped = (await cropper.getFile({
-    width: AVATAR_OUTPUT_SIZE_PX,
-    height: AVATAR_OUTPUT_SIZE_PX,
-    fileName: selectedFile.value.name || 'avatar.png',
-  })) as File | undefined
-  if (!cropped) return showNotice(text.value.avatarNotReady)
+  if (isUploading.value) return
+  isUploading.value = true
+  editorError.value = ''
+  uploadProgressPercent.value = undefined
+  let cropped: File | undefined
+  try {
+    cropped = (await cropper.getFile({
+      width: AVATAR_OUTPUT_SIZE_PX,
+      height: AVATAR_OUTPUT_SIZE_PX,
+      fileName: selectedFile.value.name || 'avatar.png',
+    })) as File | undefined
+  } catch (error) {
+    // 裁剪器失败同样留在会话内，用户可替换图片或重试，而不会丢失当前编辑状态。
+    // Cropper failures stay in the session too, letting users replace the image or retry without losing edit state.
+    editorError.value = normalizeUploadError(error).message
+    isUploading.value = false
+    return
+  }
+  if (!cropped) {
+    editorError.value = text.value.avatarNotReady
+    isUploading.value = false
+    return
+  }
   /** Existing record determines whether this is the initial POST or a PUT update. */
   const existing = avatar.value
   // 每次上传拥有独立控制器，重入时先取消旧请求，避免旧响应覆盖新裁剪结果。
@@ -450,7 +471,15 @@ async function upload() {
           fileFieldName: 'file',
           dataFieldName: 'data',
           query: await resolveQuery(),
-          onProgress: () => {},
+          onProgress: (uploadedBytes, totalBytes) => {
+            // 仅使用传输层提供的总字节数计算进度，缺少总数时保持不定状态而不是猜测百分比。
+            // Calculate progress only from a transport-provided total; without one, remain indeterminate rather than guessing.
+            if (!totalBytes) return
+            uploadProgressPercent.value = Math.min(
+              99,
+              Math.round((uploadedBytes / totalBytes) * 100),
+            )
+          },
         },
       )
     } else throw new Error(text.value.avatarTransportNotConfigured)
@@ -473,16 +502,17 @@ async function upload() {
     }
     update([item], item)
     emit('success', item, response)
-    closeEditor()
+    closeEditor(true)
   } catch (error) {
     if (isUnmounted || activeController.signal.aborted) return
     // 标准化未知错误以保留可读信息；事件仍发送 Error，避免破坏既有 AvatarUpload API。
     // Normalize unknown errors for readable feedback; the event remains Error to preserve the AvatarUpload API.
     const normalizedError: UploadError = normalizeUploadError(error)
-    showNotice(normalizedError.message)
+    editorError.value = normalizedError.message
     emit('error', cropped, error instanceof Error ? error : new Error(normalizedError.message))
   } finally {
     if (uploadController === activeController) uploadController = undefined
+    isUploading.value = false
   }
 }
 async function remove() {
@@ -508,13 +538,13 @@ async function remove() {
 
 <template>
   <div class="vfu-avatar" :style="cardStyle">
-    <input
-      ref="input"
-      class="vfu-file-input"
-      type="file"
+    <UploadTrigger
+      ref="uploadTrigger"
+      :directory="false"
+      :multiple="false"
       :accept="Array.isArray(accept) ? accept.join(',') : accept"
-      :disabled="!canSelect"
-      @change="select"
+      :can-select="canSelect"
+      @files="select"
     />
     <div
       class="vfu-avatar-card"
@@ -525,34 +555,28 @@ async function remove() {
       }"
     >
       <img :src="imageSrc" :alt="text.avatar" />
-      <div v-if="hasMaskActions" class="vfu-avatar-mask">
-        <button
+      <UploadActionMask v-if="hasMaskActions" class="vfu-avatar-mask">
+        <UploadActionButton
           v-if="canPreview"
-          class="vfu-action"
-          type="button"
+          :aria-label="text.avatarPreview"
           :data-tooltip="text.avatarPreview"
           @click.stop="previewAvatar"
         >
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" />
-            <circle cx="12" cy="12" r="2.8" />
-          </svg></button
-        ><button
+          <UploadIcon name="preview" />
+        </UploadActionButton>
+        <UploadActionButton
           v-if="!readOnly"
-          class="vfu-action"
-          type="button"
+          :aria-label="text.avatarUpdate"
           :data-tooltip="text.avatarUpdate"
           :disabled="!canSelect"
           @click.stop="editorVisible = true"
         >
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M4 20h4l10-10-4-4L4 16v4Z" />
-            <path d="m12.5 7.5 4 4" />
-          </svg></button
-        ><button
+          <UploadIcon name="edit" />
+        </UploadActionButton>
+        <UploadActionButton
           v-if="avatar && !readOnly"
-          class="vfu-action is-danger"
-          type="button"
+          variant="danger"
+          :aria-label="text.remove"
           :data-tooltip="text.remove"
           :disabled="!canRemove"
           @click.stop="remove"
@@ -560,44 +584,31 @@ async function remove() {
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M4 7h16M10 11v5m4-5v5M9 7l1-2h4l1 2m-9 0 1 13h10l1-13" />
           </svg>
-        </button>
-      </div>
+        </UploadActionButton>
+      </UploadActionMask>
     </div>
     <div v-if="notice" class="vfu-avatar-notice" role="alert">{{ notice }}</div>
-    <div v-if="editorVisible" class="vfu-avatar-dialog" @click.self="closeEditor">
-      <section class="vfu-avatar-editor">
-        <div
-          class="vfu-avatar-cropper"
-          :class="{ 'is-circle': shape === 'circle', 'is-dragging': dragging }"
-          @dragover="onDragOver"
-          @dragleave="onDragLeave"
-          @drop="onDrop"
-        >
-          <CropperComponent v-if="source" /><button
-            v-else
-            type="button"
-            class="vfu-avatar-empty"
-            @click="browse"
-          >
-            {{ text.avatarDragHint }}
-          </button>
-          <div v-if="dragging" class="vfu-avatar-drop-mask">{{ text.avatarDropToUpload }}</div>
-        </div>
-        <footer class="vfu-avatar-editor__footer">
-          <span>{{ text.avatarDragHint }}</span>
-          <div>
-            <button type="button" class="vfu-button" @click="browse">{{ text.avatarChoose }}</button
-            ><button
-              type="button"
-              class="vfu-button is-success"
-              :disabled="!selectedFile"
-              @click="upload"
-            >
-              {{ text.avatarUpload }}
-            </button>
-          </div>
-        </footer>
-      </section>
-    </div>
+    <AvatarCropDialog
+      :visible="editorVisible"
+      :shape="shape"
+      :has-source="!!source"
+      :is-uploading="isUploading"
+      :upload-progress-percent="uploadProgressPercent"
+      :error="editorError"
+      :title="text.avatarCropTitle"
+      :drag-hint="text.avatarDragHint"
+      :drop-hint="text.avatarDropToUpload"
+      :choose-text="text.avatarChoose"
+      :upload-text="text.avatarUpload"
+      :retry-text="text.retry"
+      :processing-text="text.avatarUploading"
+      :close-text="text.cancel"
+      @close="closeEditor"
+      @choose="browse"
+      @upload="upload"
+      @drop="selectDroppedFile"
+    >
+      <template #cropper><CropperComponent /></template>
+    </AvatarCropDialog>
   </div>
 </template>

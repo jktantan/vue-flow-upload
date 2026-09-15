@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { UploadFileItem, UploadMessages } from '../types'
-import { formatSize } from '../utils/file'
+import type { UploadFileItem, UploadMessages } from '../../types'
+import { formatSize } from '../../utils/file'
+import UploadButton from '../base/UploadButton.vue'
+import UploadIcon from '../base/UploadIcon.vue'
 
 /** 工具栏输入；自身不保存上传状态，只渲染能力并向上发送意图。 Toolbar input; it owns no upload state and only renders capabilities and emits intents. */
 interface UploadToolbarsProps {
@@ -66,83 +68,51 @@ const emit = defineEmits<UploadToolbarsEmits>()
           @change="emit('toggleAll')"
         />
       </label>
-      <button
+      <UploadButton
         v-if="selectable && canDownloadAll"
-        class="vfu-button is-primary"
-        type="button"
         :disabled="!selected.size"
         @click="emit('downloadSelected', [...selected])"
       >
-        <svg class="vfu-button__icon" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M12 15V3" />
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-          <path d="m7 10 5 5 5-5" />
-        </svg>
+        <UploadIcon class="vfu-button__icon" name="download" />
         {{ text.downloadSelected }}
-      </button>
-      <button
-        v-if="canDownloadAll"
-        class="vfu-button is-info"
-        type="button"
-        @click="emit('downloadAll')"
-      >
-        <svg class="vfu-button__icon" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M12 15V3" />
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-          <path d="m7 10 5 5 5-5" />
-        </svg>
+      </UploadButton>
+      <UploadButton v-if="canDownloadAll" variant="info" @click="emit('downloadAll')">
+        <UploadIcon class="vfu-button__icon" name="download" />
         {{ text.downloadAll }}
-      </button>
-      <button
+      </UploadButton>
+      <UploadButton
         v-if="selectable && canRemove"
-        class="vfu-button is-danger"
-        type="button"
+        variant="danger"
         :disabled="!selected.size"
         @click="emit('removeSelected')"
       >
-        <svg class="vfu-button__icon" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M10 11v6" />
-          <path d="M14 11v6" />
-          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
-          <path d="M3 6h18" />
-          <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-        </svg>
+        <UploadIcon class="vfu-button__icon" name="remove" />
         {{ text.removeSelected }}
-      </button>
+      </UploadButton>
     </span>
     <span v-if="drag" class="vfu-toolbar__center">
       <span class="vfu-toolbar__drag">{{ text.dragUpload }}</span>
     </span>
     <span class="vfu-toolbar__right">
-      <button
+      <UploadButton
         v-if="!autoUpload"
-        class="vfu-button is-primary vfu-button--tooltip"
-        type="button"
+        class="vfu-button--tooltip"
         :disabled="!canSelect"
         :data-tooltip="selectFileTooltip"
         :title="selectFileTooltip"
         @click="emit('select')"
       >
-        <svg class="vfu-button__icon" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M12 16V4" />
-          <path d="m7 9 5-5 5 5" />
-          <path d="M20 16v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3" />
-        </svg>
+        <UploadIcon class="vfu-button__icon" name="upload" />
         {{ text.chooseFile }}
-      </button>
-      <button
-        class="vfu-button is-success"
-        type="button"
+      </UploadButton>
+      <UploadButton
+        variant="success"
         :disabled="autoUpload ? !canSelect : !canUpload"
         @click="autoUpload ? emit('select') : emit('upload')"
       >
-        <svg class="vfu-button__icon" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M12 16V4" />
-          <path d="m7 9 5-5 5 5" />
-          <path d="M20 16v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3" />
-        </svg>
+        <UploadIcon class="vfu-button__icon" name="upload" />
         {{ autoUpload ? text.uploadFile : text.startUpload }}
-      </button>
+      </UploadButton>
     </span>
   </div>
 </template>

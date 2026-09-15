@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useFileSelection } from '../composables/useFileSelection'
+import { useFileSelection } from '../../composables/useFileSelection'
 
 /** 原生选择器的输入契约；校验与入队仍由父组件负责。 Native picker input contract; validation and queueing remain the parent's responsibility. */
 interface UploadTriggerProps {

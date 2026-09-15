@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import type { UploadFileItem, UploadListType, UploadMessages } from '../types'
-import { fileIconUrl, formatSize, isImage } from '../utils/file'
+import type { UploadFileItem, UploadListType, UploadMessages } from '../../types'
+import { fileIconUrl, formatSize, isImage } from '../../utils/file'
+import UploadActionMask from '../base/UploadActionMask.vue'
+import UploadFileActions from './UploadFileActions.vue'
 
 /** 将细化队列状态映射为较小的视觉图标状态集合。 Maps detailed queue states to the smaller set of visual state-icon variants. */
 function statusKind(status: UploadFileItem['status']) {
@@ -126,68 +128,22 @@ defineProps<UploadFileListProps>()
             <img :src="imageUrl(file)" :alt="file.name" />
           </button>
           <img v-else class="vfu-file__glyph vfu-file__icon" :src="fileIconUrl(file)" alt="" />
-          <div v-if="listType !== 'list'" class="vfu-file__actions">
-            <button
-              v-if="file.status !== 'processing' && isImage(file) && imageUrl(file) && canPreview"
-              class="vfu-action"
-              type="button"
-              :aria-label="text.preview"
-              :data-tooltip="text.preview"
-              @click="preview(file)"
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path
-                  d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"
-                />
-                <circle cx="12" cy="12" r="3" />
-              </svg>
-            </button>
-            <button
-              v-if="file.status === 'success' && file.fileId && canDownload"
-              class="vfu-action"
-              type="button"
-              :aria-label="text.download"
-              :data-tooltip="text.download"
-              @click="download(file.uid)"
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M12 15V3" />
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <path d="m7 10 5 5 5-5" />
-              </svg>
-            </button>
-            <button
-              v-if="file.status === 'failed' && canRetry"
-              class="vfu-action"
-              type="button"
-              :aria-label="text.retry"
-              :data-tooltip="text.retry"
-              @click="retry(file.uid)"
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
-                <path d="M21 3v5h-5" />
-                <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
-                <path d="M8 16H3v5" />
-              </svg>
-            </button>
-            <button
-              v-if="canRemove"
-              class="vfu-action is-danger"
-              type="button"
-              :aria-label="text.remove"
-              :data-tooltip="text.remove"
-              @click="remove(file.uid)"
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M10 11v6" />
-                <path d="M14 11v6" />
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
-                <path d="M3 6h18" />
-                <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-              </svg>
-            </button>
-          </div>
+          <UploadActionMask v-if="listType !== 'list'" class="vfu-file__actions">
+            <UploadFileActions
+              :file="file"
+              :can-preview-file="
+                file.status !== 'processing' && isImage(file) && !!imageUrl(file) && canPreview
+              "
+              :can-download-file="file.status === 'success' && !!file.fileId && canDownload"
+              :can-retry-file="file.status === 'failed' && canRetry"
+              :can-remove="canRemove"
+              :text="text"
+              :preview="preview"
+              :download="download"
+              :retry="retry"
+              :remove="remove"
+            />
+          </UploadActionMask>
         </div>
         <div
           class="vfu-file__body"
@@ -221,58 +177,21 @@ defineProps<UploadFileListProps>()
           </div>
         </div>
         <div v-if="listType === 'list'" class="vfu-file__actions">
-          <button
-            v-if="file.status !== 'processing' && isImage(file) && imageUrl(file) && canPreview"
-            class="vfu-action"
-            type="button"
-            :aria-label="text.preview"
-            :data-tooltip="text.preview"
-            @click="preview(file)"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"
-              />
-              <circle cx="12" cy="12" r="3" />
-            </svg>
-          </button>
-          <button
-            v-if="file.status === 'success' && file.fileId && canDownload"
-            class="vfu-action"
-            type="button"
-            :aria-label="text.download"
-            :data-tooltip="text.download"
-            @click="download(file.uid)"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 15V3" />
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <path d="m7 10 5 5 5-5" />
-            </svg>
-          </button>
-          <button
-            v-if="file.status === 'failed' && canRetry"
-            class="vfu-action"
-            type="button"
-            :aria-label="text.retry"
-            :data-tooltip="text.retry"
-            @click="retry(file.uid)"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
-              <path d="M21 3v5h-5" />
-              <path d="M21 12a9 9 0 0 1-9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
-              <path d="M8 16H3v5" />
-            </svg>
-          </button>
-          <button
-            v-if="canRemove"
-            class="vfu-action is-danger"
-            type="button"
-            :aria-label="text.remove"
-            :data-tooltip="text.remove"
-            @click="remove(file.uid)"
-          >
+          <UploadFileActions
+            :file="file"
+            :can-preview-file="
+              file.status !== 'processing' && isImage(file) && !!imageUrl(file) && canPreview
+            "
+            :can-download-file="file.status === 'success' && !!file.fileId && canDownload"
+            :can-retry-file="file.status === 'failed' && canRetry"
+            :can-remove="canRemove"
+            :text="text"
+            :preview="preview"
+            :download="download"
+            :retry="retry"
+            :remove="remove"
+          />
+          <template v-if="false">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M10 11v6" />
               <path d="M14 11v6" />
@@ -280,7 +199,7 @@ defineProps<UploadFileListProps>()
               <path d="M3 6h18" />
               <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
             </svg>
-          </button>
+          </template>
         </div>
       </slot>
     </li>

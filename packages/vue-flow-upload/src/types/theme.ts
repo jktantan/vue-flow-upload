@@ -52,6 +52,8 @@ export interface UploadMessages {
   uploadFile: string
   noData: string
   avatar: string
+  /** 头像裁剪对话框标题。 Title of the avatar crop dialog. */
+  avatarCropTitle: string
   avatarInvalidType: string
   avatarTooLarge: string
   avatarSelectFirst: string
@@ -66,6 +68,8 @@ export interface UploadMessages {
   avatarDropToUpload: string
   avatarChoose: string
   avatarUpload: string
+  /** 头像裁剪结果提交时的进行中文案。 In-progress copy while submitting an avatar crop result. */
+  avatarUploading: string
   paginationTotal: string
   paginationItemsPerPage: string
   paginationPrevious: string

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import UploadPagination from './UploadPagination.vue'
-import type { UploadPagination as UploadPaginationOptions } from '../types'
+import type { UploadPagination as UploadPaginationOptions } from '../../types'
 
 /** 页脚输入；分页存在时渲染受控分页，否则渲染宿主插槽。 Footer input; renders controlled pagination when present, otherwise the host slot. */
 interface UploadFooterProps {

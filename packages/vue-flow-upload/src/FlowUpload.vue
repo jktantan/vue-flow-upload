@@ -8,14 +8,14 @@ import { resolveTheme } from './themes'
 import { createHttpUploadTransport } from './core/http-transport'
 import { vueFlowUploadConfigKey } from './config'
 import 'viewerjs/dist/viewer.css'
-import UploadFileList from './components/UploadFileList.vue'
-import UploadPictureWall from './components/UploadPictureWall.vue'
-import UploadFooter from './components/UploadFooter.vue'
-import UploadRemoveDialog from './components/UploadRemoveDialog.vue'
-import UploadToolbars from './components/UploadToolbars.vue'
-import UploadTrigger from './components/UploadTrigger.vue'
+import UploadFileList from './components/file-list/UploadFileList.vue'
+import UploadPictureWall from './components/file-list/UploadPictureWall.vue'
+import UploadFooter from './components/upload-controls/UploadFooter.vue'
+import UploadProgressIndicator from './components/base/UploadProgressIndicator.vue'
+import UploadRemoveDialog from './components/dialogs/UploadRemoveDialog.vue'
+import UploadToolbars from './components/upload-controls/UploadToolbars.vue'
+import UploadTrigger from './components/upload-controls/UploadTrigger.vue'
 import emptySvg from './assets/empty.svg'
-import loadingSvg from './assets/loading.svg'
 import { useDownloadManager } from './composables/useDownloadManager'
 import { useFilePreview } from './composables/useFilePreview'
 import { useFileSelectionState } from './composables/useFileSelectionState'
@@ -1080,7 +1080,7 @@ defineExpose({
         role="status"
         aria-live="polite"
       >
-        <img :src="loadingSvg" alt="" aria-hidden="true" />
+        <UploadProgressIndicator :label="text.uploading" />
       </div>
     </div>
     <UploadFooter
