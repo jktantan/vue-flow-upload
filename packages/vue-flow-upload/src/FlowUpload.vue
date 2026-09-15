@@ -11,7 +11,7 @@ import 'viewerjs/dist/viewer.css'
 import UploadFileList from './components/file-list/UploadFileList.vue'
 import UploadPictureWall from './components/file-list/UploadPictureWall.vue'
 import UploadFooter from './components/upload-controls/UploadFooter.vue'
-import UploadProgressIndicator from './components/base/UploadProgressIndicator.vue'
+import LoadingIndicator from './components/base/LoadingIndicator.vue'
 import UploadRemoveDialog from './components/dialogs/UploadRemoveDialog.vue'
 import UploadToolbars from './components/upload-controls/UploadToolbars.vue'
 import UploadTrigger from './components/upload-controls/UploadTrigger.vue'
@@ -1012,7 +1012,7 @@ defineExpose({
 
     <div class="vfu-upload__display" :aria-busy="loading || undefined">
       <div
-        v-if="showFileList && !displayedFiles.length && !loading"
+        v-if="showFileList && !displayedFiles.length"
         class="vfu-upload__empty"
         role="status"
         aria-live="polite"
@@ -1080,7 +1080,7 @@ defineExpose({
         role="status"
         aria-live="polite"
       >
-        <UploadProgressIndicator :label="text.uploading" />
+        <LoadingIndicator :label="text.loading" />
       </div>
     </div>
     <UploadFooter

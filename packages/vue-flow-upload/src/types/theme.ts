@@ -23,6 +23,8 @@ export interface UploadMessages {
   hashing: string
   checking: string
   uploading: string
+  /** 列表查询或初始化读取时的通用加载文案。 Generic loading copy for list queries or initial reads. */
+  loading: string
   processing: string
   paused: string
   completed: string

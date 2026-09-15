@@ -236,12 +236,14 @@
   font-size: 14px;
   font-weight: 600;
 }
-.vfu-progress-indicator {
+.vfu-progress-indicator,
+.vfu-loading-indicator {
   display: grid;
   justify-items: center;
   gap: 10px;
 }
-.vfu-progress-indicator__spinner {
+.vfu-progress-indicator__spinner,
+.vfu-loading-indicator__spinner {
   width: 28px;
   height: 28px;
   border: 3px solid rgb(255 255 255 / 35%);
@@ -297,7 +299,8 @@
   line-height: 1.35;
 }
 @media (prefers-reduced-motion: reduce) {
-  .vfu-progress-indicator__spinner {
+  .vfu-progress-indicator__spinner,
+  .vfu-loading-indicator__spinner {
     animation: none;
   }
 }
@@ -372,17 +375,19 @@
 .vfu-upload__loading-mask {
   position: absolute;
   z-index: 5;
-  inset: 0;
+  /* 遮罩只覆盖显示内容，内缩 1px 保留文件列表或空态容器的边框。
+   * The mask covers only display content and is inset by 1px to preserve list or empty-state borders. */
+  inset: 1px;
   display: grid;
   place-items: center;
   background: rgb(255 255 255 / 68%);
   cursor: progress;
 }
 
-.vfu-upload__loading-mask .vfu-progress-indicator {
+.vfu-upload__loading-mask .vfu-loading-indicator {
   color: var(--vfu-muted);
 }
-.vfu-upload__loading-mask .vfu-progress-indicator__spinner {
+.vfu-upload__loading-mask .vfu-loading-indicator__spinner {
   border-color: rgb(47 107 255 / 22%);
   border-top-color: var(--vfu-signal);
 }
