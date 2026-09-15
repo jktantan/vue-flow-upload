@@ -725,9 +725,9 @@ async function removeImmediately(target: UploadFileItem) {
     target,
   )
   emit('remove', target)
-  // 删除成功后重查当前范围，避免分页总数和服务端排序只在本地推测。
-  // Requery the current scope after deletion so pagination totals and server ordering are not only inferred locally.
-  if (props.queryTransport) void refreshQuery()
+  // 删除成功后等待后台列表回读，再结束删除操作，确保分页总数和补位文件已更新。
+  // Wait for the server list after successful deletion before finishing removal so totals and replacement rows are updated.
+  if (props.queryTransport) await refreshQuery()
   return true
 }
 

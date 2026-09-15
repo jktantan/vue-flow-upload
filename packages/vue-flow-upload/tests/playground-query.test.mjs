@@ -63,6 +63,26 @@ test('playground serves the default query protocol with pagination and validatio
       assert.equal(result.files[0].type, 'text/plain')
       assert.equal(result.files[0].status, 'success')
     }
+    // 删除后重新查询必须返回后台的新列表及总数。
+    // A query after deletion must return the updated server list and total.
+    assert.equal((await fetch(`${baseUrl}/api/files/first`, { method: 'DELETE' })).status, 204)
+    // 使用与组件删除后刷新相同的 POST 协议回读。
+    // Reload using the same POST protocol as the component's post-removal refresh.
+    const refreshed = await (
+      await fetch(`${baseUrl}/api/files/query`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: {},
+          pagination: { enabled: true, currentPage: 1, pageSize: 10 },
+        }),
+      })
+    ).json()
+    assert.equal(refreshed.pagination.total, 1)
+    assert.deepEqual(
+      refreshed.files.map((file) => file.fileId),
+      ['second'],
+    )
     for (const pagination of [undefined, { enabled: true, currentPage: 0, pageSize: 1 }]) {
       assert.equal(
         (
