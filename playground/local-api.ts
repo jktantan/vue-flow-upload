@@ -204,19 +204,59 @@ export function localUploadApi(): Plugin {
         }),
       )
     }
-    if (method === 'GET' && path === '/api/files') {
+    if (method === 'POST' && path === '/api/files/query') {
+      // 在网络边界校验分页模式，避免将无效请求静默解释为全量查询。
+      // Validate pagination mode at the network boundary instead of silently treating invalid requests as full queries.
+      const input = await bodyJson(request)
+      // 默认查询协议使用嵌套分页对象。
+      // The default query protocol uses a nested pagination object.
+      const pagination = input.pagination
+      if (
+        !pagination ||
+        typeof pagination !== 'object' ||
+        !('enabled' in pagination) ||
+        typeof pagination.enabled !== 'boolean'
+      )
+        return json(response, 400, { message: 'Invalid pagination' })
+      // 分页请求必须携带正整数页码和页大小。
+      // Paginated requests must carry a positive integer page and page size.
+      const currentPage = 'currentPage' in pagination ? pagination.currentPage : undefined
+      // 每页条数仅在分页开启时必填。
+      // Page size is required only when pagination is enabled.
+      const pageSize = 'pageSize' in pagination ? pagination.pageSize : undefined
+      if (
+        pagination.enabled &&
+        (typeof currentPage !== 'number' ||
+          !Number.isInteger(currentPage) ||
+          currentPage < 1 ||
+          typeof pageSize !== 'number' ||
+          !Number.isInteger(pageSize) ||
+          pageSize < 1)
+      )
+        return json(response, 400, { message: 'Invalid pagination' })
+      // 本地演示库共用一个数据集，返回全部已落盘记录。
+      // The local demo database shares one dataset and returns all persisted records.
       const rows = db
         .prepare('SELECT * FROM files WHERE path IS NOT NULL ORDER BY created_at DESC')
         .all() as FileRow[]
-      // The list endpoint always returns the same shape. The client tells us
-      // whether it needs a page, so both modes use this one endpoint.
-      const paginationEnabled = url.searchParams.get('pagination') === 'true'
-      const currentPage = positiveInteger(url.searchParams.get('currentPage'), 1)
-      const pageSize = positiveInteger(url.searchParams.get('pageSize'), 10)
-      const files = paginationEnabled
-        ? rows.slice((currentPage - 1) * pageSize, currentPage * pageSize)
-        : rows
-      return json(response, 200, { files: files.map(fileResult), total: rows.length })
+      // 将数据库文件转换为组件公开文件契约，保留稳定标识和 MIME 类型。
+      // Convert database files to the public component contract, retaining stable identifiers and MIME types.
+      const files =
+        pagination.enabled && typeof currentPage === 'number' && typeof pageSize === 'number'
+          ? rows.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+          : rows
+      return json(response, 200, {
+        files: files.map((row) => ({
+          ...fileResult(row),
+          uid: row.id,
+          type: row.mime_type,
+          status: 'success',
+          percent: 100,
+        })),
+        pagination: pagination.enabled
+          ? { enabled: true, currentPage, pageSize, total: rows.length }
+          : { enabled: false },
+      })
     }
     if (method === 'POST' && path === '/api/archives') {
       const input = await bodyJson(request)
@@ -481,10 +521,6 @@ function string(value: unknown) {
 }
 function number(value: unknown) {
   return typeof value === 'number' && Number.isFinite(value) ? value : 0
-}
-function positiveInteger(value: string | null, fallback: number) {
-  const parsed = Number(value)
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback
 }
 function json(response: ServerResponse, status: number, payload: unknown) {
   response.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' })

@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import {
   FlowUpload,
   AvatarUpload,
   createHttpUploadTransport,
+  createHttpFileQueryTransport,
   type DownloadTransport,
   type AvatarShape,
   type UploadFileItem,
@@ -120,7 +121,7 @@ const accept = ref('image/*,.pdf,.zip')
 /** 单个文件允许的最大尺寸，单位为 MiB。 Maximum allowed size for a single file in MiB. */
 const maxSizeMiB = ref(100)
 /** 文件列表中允许保留的最大条数。 Maximum number of rows retained in the file list. */
-const maxCount = ref(5)
+const maxCount = ref(50)
 /** 根容器宽度；数字或 CSS 尺寸均可输入。 Root container width; accepts a number or CSS size. */
 const uploadWidth = ref('auto')
 /** 根容器高度；auto 会填满拥有明确高度的父级。 Root container height; auto fills a parent with an explicit height. */
@@ -163,7 +164,7 @@ const loading = ref(false)
 /** 文件列表的视觉布局类型。 Visual layout type for the file list. */
 const listType = ref<UploadListType>('list')
 const paginationEnabled = ref(true)
-/** 上传组件的分页配置；宿主负责根据分页事件加载对应数据。 Upload component pagination configuration; the host loads corresponding data after pagination events. */
+/** 组件查询结果回写的分页状态；查询和翻页请求由组件管理。 Pagination state updated by component query results; the component manages queries and page requests. */
 const pagination = ref({
   total: files.value.length,
   currentPage: 1,
@@ -185,7 +186,6 @@ const avatarReadOnly = ref(false)
 /** 头像卡片和裁剪框的展示轮廓。 Display outline used by the avatar card and crop box. */
 const avatarShape = ref<AvatarShape>('square')
 let loadingTimer: number | undefined
-let listRequestId = 0
 
 function testLoading() {
   if (loadingTimer !== undefined) window.clearTimeout(loadingTimer)
@@ -306,6 +306,13 @@ const localTransport = createHttpUploadTransport({
 /** 当前传输适配器；Mock 用于观察状态，本地 SQLite 用于验证真实请求。 Active transport adapter; Mock visualizes state while local SQLite validates real requests. */
 const activeTransport = computed(() => (mode.value === 'local' ? localTransport : mockTransport))
 
+// 本地列表使用默认 HTTP 查询协议，由组件管理加载、分页和取消。
+// Local lists use the default HTTP query protocol; the component manages loading, pagination, and cancellation.
+const localQueryTransport = createHttpFileQueryTransport({ queryUrl: '/api/files/query' })
+// 查询实例仅用于切换分页模式后的主动刷新。
+// The query instance is used only to refresh after changing pagination mode.
+const uploadInstance = ref<InstanceType<typeof FlowUpload>>()
+
 const downloadTransport: DownloadTransport = {
   downloadFile({ fileName }) {
     return Promise.resolve({ blob: new window.Blob([`Mock download: ${fileName}`]), fileName })
@@ -350,52 +357,6 @@ const localDownloadTransport: DownloadTransport = {
 const activeDownloadTransport = computed(() =>
   mode.value === 'local' ? localDownloadTransport : downloadTransport,
 )
-
-async function loadLocalFiles(
-  currentPage = pagination.value.currentPage,
-  pageSize = pagination.value.pageSize,
-) {
-  const requestId = ++listRequestId
-  const query = new window.URLSearchParams({
-    pagination: String(paginationEnabled.value),
-    currentPage: String(currentPage),
-    pageSize: String(pageSize),
-  })
-  loading.value = true
-  try {
-    const response = await fetch(`/api/files?${query}`)
-    if (!response.ok) throw new Error(`加载本地文件失败（${response.status}）`)
-    const result = (await response.json()) as {
-      files: Array<{ fileId: string; name: string; size: number; mimeType: string; url: string }>
-      total: number
-    }
-    // A slower, earlier request must not overwrite the latest page.
-    if (requestId !== listRequestId) return
-    files.value = result.files.map((file) => ({
-      uid: file.fileId,
-      fileId: file.fileId,
-      name: file.name,
-      size: file.size,
-      type: file.mimeType,
-      status: 'success',
-      percent: 100,
-      url: file.url,
-    }))
-    pagination.value = { ...pagination.value, currentPage, pageSize, total: result.total }
-    eventLog.value.unshift(
-      paginationEnabled.value
-        ? `已加载第 ${currentPage} 页，共 ${result.total} 个本地文件`
-        : `已加载全部 ${result.total} 个本地文件`,
-    )
-  } catch (error) {
-    if (requestId !== listRequestId) return
-    const message = error instanceof Error ? error.message : '加载本地文件失败'
-    eventLog.value.unshift(message)
-    window.alert(message)
-  } finally {
-    if (requestId === listRequestId) loading.value = false
-  }
-}
 
 /**
  * 从本地 SQLite 对应的头像接口回读当前记录，使刷新后的演示仍能验证替换结果。
@@ -476,7 +437,6 @@ async function clearLocalData() {
 
 watch(mode, (value) => {
   if (value === 'local') {
-    void loadLocalFiles()
     void loadLocalAvatar()
   }
 })
@@ -504,18 +464,12 @@ function synchronizeSampleErrorLocale(): void {
  */
 watch(locale, synchronizeSampleErrorLocale)
 
-watch(paginationEnabled, () => {
+/** 分页模式切换后等待 props 更新，再通过组件公开入口查询第一页。 Waits for updated props after pagination mode changes, then queries page one through the public component API. */
+watch(paginationEnabled, async () => {
   pagination.value = { ...pagination.value, currentPage: 1 }
-  if (mode.value === 'local') void loadLocalFiles(1, pagination.value.pageSize)
+  await nextTick()
+  if (mode.value === 'local') await uploadInstance.value?.refreshQuery()
 })
-
-function handlePaginationChange(currentPage: number, pageSize: number) {
-  if (mode.value === 'local') {
-    void loadLocalFiles(currentPage, pageSize)
-    return
-  }
-  eventLog.value.unshift(`分页切换：第 ${currentPage} 页，每页 ${pageSize} 条`)
-}
 
 function updatePagination(value: PlaygroundPagination) {
   pagination.value = {
@@ -790,12 +744,16 @@ function handleAvatarSuccess(file: UploadFileItem): void {
         <div class="preview-panel__head">
           <span>实时预览</span><code>{{ files.length }} files</code>
         </div>
+        <!-- 切换数据源时重建实例，释放旧查询和上传任务。 Recreate the instance on source changes to release previous queries and uploads. -->
         <FlowUpload
+          :key="mode"
+          ref="uploadInstance"
           v-model="files"
           :belong-id="PLAYGROUND_BELONG_ID"
           :belong-type="PLAYGROUND_BELONG_TYPE"
           :pagination="paginationEnabled ? pagination : false"
           :transport="activeTransport"
+          :query-transport="mode === 'local' ? localQueryTransport : undefined"
           :download-transport="activeDownloadTransport"
           :accept="accept"
           :max-size="maxSizeMiB * 1024 * 1024"
@@ -834,7 +792,7 @@ function handleAvatarSuccess(file: UploadFileItem): void {
           @error="(_, error) => eventLog.unshift(`错误：${error.message}`)"
           @archive-success="(taskId) => eventLog.unshift(`打包下载已开始：${taskId}`)"
           @archive-error="(_, error) => eventLog.unshift(`打包下载错误：${error.message}`)"
-          @pagination-change="handlePaginationChange"
+          @query-error="(error) => eventLog.unshift(error.message)"
         />
 
         <section v-if="hashedFiles.length" class="hash-diagnostics" aria-label="哈希执行路径">

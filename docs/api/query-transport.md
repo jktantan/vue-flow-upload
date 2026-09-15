@@ -4,6 +4,8 @@
 
 ## 分页协议
 
+Playground 的“本地 SQLite”模式通过 `createHttpFileQueryTransport` 调用 `POST /api/files/query`，由组件负责加载、翻页、上传后刷新和取消请求；分页开关通过公开的 `refreshQuery()` 刷新。Mock 模式继续使用演示文件。当前本地数据库共用一个演示数据集，尚不按 `query.belongId`、`query.belongType` 或 `query.extra` 隔离筛选；生产后端必须实现业务范围匹配。
+
 查询请求必须携带 `pagination`，以避免后端猜测是否分页：
 
 | 场景   | 请求 `pagination`                          | 返回 `pagination`                                 |
