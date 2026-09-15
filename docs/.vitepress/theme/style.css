@@ -45,6 +45,63 @@
   font-size: 13px;
 }
 
+/* 示例内的上传组件不是 Markdown 正文，覆盖 VitePress 对列表、段落、图片和控件的正文排版。
+ * Upload components in demos are not Markdown prose, so override VitePress prose layout for lists, text, images, and controls. */
+.vp-doc .demo-shell :is(.vfu-upload, .vfu-avatar),
+.vfu-modal {
+  color: var(--vfu-ink);
+  font:
+    14px/1.45 Inter,
+    ui-sans-serif,
+    system-ui,
+    sans-serif;
+  text-align: left;
+}
+
+/* 示例容器内的每个盒子采用组件库预期的尺寸计算，避免文档主题改写布局宽高。
+ * Every box in the demo uses the component library's expected sizing so the docs theme cannot rewrite layout dimensions. */
+.vp-doc .demo-shell :is(.vfu-upload, .vfu-avatar) *,
+.vp-doc .demo-shell :is(.vfu-upload, .vfu-avatar) *::before,
+.vp-doc .demo-shell :is(.vfu-upload, .vfu-avatar) *::after,
+.vfu-modal,
+.vfu-modal *,
+.vfu-modal *::before,
+.vfu-modal *::after {
+  box-sizing: border-box;
+}
+
+/* 清除 Markdown 的默认块级间距；Teleport 弹窗虽在正文外，也由本主题一并保护。
+ * Clears Markdown's default block spacing; Teleport dialogs live outside prose but are protected by this theme too. */
+.vp-doc .demo-shell :is(.vfu-upload, .vfu-avatar) :where(ul, ol),
+.vfu-modal :where(ul, ol) {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+/* VitePress 以 `li + li` 添加正文段落间距；上传文件项必须保持组件定义的连续列表间距。
+ * VitePress adds prose spacing through `li + li`; upload file rows must retain the component-defined contiguous spacing. */
+.vp-doc .demo-shell :is(.vfu-upload, .vfu-avatar) li + li,
+.vfu-modal li + li {
+  margin-top: 0;
+}
+.vp-doc .demo-shell :is(.vfu-upload, .vfu-avatar) :where(p, h1, h2, h3, h4, h5, h6),
+.vfu-modal :where(p, h1, h2, h3, h4, h5, h6) {
+  margin: 0;
+}
+.vp-doc .demo-shell :is(.vfu-upload, .vfu-avatar) :where(button, input, select, textarea),
+.vfu-modal :where(button, input, select, textarea) {
+  margin: 0;
+  font: inherit;
+  letter-spacing: normal;
+}
+
+/* VitePress 为正文图片设置最大宽度；上传缩略图和裁剪图应完全由组件自身尺寸控制。
+ * VitePress constrains prose images; upload thumbnails and crop images must be sized only by the component. */
+.vp-doc .demo-shell :is(.vfu-upload, .vfu-avatar) img,
+.vfu-modal img {
+  max-width: none;
+}
+
 /* 头像示例把三个常用展示开关放在上传组件上方，便于直接比较交互组合。
  * The avatar demo places its three common display controls above the uploader for direct comparison. */
 .vp-doc .avatar-demo-controls {
