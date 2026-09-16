@@ -19,6 +19,7 @@ const zhSidebar = [
     text: '开始使用',
     items: [
       { text: '快速开始', link: '/guide/getting-started' },
+      { text: '全局配置与 Nuxt', link: '/guide/global-config' },
       { text: '常用场景', link: '/guide/common-usage' },
     ],
   },
@@ -47,6 +48,7 @@ const enSidebar = [
     text: 'Get started',
     items: [
       { text: 'Quick start', link: '/en/guide/getting-started' },
+      { text: 'Global configuration & Nuxt', link: '/en/guide/global-config' },
       { text: 'Common usage', link: '/en/guide/common-usage' },
     ],
   },

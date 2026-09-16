@@ -43,4 +43,4 @@ const files = ref<UploadFileItem[]>([])
 </template>
 ```
 
-`action` 适合标准的 `multipart/form-data` 上传接口；它会在内部创建一个基于 XHR 的 `transport`，并不是另一套上传机制。需要分片、秒传、续传、响应转换或项目请求封装时，改用 [`transport` 配置](/api/transport)。
+`action` 适合标准的 `multipart/form-data` 上传接口；它会在内部创建一个基于 XHR 的 `transport`，并不是另一套上传机制。需要分片、秒传、续传、响应转换或项目请求封装时，改用 [`transport` 配置](/api/transport)。认证、地址前缀、共享请求头、队列默认值以及 Nuxt 接入见[全局配置与 Nuxt](/guide/global-config)。

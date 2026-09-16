@@ -41,4 +41,4 @@ const files = ref<UploadFileItem[]>([])
 </template>
 ```
 
-`action` is the shortcut for the built-in XHR upload transport. Use a custom [upload transport](/en/api/transport) for chunks, instant upload, response conversion, or an existing project request client.
+`action` is the shortcut for the built-in XHR upload transport. Use a custom [upload transport](/en/api/transport) for chunks, instant upload, response conversion, or an existing project request client. See [global configuration and Nuxt](/en/guide/global-config) for authentication, base URLs, shared request metadata, queue defaults, and Nuxt setup.
