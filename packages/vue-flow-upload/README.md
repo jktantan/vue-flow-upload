@@ -103,6 +103,7 @@ const files = ref<UploadFileItem[]>([])
 <template>
   <FlowUpload
     v-model="files"
+    belong-id="order-1"
     action="/api/files"
     drag
     accept="image/*,.pdf"

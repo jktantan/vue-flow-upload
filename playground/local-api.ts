@@ -19,6 +19,17 @@ export function localUploadApi(): Plugin {
   const archivesRoot = join(storageRoot, 'archives')
   let database: DatabaseSync | undefined
 
+  /**
+   * 关闭本地 SQLite 连接并清空引用，避免开发服务器或测试 worker 退出时保留原生句柄。
+   * Closes the local SQLite connection and clears its reference so dev-server or test-worker shutdown cannot retain a native handle.
+   */
+  function closeDatabase() {
+    // 仅关闭已初始化的数据库；关闭后允许后续启动按需重新创建连接。
+    // Close only an initialized database; later startup can create a fresh connection on demand.
+    database?.close()
+    database = undefined
+  }
+
   async function ready() {
     await Promise.all([
       mkdir(filesRoot, { recursive: true }),
@@ -67,6 +78,13 @@ export function localUploadApi(): Plugin {
           json(response, 500, { message: '本地上传服务发生错误' })
         }
       })
+    },
+    /**
+     * Vite 关闭构建或开发服务器时释放 SQLite 原生资源。
+     * Releases SQLite native resources when Vite closes a build or development server.
+     */
+    closeBundle() {
+      closeDatabase()
     },
   }
 

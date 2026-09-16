@@ -32,6 +32,7 @@ const files = ref<UploadFileItem[]>([])
 <template>
   <FlowUpload
     v-model="files"
+    belong-id="order-1"
     action="/files"
     accept="image/*,.pdf"
     :max-size="20 * 1024 * 1024"

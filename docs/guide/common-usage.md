@@ -5,7 +5,7 @@
 传入 `v-model` 后，外部列表是事实来源。组件不会直接修改 prop，而是通过 `update:modelValue` 回传新列表。
 
 ```vue
-<FlowUpload v-model="files" action="/files" />
+<FlowUpload v-model="files" belong-id="order-1" action="/files" />
 ```
 
 ## 限制类型、大小和数量
@@ -13,6 +13,7 @@
 ```vue
 <FlowUpload
   v-model="files"
+  belong-id="order-1"
   action="/files"
   accept="image/*,.pdf"
   :max-size="20 * 1024 * 1024"

@@ -20,7 +20,10 @@ test('playground serves the default query protocol with pagination and validatio
   // 使用真实 HTTP 请求执行 Vite 本地中间件。
   // Execute the Vite local middleware using real HTTP requests.
   const server = createServer()
-  localUploadApi().configureServer({
+  // 保存插件实例，以便测试结束时触发与 Vite 一致的资源清理钩子。
+  // Retain the plugin instance so the test can invoke the same resource-cleanup hook as Vite.
+  const uploadApi = localUploadApi()
+  uploadApi.configureServer({
     middlewares: { use: (middleware) => server.on('request', middleware) },
   })
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
@@ -97,6 +100,9 @@ test('playground serves the default query protocol with pagination and validatio
     }
   } finally {
     await new Promise((resolve) => server.close(resolve))
+    // 关闭 SQLite 原生句柄，避免 Node 测试 worker 在退出时保留数据库资源。
+    // Close the SQLite native handle so the Node test worker cannot retain database resources at exit.
+    await uploadApi.closeBundle?.()
     if (previous[0] === undefined) delete process.env.PLAYGROUND_UPLOAD_DIR
     else process.env.PLAYGROUND_UPLOAD_DIR = previous[0]
     if (previous[1] === undefined) delete process.env.PLAYGROUND_DB_PATH

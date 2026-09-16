@@ -70,9 +70,12 @@ function renderRemovalMessage(dialog, files) {
     },
     { emit() {} },
   )
-  // Teleport 的第一个子节点是遮罩容器，其中确认内容区的第二段是说明文本。
-  // The Teleport's first child is the overlay, whose confirmation-content area's second paragraph is the copy.
-  return renderDialog({}, []).children[0].children[1].children[1].children[1].children
+  // 组件渲染结果先是 UploadModal；通过默认插槽取得确认内容，避免测试依赖 Teleport 的内部 VNode 层级。
+  // The component first renders UploadModal; obtain the confirmation content through its default slot to avoid coupling to Teleport's internal VNode shape.
+  const modal = renderDialog({}, [])
+  // 默认插槽只包含确认 section，其内容区域的第二段即按数量分支后的说明文本。
+  // The default slot contains only the confirmation section, whose content area's second paragraph is the count-dependent copy.
+  return modal.children.default()[0].children[1].children[1].children
 }
 
 test('removal confirmation shows one filename but only the batch count', async () => {
