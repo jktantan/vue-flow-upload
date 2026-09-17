@@ -21,6 +21,7 @@ const zhSidebar = [
       { text: '快速开始', link: '/guide/getting-started' },
       { text: '全局配置与 Nuxt', link: '/guide/global-config' },
       { text: '常用场景', link: '/guide/common-usage' },
+      { text: '后端接口协议', link: '/guide/backend-api-contract' },
     ],
   },
   {

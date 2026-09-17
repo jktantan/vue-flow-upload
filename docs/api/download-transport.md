@@ -2,6 +2,8 @@
 
 `download-transport` 是 `FlowUpload` 的下载协议边界，独立于上传 `transport`。它负责下载已持久化文件，以及创建、轮询和取消服务端归档任务；上传地址不能复用于下载地址。
 
+后端联调时，请参阅[后端接口协议](/guide/backend-api-contract#下载与服务端打包)，其中说明了二进制下载响应、`Content-Disposition`、归档创建 body 及轮询响应。
+
 ## HTTP 下载适配器
 
 `createHttpDownloadTransport` 会使用组件解析的认证头和公共 query；`baseUrl`、Cookie 策略与超时在创建适配器时配置。
