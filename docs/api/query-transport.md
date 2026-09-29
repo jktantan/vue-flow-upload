@@ -18,6 +18,7 @@ Playground 的“本地 SQLite”模式通过 `createHttpFileQueryTransport` 调
 | 分页   | `{ enabled: true, currentPage, pageSize }` | `{ enabled: true, currentPage, pageSize, total }` |
 
 分页响应中的 `currentPage` 和 `pageSize` 是后端实际采用的值，可用于纠正越界页；`total` 是符合当前筛选条件的全部记录数。两种模式都必须返回 `files`。
+内置 HTTP 适配器会校验每条文件记录的字符串 `name`，以及提供时的 `type`、`status`、`fileId`、`uid`、URL、大小和进度字段；分页数字必须为有效的非负整数，页码与页大小还须大于零。无效响应以 `INVALID_RESPONSE` 报告。
 
 ## HTTP 查询适配器
 

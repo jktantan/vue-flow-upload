@@ -23,16 +23,22 @@ function mountUpload(props) {
   // 在 Vue 渲染上下文内捕获虚拟节点，以支持插槽与响应式更新。
   // Capture virtual nodes inside Vue's rendering context to support slots and reactive updates.
   let renderedUpload
+  // 捕获组件事件，以验证卸载及文件数量限制不会修改宿主模型。
+  // Capture component events to verify unmount and capacity limits do not alter the host model incorrectly.
+  const events = []
   // 宿主仅用于提供组件实例与生命周期所有权。
   // The host only provides a component instance and lifecycle ownership.
   const app = renderer.createApp({
     setup() {
-      renderUpload = FlowUpload.setup(props, {
-        emit() {},
-        expose: (value) => {
-          api = value
+      renderUpload = FlowUpload.setup(
+        { defaultFileList: [], modelValue: [], maxCount: Infinity, autoUpload: true, ...props },
+        {
+          emit: (name, ...payload) => events.push({ name, payload }),
+          expose: (value) => {
+            api = value
+          },
         },
-      })
+      )
       return () => {
         renderedUpload = renderUpload({ $slots: {} }, [])
         return null
@@ -43,7 +49,12 @@ function mountUpload(props) {
   app.mount({})
   return {
     api,
+    events,
     unmount: () => app.unmount(),
+    selectFiles: (files) =>
+      renderedUpload.children
+        .find((child) => child.type?.__name === 'UploadTrigger')
+        .props.onFiles(files),
     getDialog: () =>
       renderedUpload.children.find((child) => child.type?.__name === 'UploadRemoveDialog'),
   }
@@ -201,5 +212,185 @@ test('failed server deletion keeps the dialog open and does not reload the list'
     assert.equal(upload.getDialog().props.busy, false)
   } finally {
     upload.unmount()
+  }
+})
+
+test('unmount releases work without clearing the host file model', () => {
+  // 受控列表由宿主持有，卸载组件不得发出空列表更新。
+  // The host owns the controlled list, so unmount must not emit an empty replacement.
+  const upload = mountUpload({
+    belongId: 'test',
+    permissions: {},
+    queryOnMount: false,
+    modelValue: [{ uid: 'saved', name: 'saved.txt', status: 'success' }],
+  })
+  upload.unmount()
+  assert.equal(
+    upload.events.some((event) => event.name === 'update:modelValue'),
+    false,
+  )
+})
+
+test('overlapping selections reserve max-count slots during asynchronous validation', async () => {
+  // 第一批的两个文件在异步拦截期间仍占满容量。
+  // Both files in the first batch reserve capacity while its guard is pending.
+  let releaseFirst
+  const upload = mountUpload({
+    belongId: 'test',
+    permissions: {},
+    queryOnMount: false,
+    autoUpload: false,
+    maxCount: 2,
+    beforeUpload: (file) =>
+      file.name === 'first.txt'
+        ? new Promise((resolve) => {
+            releaseFirst = resolve
+          })
+        : true,
+  })
+  try {
+    upload.selectFiles([new File(['a'], 'first.txt'), new File(['b'], 'second.txt')])
+    upload.selectFiles([new File(['c'], 'third.txt')])
+    assert.deepEqual(
+      upload.events
+        .filter((event) => event.name === 'exceed')
+        .map((event) => event.payload[0][0].name),
+      ['third.txt'],
+    )
+    releaseFirst(true)
+    await nextTick()
+    await nextTick()
+    const latestFiles = upload.events.filter((event) => event.name === 'update:modelValue').at(-1)
+      .payload[0]
+    assert.deepEqual(
+      latestFiles.map((file) => file.name),
+      ['first.txt', 'second.txt'],
+    )
+  } finally {
+    upload.unmount()
+  }
+})
+
+test('clearing during validation prevents the remaining selected files from reappearing', async () => {
+  // 清空后旧选择批次的异步校验不能继续插入下一文件。
+  // A pending validation batch cannot insert its next file after an explicit clear.
+  let releaseValidation
+  const upload = mountUpload({
+    belongId: 'test',
+    permissions: {},
+    queryOnMount: false,
+    autoUpload: false,
+    beforeUpload: () =>
+      new Promise((resolve) => {
+        releaseValidation = resolve
+      }),
+  })
+  try {
+    upload.selectFiles([new File(['a'], 'first.txt'), new File(['b'], 'second.txt')])
+    upload.api.clear()
+    releaseValidation(true)
+    await nextTick()
+    await nextTick()
+    const updates = upload.events.filter((event) => event.name === 'update:modelValue')
+    assert.deepEqual(updates.at(-1).payload[0], [])
+  } finally {
+    upload.unmount()
+  }
+})
+
+test('a resumed upload ignores a late create-file result from its paused run', async () => {
+  // 第一次预创建延迟返回，模拟暂停后旧请求晚于新请求完成。
+  // Delay the first create response so it finishes after a resumed run.
+  let finishOldCreate
+  let createCount = 0
+  let uploadCount = 0
+  const upload = mountUpload({
+    belongId: 'test',
+    permissions: {},
+    queryOnMount: false,
+    transport: {
+      createFile: () => {
+        createCount += 1
+        return createCount === 1
+          ? new Promise((resolve) => {
+              finishOldCreate = resolve
+            })
+          : Promise.resolve({ fileId: 'new' })
+      },
+      uploadFile: async () => {
+        uploadCount += 1
+        return { fileId: 'new', status: 'success' }
+      },
+    },
+  })
+  try {
+    await upload.api.handleStart(new File(['a'], 'first.txt'))
+    for (let attempt = 0; attempt < 20 && !finishOldCreate; attempt++) await nextTick()
+    const uid = upload.events.find((event) => event.name === 'update:modelValue').payload[0][0].uid
+    upload.api.pause(uid)
+    const resumed = upload.api.resume(uid)
+    finishOldCreate({ fileId: 'old' })
+    await resumed
+    assert.equal(createCount, 2)
+    assert.equal(uploadCount, 1)
+    const latestFiles = upload.events.filter((event) => event.name === 'update:modelValue').at(-1)
+      .payload[0]
+    assert.equal(latestFiles[0].fileId, 'new')
+  } finally {
+    upload.unmount()
+  }
+})
+
+test('canceling an archive ignores a successful poll response already in flight', async () => {
+  // 浏览器锚点只记录下载动作，不触碰真实 DOM。
+  // The browser anchor records download actions without requiring a real DOM.
+  const previousWindow = globalThis.window
+  let downloadCount = 0
+  globalThis.window = {
+    setTimeout: globalThis.setTimeout,
+    clearTimeout: globalThis.clearTimeout,
+    document: {
+      createElement: () => ({ style: {}, click: () => downloadCount++, remove() {} }),
+      body: { append() {} },
+    },
+  }
+  // 轮询已发出但尚未返回时取消任务。
+  // Cancel the task while its poll is outstanding.
+  let finishPoll
+  const upload = mountUpload({
+    belongId: 'test',
+    permissions: {},
+    queryOnMount: false,
+    archivePollingInterval: 0,
+    archivePollingTimeout: 1000,
+    downloadTransport: {
+      downloadFile: async () => ({}),
+      createArchive: async () => ({ taskId: 'archive-1', status: 'pending' }),
+      getArchiveTask: () =>
+        new Promise((resolve) => {
+          finishPoll = resolve
+        }),
+    },
+  })
+  try {
+    const downloading = upload.api.downloadAll()
+    for (let attempt = 0; attempt < 20 && !finishPoll; attempt++)
+      await new Promise((resolve) => globalThis.setTimeout(resolve, 1))
+    assert.equal(typeof finishPoll, 'function')
+    await upload.api.cancelArchive('archive-1')
+    finishPoll({
+      taskId: 'archive-1',
+      status: 'success',
+      downloadUrl: 'https://example.test/archive.zip',
+    })
+    await downloading
+    assert.equal(downloadCount, 0)
+    assert.equal(
+      upload.events.some((event) => event.name === 'archive-success'),
+      false,
+    )
+  } finally {
+    upload.unmount()
+    globalThis.window = previousWindow
   }
 })

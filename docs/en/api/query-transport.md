@@ -7,6 +7,8 @@
 | Not paginated | `{ enabled: false }`                       | `{ enabled: false }`                              |
 | Paginated     | `{ enabled: true, currentPage, pageSize }` | `{ enabled: true, currentPage, pageSize, total }` |
 
+The built-in HTTP adapter requires a string `name` for every file and validates optional type, status, IDs, URLs, size, and progress fields. Pagination numbers must be valid nonnegative integers; page and page size must also be positive. Invalid responses produce `INVALID_RESPONSE`.
+
 `createHttpFileQueryTransport` POSTs this shape to `queryUrl`:
 
 ```json

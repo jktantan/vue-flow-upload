@@ -1,5 +1,30 @@
-import type { FileQueryInput, FileQueryResult, FileQueryTransport, UploadError } from '../types'
+import type {
+  FileQueryInput,
+  FileQueryResult,
+  FileQueryTransport,
+  UploadError,
+  UploadStatus,
+  UploadUserFile,
+} from '../types'
 import { appendQuery, resolveRequestUrl } from './http-transport'
+
+/** 查询接口允许返回的文件生命周期状态，用于约束未知 JSON。 File lifecycle states accepted from query JSON. */
+const QUERY_FILE_STATUSES: ReadonlySet<string> = new Set<UploadStatus>([
+  'idle',
+  'validating',
+  'hashing',
+  'checking',
+  'preparing',
+  'queued',
+  'uploading',
+  'paused',
+  'merging',
+  'processing',
+  'success',
+  'failed',
+  'canceled',
+  'rejected',
+])
 
 /** 内置 HTTP 文件查询适配器的配置。 Configuration for the built-in HTTP file-query adapter. */
 export interface HttpFileQueryTransportOptions {
@@ -102,6 +127,9 @@ function isQueryResult(value: unknown, expectsPagination: boolean): value is Fil
     !Array.isArray(value.files)
   )
     return false
+  // 每条记录至少要能安全进入文件列表规范化流程。
+  // Every record must contain the fields needed to safely enter file-list normalization.
+  if (!value.files.every(isQueryFile)) return false
   if (!('pagination' in value) || typeof value.pagination !== 'object' || value.pagination === null)
     return false
   const pagination = value.pagination
@@ -110,11 +138,57 @@ function isQueryResult(value: unknown, expectsPagination: boolean): value is Fil
     !expectsPagination ||
     ('currentPage' in pagination &&
       typeof pagination.currentPage === 'number' &&
+      Number.isInteger(pagination.currentPage) &&
+      pagination.currentPage > 0 &&
       'pageSize' in pagination &&
       typeof pagination.pageSize === 'number' &&
+      Number.isInteger(pagination.pageSize) &&
+      pagination.pageSize > 0 &&
       'total' in pagination &&
-      typeof pagination.total === 'number')
+      typeof pagination.total === 'number' &&
+      Number.isInteger(pagination.total) &&
+      pagination.total >= 0)
   )
+}
+
+/** 校验查询文件记录中组件直接读取的字段，阻止无效 JSON 进入渲染与队列。 Validates fields read by the component so malformed JSON cannot enter rendering or the queue. */
+function isQueryFile(value: unknown): value is UploadUserFile {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false
+  if (!('name' in value) || typeof value.name !== 'string') return false
+  if ('type' in value && value.type !== undefined && typeof value.type !== 'string') return false
+  if (
+    'size' in value &&
+    value.size !== undefined &&
+    (typeof value.size !== 'number' || !Number.isFinite(value.size) || value.size < 0)
+  )
+    return false
+  if ('uid' in value && value.uid !== undefined && typeof value.uid !== 'string') return false
+  if ('fileId' in value && value.fileId !== undefined && typeof value.fileId !== 'string')
+    return false
+  if ('url' in value && value.url !== undefined && typeof value.url !== 'string') return false
+  if (
+    'thumbnailUrl' in value &&
+    value.thumbnailUrl !== undefined &&
+    typeof value.thumbnailUrl !== 'string'
+  )
+    return false
+  if (
+    'status' in value &&
+    value.status !== undefined &&
+    (typeof value.status !== 'string' || !QUERY_FILE_STATUSES.has(value.status))
+  )
+    return false
+  if (
+    'percent' in value &&
+    value.percent !== undefined &&
+    (typeof value.percent !== 'number' ||
+      !Number.isFinite(value.percent) ||
+      value.percent < 0 ||
+      value.percent > 100)
+  )
+    return false
+  if ('file' in value && value.file !== undefined) return false
+  return true
 }
 
 /** 创建保留 HTTP 状态和原始原因的标准查询错误。 Creates a standard query error retaining HTTP status and the original cause. */

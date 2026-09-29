@@ -336,3 +336,51 @@ test('HTTP file query transport rejects a response with a mismatched pagination 
     globalThis.XMLHttpRequest = originalXmlHttpRequest
   }
 })
+
+test('HTTP file query transport rejects malformed file records at the response boundary', async () => {
+  // 模拟 HTTP 成功但文件元素缺少必要名称的响应。
+  // Simulate a successful HTTP response whose file records lack the required name.
+  const originalXmlHttpRequest = globalThis.XMLHttpRequest
+  globalThis.XMLHttpRequest = DownloadTransportXmlHttpRequest
+  DownloadTransportXmlHttpRequest.responses = [
+    {
+      status: 200,
+      responseText: JSON.stringify({ files: [null], pagination: { enabled: false } }),
+    },
+    { status: 200, responseText: JSON.stringify({ files: [{}], pagination: { enabled: false } }) },
+    {
+      status: 200,
+      responseText: JSON.stringify({
+        files: [{ name: 'bad', type: 42 }],
+        pagination: { enabled: false },
+      }),
+    },
+    {
+      status: 200,
+      responseText: JSON.stringify({
+        files: [],
+        pagination: { enabled: true, currentPage: 1, pageSize: 0, total: 0 },
+      }),
+    },
+  ]
+  try {
+    // 无效记录应作为标准协议错误拒绝，而不是进入组件后才抛异常。
+    // Reject malformed records as a protocol error before they reach component state.
+    const transport = createHttpFileQueryTransport({ queryUrl: '/files/query' })
+    for (let index = 0; index < 4; index += 1) {
+      // 最后一例还检查分页数字；其他例子检查文件字段。
+      // The final case checks pagination numbers; the others check file fields.
+      const pagination =
+        index === 3 ? { enabled: true, currentPage: 1, pageSize: 20 } : { enabled: false }
+      await assert.rejects(
+        transport.queryFiles(
+          { pagination },
+          { query: {}, headers: {}, signal: new AbortController().signal },
+        ),
+        { code: 'INVALID_RESPONSE' },
+      )
+    }
+  } finally {
+    globalThis.XMLHttpRequest = originalXmlHttpRequest
+  }
+})

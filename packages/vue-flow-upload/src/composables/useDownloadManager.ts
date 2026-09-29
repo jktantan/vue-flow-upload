@@ -104,8 +104,14 @@ export function useDownloadManager(options: DownloadManagerOptions) {
         if (Date.now() >= deadline)
           throw makeUploadError('ARCHIVE_TIMEOUT', '打包下载任务超时', true)
         await delay(options.archivePollingInterval, controller.signal)
-        task = await transport.getArchiveTask(task.taskId, await options.requestMeta())
+        const context = await options.requestMeta()
+        if (controller.signal.aborted) return
+        task = await transport.getArchiveTask(task.taskId, context)
+        // 轮询请求可能不支持中止；忽略取消后才返回的成功结果。
+        // A polling transport may not support abort; ignore success returned after cancellation.
+        if (controller.signal.aborted) return
       }
+      if (controller.signal.aborted) return
       if (task.status === 'success' && task.downloadUrl) {
         triggerDownload(task.downloadUrl, undefined, task.fileName ?? 'download.zip')
         options.onArchiveSuccess(task.taskId)

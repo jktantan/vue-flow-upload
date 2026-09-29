@@ -397,6 +397,12 @@ const toastMessage = ref('')
 let toastTimer: number | undefined
 /** 组件卸载标记，防止异步文件校验完成后向已销毁实例写回。 Unmount marker that prevents an async file validation from writing back into a destroyed instance. */
 let isUnmounted = false
+// 异步校验尚未插入列表的文件占用名额，避免并发选择突破数量限制。
+// Files awaiting asynchronous validation reserve capacity so overlapping selections cannot exceed the limit.
+let reservedSelectionCount = 0
+// 清空或卸载时递增的选择版本，用于阻止旧校验继续插入文件。
+// Selection version incremented on clear or unmount to stop stale validation from adding files.
+let selectionVersion = 0
 /** 等待用户确认、尚未开始远程清理/删除的文件。 Files awaiting user confirmation before remote cleanup/removal begins. */
 const pendingRemoval = ref<UploadFileItem[]>([])
 /** 串行远程删除期间锁定对话框按钮。 Locks dialog buttons while sequential remote deletion is underway. */
@@ -546,12 +552,17 @@ const {
 async function addFiles(selected: File[]) {
   // 逐个处理文件，异步校验完成后才可自动上传。 Process one file at a time so validation finishes before auto-upload.
   if (!selected.length || !canSelect.value) return
-  const available = Math.max(0, props.maxCount - files.value.length)
+  const available = Math.max(0, props.maxCount - files.value.length - reservedSelectionCount)
   const accepted = selected.slice(0, available)
   const exceeded = selected.slice(available)
   if (exceeded.length) emit('exceed', exceeded)
+  reservedSelectionCount += accepted.length
+  // 本批文件只在选择版本仍有效时继续插入。
+  // This batch keeps inserting files only while its selection version remains current.
+  const currentSelectionVersion = selectionVersion
 
   for (const file of accepted) {
+    if (currentSelectionVersion !== selectionVersion) return
     const item: UploadFileItem = {
       uid: createUid(),
       fileId: createUid(),
@@ -564,10 +575,11 @@ async function addFiles(selected: File[]) {
     }
     localUploadUids.add(item.uid)
     updateFiles([...files.value, item], item)
+    reservedSelectionCount -= 1
     // 拦截器错误必须落入对应文件行，而不能成为未处理的异步拒绝。
     // Guard errors must land on their file row instead of becoming unhandled async rejections.
     const error = await validate(file)
-    if (isUnmounted) return
+    if (isUnmounted || currentSelectionVersion !== selectionVersion) return
     if (error) {
       const rejected = updateFile(item.uid, { status: 'rejected', error })
       if (rejected) emit('error', rejected, error)
@@ -743,20 +755,26 @@ function handleRemove(file: string | UploadFileItem) {
   return remove(typeof file === 'string' ? file : file.uid)
 }
 
-function clear() {
-  // 清空模型前取消后台任务，并释放选择/预览资源。
-  // Abort background work and release selection/preview resources before emptying the model.
+/** 释放组件持有的异步任务和预览资源，不修改宿主控制的文件列表。 Releases owned asynchronous work and preview resources without changing the host-controlled file list. */
+function releaseResources() {
+  selectionVersion += 1
+  reservedSelectionCount = 0
   clearUploads()
   clearPreviews()
   clearSelection()
   clearDownloads()
-  // 清空操作应作废尚未返回的查询，防止调用方主动清空后旧响应重新填充列表。
-  // Clearing invalidates an outstanding query so an old response cannot repopulate a caller-cleared list.
+  // 作废尚未返回的查询，防止卸载或主动清空后旧响应写回。
+  // Invalidate pending queries so old responses cannot write back after unmount or an explicit clear.
   queryController?.abort()
   queryVersion += 1
   queryLoading.value = false
-  emit('query-loading', false)
   localUploadUids.clear()
+}
+
+/** 主动清空文件列表并通知宿主；组件卸载只调用资源清理。 Explicitly clears the file list and notifies the host; unmount only releases resources. */
+function clear() {
+  releaseResources()
+  emit('query-loading', false)
   updateFiles([])
 }
 
@@ -939,9 +957,8 @@ onBeforeUnmount(() => {
   // 卸载先封闭异步写入入口，再取消队列、下载、预览和短提示资源。
   // On unmount, close async write access before releasing queue, download, preview, and toast resources.
   isUnmounted = true
-  queryController?.abort()
   if (toastTimer !== undefined) window.clearTimeout(toastTimer)
-  clear()
+  releaseResources()
 })
 
 /** 组件实例公开的方法；供 ref 调用上传、暂停、重试、删除与下载操作。 Public instance methods for refs to upload, pause, retry, remove, and download. */

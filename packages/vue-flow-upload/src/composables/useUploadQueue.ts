@@ -31,6 +31,12 @@ interface UploadQueueOptions {
 export function useUploadQueue(options: UploadQueueOptions) {
   // Each file can own several concurrent chunk requests, so controllers are grouped by uid.
   const controllers = new Map<string, Set<AbortController>>()
+  // 每次启动使用不同版本；暂停、继续或清空后，旧异步结果不能写入新任务。
+  // Each start has a distinct version so stale results cannot write after pause, resume, or clear.
+  const activeTasks = new Map<string, number>()
+  // 单调递增的任务版本，避免同一文件的连续任务重用标识。
+  // Monotonic task version prevents consecutive runs of one file from sharing an identity.
+  let nextTaskVersion = 0
 
   function requireTransport() {
     // Fail early with a user-facing error instead of dereferencing an absent optional transport.
@@ -81,17 +87,23 @@ export function useUploadQueue(options: UploadQueueOptions) {
     if (!current?.size) controllers.delete(uid)
   }
 
-  function updateProgress(uid: string, loaded: number, total: number) {
+  function updateProgress(uid: string, taskVersion: number, loaded: number, total: number) {
     // Reserve 100% for confirmed server completion; transfer progress never exceeds 99%.
+    if (!isTaskActive(uid, taskVersion)) return
     const percent = total > 0 ? Math.min(99, Math.round((loaded / total) * 100)) : 0
     const current = options.updateFile(uid, { percent })
     if (current) options.onProgress(current, percent)
   }
 
-  function ensureTaskActive(uid: string) {
-    // Pause/removal can occur between async stages, so re-check state before continuing.
+  /** 判断回调是否仍属于当前未暂停任务。 Checks whether a callback still belongs to the current unpaused task. */
+  function isTaskActive(uid: string, taskVersion: number) {
     const status = options.files.value.find((file) => file.uid === uid)?.status
-    if (!status || status === 'paused') throw makeUploadError('ABORTED', '上传已取消', false)
+    return activeTasks.get(uid) === taskVersion && !!status && status !== 'paused'
+  }
+
+  /** 在每个异步边界拒绝已被暂停、移除或取代的任务。 Rejects work superseded by pause, removal, or a newer run at every async boundary. */
+  function ensureTaskActive(uid: string, taskVersion: number) {
+    if (!isTaskActive(uid, taskVersion)) throw makeUploadError('ABORTED', '上传已取消', false)
   }
 
   /**
@@ -172,42 +184,50 @@ export function useUploadQueue(options: UploadQueueOptions) {
     finishSuccess(uid, response)
   }
 
-  async function prepareFile(uid: string, file: UploadFileItem, data: Record<string, unknown>) {
+  async function prepareFile(
+    uid: string,
+    taskVersion: number,
+    file: UploadFileItem,
+    data: Record<string, unknown>,
+  ) {
     // Optionally create the server record before bytes are sent; never create it twice on resume.
     const transport = requireTransport()
     if (file.remoteCreated) return file
     options.updateFile(uid, { status: 'preparing' })
-    const created = transport.createFile
-      ? await transport.createFile(
-          { ...fileMeta(file.file!, undefined, file.fileId), data },
-          requestMeta(data, await options.resolveHeaders(), await options.resolveQuery()),
-        )
-      : { fileId: file.fileId! }
+    if (!transport.createFile) return options.updateFile(uid, { remoteCreated: true })
+    const context = requestMeta(data, await options.resolveHeaders(), await options.resolveQuery())
+    ensureTaskActive(uid, taskVersion)
+    const created = await transport.createFile(
+      { ...fileMeta(file.file!, undefined, file.fileId), data },
+      context,
+    )
+    ensureTaskActive(uid, taskVersion)
     return options.updateFile(uid, { fileId: created.fileId, remoteCreated: true })
   }
 
   async function uploadNormal(
     uid: string,
+    taskVersion: number,
     file: File,
     fileId: string,
     data: Record<string, unknown>,
   ) {
     // Schedule a whole-file request under the same limits used by multipart chunks.
     return options.scheduler.schedule(uid, async () => {
+      ensureTaskActive(uid, taskVersion)
       const controller = trackController(uid)
       const current = options.updateFile(uid, { status: 'uploading' })
       if (current) options.onProgress(current, 0)
       try {
-        return await requireTransport().uploadFile(
-          { file, fileId, data },
-          requestContext(
-            data,
-            await options.resolveHeaders(),
-            await options.resolveQuery(),
-            controller,
-            (loaded, total) => updateProgress(uid, loaded, total),
-          ),
+        const context = requestContext(
+          data,
+          await options.resolveHeaders(),
+          await options.resolveQuery(),
+          controller,
+          (loaded, total) => updateProgress(uid, taskVersion, loaded, total),
         )
+        ensureTaskActive(uid, taskVersion)
+        return await requireTransport().uploadFile({ file, fileId, data }, context)
       } finally {
         untrackController(uid, controller)
       }
@@ -216,6 +236,7 @@ export function useUploadQueue(options: UploadQueueOptions) {
 
   async function uploadMultipart(
     uid: string,
+    taskVersion: number,
     file: File,
     data: Record<string, unknown>,
     sha256?: string,
@@ -229,11 +250,17 @@ export function useUploadQueue(options: UploadQueueOptions) {
     const chunkSize = Math.max(1, options.chunkSize)
     const totalChunks = Math.ceil(file.size / chunkSize)
     options.updateFile(uid, { status: 'preparing' })
+    const initContext = requestMeta(
+      data,
+      await options.resolveHeaders(),
+      await options.resolveQuery(),
+    )
+    ensureTaskActive(uid, taskVersion)
     const session = await initMultipart(
       { ...fileMeta(file, sha256, fileId), chunkSize, totalChunks, data },
-      requestMeta(data, await options.resolveHeaders(), await options.resolveQuery()),
+      initContext,
     )
-    ensureTaskActive(uid)
+    ensureTaskActive(uid, taskVersion)
     options.updateFile(uid, { uploadId: session.uploadId, status: 'queued' })
     const completed = new Set(session.uploadedChunks ?? [])
     const progress = Array.from({ length: totalChunks }, (_, index) =>
@@ -245,42 +272,47 @@ export function useUploadQueue(options: UploadQueueOptions) {
     await Promise.all(
       missing.map((index) =>
         options.scheduler.schedule(uid, async () => {
+          ensureTaskActive(uid, taskVersion)
           const controller = trackController(uid)
           options.updateFile(uid, { status: 'uploading' })
           const start = index * chunkSize
           const chunk = file.slice(start, Math.min(start + chunkSize, file.size))
           try {
-            await retryOperation(
-              async () =>
-                uploadChunk(
-                  {
-                    uploadId: session.uploadId,
-                    chunkIndex: index,
-                    totalChunks,
-                    chunk,
-                    chunkSize,
-                    file: fileMeta(file, sha256, fileId),
-                  },
-                  requestContext(
-                    data,
-                    await options.resolveHeaders(),
-                    await options.resolveQuery(),
-                    controller,
-                    (loaded) => {
-                      progress[index] = Math.min(chunk.size, loaded)
-                      updateProgress(
-                        uid,
-                        progress.reduce((sum, value) => sum + value, 0),
-                        file.size,
-                      )
-                    },
-                  ),
-                ),
-              controller.signal,
-            )
+            await retryOperation(async () => {
+              const context = requestContext(
+                data,
+                await options.resolveHeaders(),
+                await options.resolveQuery(),
+                controller,
+                (loaded) => {
+                  if (!isTaskActive(uid, taskVersion)) return
+                  progress[index] = Math.min(chunk.size, loaded)
+                  updateProgress(
+                    uid,
+                    taskVersion,
+                    progress.reduce((sum, value) => sum + value, 0),
+                    file.size,
+                  )
+                },
+              )
+              ensureTaskActive(uid, taskVersion)
+              return uploadChunk(
+                {
+                  uploadId: session.uploadId,
+                  chunkIndex: index,
+                  totalChunks,
+                  chunk,
+                  chunkSize,
+                  file: fileMeta(file, sha256, fileId),
+                },
+                context,
+              )
+            }, controller.signal)
+            ensureTaskActive(uid, taskVersion)
             progress[index] = chunk.size
             updateProgress(
               uid,
+              taskVersion,
               progress.reduce((sum, value) => sum + value, 0),
               file.size,
             )
@@ -290,19 +322,22 @@ export function useUploadQueue(options: UploadQueueOptions) {
         }),
       ),
     )
+    ensureTaskActive(uid, taskVersion)
     options.updateFile(uid, { status: 'merging', percent: 99 })
-    return completeMultipart(
-      session.uploadId,
-      { fileId, sha256, data },
-      requestMeta(data, await options.resolveHeaders(), await options.resolveQuery()),
-    )
+    const context = requestMeta(data, await options.resolveHeaders(), await options.resolveQuery())
+    ensureTaskActive(uid, taskVersion)
+    return completeMultipart(session.uploadId, { fileId, sha256, data }, context)
   }
 
   async function upload(uid: string) {
     // Drive the full lifecycle: prepare → hash/check if needed → transfer → finalize or fail.
     if (!options.canUpload.value) return
     let target = options.files.value.find((file) => file.uid === uid)
-    if (!target?.file || target.status === 'uploading') return
+    if (!target?.file || activeTasks.has(uid)) return
+    // 当前版本在第一次异步等待前登记，防止重复提交同一文件。
+    // Register the version before the first await so the same file cannot be submitted twice.
+    const taskVersion = ++nextTaskVersion
+    activeTasks.set(uid, taskVersion)
     if (
       !options.updateFile(uid, {
         status: 'queued',
@@ -310,12 +345,16 @@ export function useUploadQueue(options: UploadQueueOptions) {
         error: undefined,
         hashStrategy: undefined,
       })
-    )
+    ) {
+      activeTasks.delete(uid)
       return
+    }
     try {
       const transport = requireTransport()
       const data = await options.resolveData()
-      target = await prepareFile(uid, target, data)
+      ensureTaskActive(uid, taskVersion)
+      target = await prepareFile(uid, taskVersion, target, data)
+      ensureTaskActive(uid, taskVersion)
       if (!target?.file || !target.fileId) return
       const isMultipart = target.file.size > options.normalUploadThreshold
       const needsHash =
@@ -327,40 +366,50 @@ export function useUploadQueue(options: UploadQueueOptions) {
         try {
           sha256 = await hashFile(target.file, {
             signal: controller.signal,
-            onProgress: (loaded, total) => updateProgress(uid, loaded, total),
-            onStrategy: (hashStrategy) => options.updateFile(uid, { hashStrategy }),
+            onProgress: (loaded, total) => updateProgress(uid, taskVersion, loaded, total),
+            onStrategy: (hashStrategy) => {
+              if (isTaskActive(uid, taskVersion)) options.updateFile(uid, { hashStrategy })
+            },
           })
         } finally {
           untrackController(uid, controller)
         }
+        ensureTaskActive(uid, taskVersion)
         options.updateFile(uid, { sha256, percent: 0 })
       }
       if (sha256 && options.instantUpload && transport.checkFile) {
         options.updateFile(uid, { status: 'checking' })
+        const checkContext = requestMeta(
+          data,
+          await options.resolveHeaders(),
+          await options.resolveQuery(),
+        )
+        ensureTaskActive(uid, taskVersion)
         const check = await transport.checkFile(
           fileMeta(target.file, sha256, target.fileId),
-          requestMeta(data, await options.resolveHeaders(), await options.resolveQuery()),
+          checkContext,
         )
+        ensureTaskActive(uid, taskVersion)
         if (check.exists) {
           if (!check.file) throw makeUploadError('INVALID_RESPONSE', '秒传响应缺少文件信息', false)
           finishSuccess(uid, check.file)
           return
         }
       }
-      ensureTaskActive(uid)
-      finishUpload(
-        uid,
-        isMultipart
-          ? await uploadMultipart(uid, target.file, data, sha256, target.fileId)
-          : await uploadNormal(uid, target.file, target.fileId, data),
-      )
+      ensureTaskActive(uid, taskVersion)
+      const response = isMultipart
+        ? await uploadMultipart(uid, taskVersion, target.file, data, sha256, target.fileId)
+        : await uploadNormal(uid, taskVersion, target.file, target.fileId, data)
+      ensureTaskActive(uid, taskVersion)
+      finishUpload(uid, response)
     } catch (cause) {
+      if (activeTasks.get(uid) !== taskVersion) return
       if (isAbortError(cause)) return
       const error = normalizeUploadError(cause)
       const failed = options.updateFile(uid, { status: 'failed', error })
       if (failed) options.onError(failed, error)
     } finally {
-      controllers.delete(uid)
+      if (activeTasks.get(uid) === taskVersion) activeTasks.delete(uid)
     }
   }
 
@@ -381,6 +430,7 @@ export function useUploadQueue(options: UploadQueueOptions) {
       return
     options.scheduler.cancel(uid)
     controllers.get(uid)?.forEach((controller) => controller.abort())
+    activeTasks.delete(uid)
     options.updateFile(uid, { status: 'paused' })
   }
 
@@ -398,6 +448,8 @@ export function useUploadQueue(options: UploadQueueOptions) {
 
   function clear() {
     // Component teardown aborts all requests and drops controller references.
+    for (const uid of activeTasks.keys()) options.scheduler.cancel(uid)
+    activeTasks.clear()
     for (const [uid, group] of controllers) {
       options.scheduler.cancel(uid)
       group.forEach((controller) => controller.abort())
