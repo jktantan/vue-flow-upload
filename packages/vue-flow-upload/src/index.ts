@@ -37,6 +37,8 @@ export type {
   FileQueryResult,
   FileQueryTransport,
   FileMeta,
+  FileCheckResult,
+  LegacyFileCheckResult,
   MultipartInitInput,
   MultipartSession,
   RequestContext,

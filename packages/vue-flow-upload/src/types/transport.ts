@@ -35,8 +35,35 @@ export interface MultipartInitInput extends FileMeta {
 }
 /** 标识分片会话及已持久化分片的服务端响应。 Server response identifying a multipart session and chunks already persisted. */
 export interface MultipartSession {
+  /** 共享分片会话的稳定服务端标识；同一内容的并发上传者可得到相同值。 Stable server identifier for a shared multipart session; concurrent uploaders of the same content may receive the same value. */
   uploadId: string
+  /** 会话当前状态；省略时按 `uploading` 兼容旧服务端。 Current session state; omitted values are treated as `uploading` for backward compatibility. */
+  state?: 'uploading' | 'merging' | 'processing'
+  /** 已被服务端持久化且无需重传的 0 开始分片序号。 Zero-based chunk indexes already persisted by the server and not sent again. */
   uploadedChunks?: number[]
+}
+/**
+ * 秒传检查的服务端状态；`ready` 代表字节已可用，其他状态绝不能作为上传成功处理。
+ * Server state returned by an instant-upload check; only `ready` means bytes are available and every other state must not be treated as success.
+ */
+export type FileCheckResult =
+  /** 内容已完成且当前调用方已获得可访问的文件引用。 Content is complete and the caller has received an accessible file reference. */
+  | { state: 'ready'; file: UploadSuccessResult }
+  /** 内容不存在，客户端应创建或恢复分片会话。 Content is absent and the client should create or resume a multipart session. */
+  | { state: 'missing' }
+  /** 内容正在接收分片；客户端可经幂等初始化接口补传缺片。 Content is receiving chunks; the client may fill missing chunks through idempotent initialization. */
+  | { state: 'uploading'; uploadId?: string; uploadedChunks?: number[]; retryAfterMs?: number }
+  /** 内容已由其他请求合并或后处理；客户端应等待完成接口的幂等结果。 Content is being merged or post-processed by another request; the client should await the idempotent completion result. */
+  | { state: 'merging' | 'processing'; uploadId?: string; retryAfterMs?: number }
+/**
+ * 旧版秒传检查响应；保留该形状以便现有服务端平滑升级。
+ * Legacy instant-upload check response; retained so existing servers can upgrade gradually.
+ */
+export interface LegacyFileCheckResult {
+  /** 是否命中已完成文件；`true` 时必须同时提供 `file`。 Whether a completed file was found; `file` must also be present when true. */
+  exists: boolean
+  /** 旧版命中时返回的文件记录。 File record returned for a legacy hit. */
+  file?: UploadSuccessResult
 }
 /** 单个分片请求的字节范围及其位置元数据。 One byte range and its placement metadata for a multipart request. */
 export interface UploadChunkInput {
@@ -61,7 +88,7 @@ export interface UploadTransport {
   checkFile?(
     input: FileMeta,
     context: RequestContext,
-  ): Promise<{ exists: boolean; file?: UploadSuccessResult }>
+  ): Promise<FileCheckResult | LegacyFileCheckResult>
   initMultipart?(input: MultipartInitInput, context: RequestContext): Promise<MultipartSession>
   uploadChunk?(input: UploadChunkInput, context: UploadRequestContext): Promise<void>
   completeMultipart?(

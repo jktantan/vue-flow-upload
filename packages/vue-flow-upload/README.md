@@ -137,7 +137,7 @@ const transport = createHttpUploadTransport({
 })
 ```
 
-上传地址职责：`url` 上传普通文件；`checkUrl` 检查秒传；`multipart.initUrl` 创建/恢复分片会话；`multipart.chunkUrl` 上传一个分片；`multipart.completeUrl` 合并分片；`multipart.cancelUrl` 取消会话。完整约定见 [上传传输适配器](../../docs/api/transport.md)。
+上传地址职责：`url` 上传普通文件；`checkUrl` 检查秒传或共享上传状态；`multipart.initUrl` 原子创建/恢复分片会话；`multipart.chunkUrl` 上传一个缺失分片；`multipart.completeUrl` 幂等合并分片；`multipart.cancelUrl` 仅释放当前调用方会话租约。完整约定见 [上传传输适配器](../../docs/api/transport.md) 和[后端接口协议](../../docs/guide/backend-api-contract.md)。
 
 ### 下载 HTTP 适配器
 
@@ -277,4 +277,4 @@ async function loadFiles(currentPage: number, pageSize: number) {
 通过 `ref` 可调用 `submit()`、`abort(file?)`、`pause(uid)`、`resume(uid)`、`retry(uid)`、`remove(uid)`、`clear()`/
 `clearFiles()`、`handleStart(file)`、`handleRemove(file)`；此外还提供下载与归档方法。
 
-完整后端分片协议见仓库根目录的 [`internal-docs/backend-api.md`](../../internal-docs/backend-api.md)。
+完整后端分片协议见 [`docs/guide/backend-api-contract.md`](../../docs/guide/backend-api-contract.md)。

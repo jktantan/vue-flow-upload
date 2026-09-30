@@ -35,16 +35,16 @@
   → 返回文件结果（success 或 processing）
 ```
 
-暂停、移除或取消正在分片的文件时，前端会中止尚未完成的 HTTP 请求；配置了 `multipart.cancelUrl` 时还会 `DELETE` 该上传会话。删除已持久化文件时会调用 `deleteUrl`。`checkUrl` 返回 `exists: true` 后不会再上传字节，直接采用返回的 `file` 作为成功结果。
+暂停、移除或取消正在分片的文件时，前端会中止当前浏览器尚未完成的 HTTP 请求。共享会话不能由任一用户直接删除；`multipart.cancelUrl` 只应释放当前调用方的租约，服务端在没有租约且会话过期后再清理临时分片。删除已持久化文件时会调用 `deleteUrl`。只有 `checkUrl` 返回 `state: "ready"`（或兼容的 `exists: true`）后，前端才会跳过字节上传并采用返回的 `file`。
 
 ### 每个上传端点的请求与响应
 
 | 操作 | HTTP 请求 | 请求体 / 请求头 | 成功响应 |
 | --- | --- | --- | --- |
 | 预创建文件 | `POST createUrl` | JSON：`FileMeta` + `data` | `{ "fileId": "file_123" }` |
-| 秒传检查 | `POST checkUrl` | JSON：`FileMeta` | `{ "exists": false }`；命中时 `{ "exists": true, "file": UploadSuccessResult }` |
+| 秒传检查 | `POST checkUrl` | JSON：`FileMeta` | `{ "state": "missing" }`、`{ "state": "ready", "file": UploadSuccessResult }` 或共享上传状态 |
 | 普通上传 | `POST`（默认）或 `PUT url` | `multipart/form-data`：文件字段、`fileId`、JSON 字符串 data 字段 | `UploadSuccessResult` 或空响应 |
-| 初始化分片 | `POST multipart.initUrl` | JSON：`FileMeta` + `chunkSize`、`totalChunks`、`data` | `{ "uploadId": "upload_123", "uploadedChunks": [0, 1] }` |
+| 初始化分片 | `POST multipart.initUrl` | JSON：`FileMeta` + `chunkSize`、`totalChunks`、`data` | `{ "uploadId": "upload_123", "state": "uploading", "uploadedChunks": [0, 1] }` |
 | 上传分片 | `PUT multipart.chunkUrl` | body 为分片原始二进制；见下方请求头 | 空响应或任意合法 JSON（正文不会被使用） |
 | 完成分片 | `POST multipart.completeUrl` | JSON：`fileId?`、`sha256?`、`data` | `UploadSuccessResult` |
 | 取消分片 | `DELETE multipart.cancelUrl` | 无 body | 可为空 |
@@ -93,6 +93,38 @@ fileId: file_123
 data: {"belongId":"order-1001","belongType":"order","extra":{"category":"invoice"}}
 ```
 
+## 极速上传与同内容并发上传
+
+服务端必须把“内容对象”和“业务文件引用”分开：内容对象由 `sha256`、`size`、哈希算法和存储策略版本唯一确定；业务文件引用则记录当前用户、租户、业务归属及下载权限。不得仅凭 SHA-256 向调用方返回其他用户的 `fileId`、URL 或存在性信息。
+
+`checkUrl` 的推荐响应是判别式 `state`，并且只能在内容已完成、当前调用方有权创建或读取引用时返回 `ready`：
+
+```json
+{ "state": "ready", "file": { "fileId": "file_123", "status": "success" } }
+```
+
+内容尚不存在时返回 `{ "state": "missing" }`。另一用户正在传输相同内容时返回如下状态；前端仍会调用幂等的 `initUrl` 获取权威的缺片列表，因此 `uploadId`、`uploadedChunks` 可选，仅用于诊断或展示：
+
+```json
+{ "state": "uploading", "uploadId": "upload_123", "uploadedChunks": [0, 1], "retryAfterMs": 1000 }
+```
+
+其他请求已开始合并或异步后处理时返回 `{ "state": "merging", "uploadId": "upload_123", "retryAfterMs": 1000 }`。
+
+为兼容旧版，组件仍接受 `{ "exists": false }` 以及 `{ "exists": true, "file": ... }`；新服务端应迁移到 `state`。秒传检查发生在 `createUrl` 之前，避免命中共享内容时创建孤立的业务文件记录。未命中后，`createUrl` 必须幂等，并在后续完成时创建或确认当前调用方的业务引用。
+
+`initUrl` 是“按内容获取或创建会话”的原子操作，不能先查询再插入。推荐为内容键建立唯一约束，或在短事务/分布式锁中完成创建。它必须始终返回相同活跃会话的权威状态：
+
+```json
+{
+  "uploadId": "upload_123",
+  "state": "uploading",
+  "uploadedChunks": [0, 1]
+}
+```
+
+`state` 省略时组件按 `uploading` 兼容处理。若会话已在合并或后处理，返回 `merging` 或 `processing`；前端不再写入分片，而是调用幂等 `completeUrl`，后端返回 `processing` 或最终文件结果。
+
 #### 分片 PUT 请求
 
 分片二进制不包在 `FormData` 或 JSON 中，整个 HTTP body 就是该分片。URL 中的 `{uploadId}`、`{index}` 会被替换并 URL 编码。后端按以下请求头定位与校验分片：
@@ -109,7 +141,18 @@ data: {"belongId":"order-1001","belongType":"order","extra":{"category":"invoice
 | `X-File-Id` | 可选，持久化文件 ID |
 | `X-File-Sha256` | 可选，完整文件 SHA-256 |
 
-初始化接口返回的 `uploadedChunks` 是已成功持久化的 0 开始序号数组；前端只补传缺失索引。后端应仅在所有索引完整、文件校验通过后让合并接口返回成功。
+初始化接口返回的 `uploadedChunks` 是已成功持久化的 0 开始序号数组；前端只补传缺失索引。分片表须对 `(uploadId, chunkIndex)` 建立唯一约束，对象存储应使用固定键并采用条件写入；重复提交同一内容的分片应返回成功，字节长度、摘要或索引冲突必须拒绝。后端应仅在所有索引完整、文件校验通过后让合并接口返回成功。
+
+## 合并完成、错误与清理
+
+整体上传完成以服务端 `completeUrl` 的原子结果为准，而不是以浏览器完成所有 `PUT` 为准。`completeUrl` 必须幂等，并使用每个 `uploadId` 的合并锁或状态条件更新，保证只有一个请求执行合并：
+
+1. 在事务中确认会话为 `uploading`，并将其原子切换为 `merging`；已是 `ready` 时直接返回已有结果，已是 `merging` 时返回 `processing`。
+2. 校验 `0..totalChunks-1` 每个索引均存在，校验每片字节数（最后一片除外）及可选分片摘要；缺片返回 `409` 和稳定业务码 `MISSING_CHUNKS`。
+3. 按索引顺序合并到临时对象，重新计算完整 SHA-256，并与 `FileMeta.sha256` 对比；不一致返回不可重试的 `422 HASH_MISMATCH`。
+4. 原子发布最终对象、标记内容为 `ready`，并创建/确认当前调用方的业务文件引用；之后才返回 `UploadSuccessResult`。
+
+推荐错误处理如下：`408`、`429`、`5xx`、网络断开可重试；`401`、`403`、`400`、分片元数据冲突和哈希不匹配不可盲目重试。客户端重试前应再次调用 `initUrl`，以处理“分片已落盘但响应丢失”的情况。合并失败时保留可恢复分片，并记录错误码、原因、`uploadId`、内容指纹、分片索引和重试次数；会话使用租约/最后活跃时间，只有所有调用方租约释放且超时后才异步清理。
 
 #### `UploadSuccessResult`：上传、秒传命中和合并结果
 

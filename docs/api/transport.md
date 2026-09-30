@@ -50,8 +50,8 @@ const transport = createHttpUploadTransport({
 | ------------------- | -------------------- | ---------------------------------------------- |
 | `uploadFile`        | 普通文件上传         | `UploadSuccessResult`；建议包含稳定 `fileId`。 |
 | `createFile`        | 上传前预创建远端记录 | `{ fileId }`。                                 |
-| `checkFile`         | SHA-256 秒传检查     | `{ exists, file? }`。                          |
-| `initMultipart`     | 创建或恢复分片会话   | `{ uploadId, uploadedChunks? }`。              |
+| `checkFile`         | SHA-256 秒传检查     | `{ state: 'ready', file }`、`{ state: 'missing' }` 或共享上传状态；兼容 `{ exists, file? }`。 |
+| `initMultipart`     | 创建或恢复分片会话   | `{ uploadId, state?, uploadedChunks? }`，其中 `state` 为 `uploading`、`merging` 或 `processing`。 |
 | `uploadChunk`       | 上传一个分片         | `void`。                                       |
 | `completeMultipart` | 服务端合并分片       | `UploadSuccessResult`。                        |
 | `cancelMultipart`   | 取消未完成分片会话   | `void`。                                       |
@@ -99,3 +99,5 @@ const uploadTransport: UploadTransport = {
 ```
 
 将 `context.signal` 传给请求层；使用 XHR 或 Axios 时，将原始字节进度转换为 `context.onProgress(loaded, total)`。失败必须抛出 `{ code, message, retriable, status?, cause? }` 结构；不要吞掉网络、取消或服务端错误。若示例中的响应解析器无法满足后端结构，应替换为项目自己的运行时校验器。
+
+共享去重上传时，`checkFile` 仅在内容可访问且已完成时返回 `state: 'ready'`。返回 `uploading` 时组件会通过 `initMultipart` 取得同一会话的权威缺片列表并补传；返回 `merging` 或 `processing` 时不会继续传片，而会调用幂等 `completeMultipart` 等待服务端结果。完整的并发、权限、合并锁、校验和清理要求见[后端接口协议](/guide/backend-api-contract#极速上传与同内容并发上传)。

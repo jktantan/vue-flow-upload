@@ -51,6 +51,7 @@ const enSidebar = [
       { text: 'Quick start', link: '/en/guide/getting-started' },
       { text: 'Global configuration & Nuxt', link: '/en/guide/global-config' },
       { text: 'Common usage', link: '/en/guide/common-usage' },
+      { text: 'Backend API contract', link: '/en/guide/backend-api-contract' },
     ],
   },
   {

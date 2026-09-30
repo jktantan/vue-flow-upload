@@ -1,7 +1,14 @@
 import type { ComputedRef } from 'vue'
 import { ChunkScheduler } from '../core/chunk-scheduler'
 import { hashFile } from '../core/hash-service'
-import type { UploadError, UploadFileItem, UploadSuccessResult, UploadTransport } from '../types'
+import type {
+  FileCheckResult,
+  LegacyFileCheckResult,
+  UploadError,
+  UploadFileItem,
+  UploadSuccessResult,
+  UploadTransport,
+} from '../types'
 import { isAbortError, makeUploadError, normalizeUploadError } from '../utils/error'
 import { fileMeta } from '../utils/file'
 
@@ -25,6 +32,40 @@ interface UploadQueueOptions {
   onProgress: (file: UploadFileItem, percent: number) => void
   onSuccess: (file: UploadFileItem, response: UploadSuccessResult) => void
   onError: (file: UploadFileItem, error: UploadError) => void
+}
+
+/**
+ * 仅把已确认可访问的内容视为秒传成功，兼容旧版 `{ exists, file }` 响应。
+ * Treats only confirmed accessible content as an instant-upload success while supporting legacy `{ exists, file }` responses.
+ */
+function resolveInstantUploadResult(
+  result: FileCheckResult | LegacyFileCheckResult,
+): UploadSuccessResult | undefined {
+  // 新协议只允许 ready 进入成功态；上传或合并中仍须交给分片状态机处理。
+  // The new protocol permits success only for ready; uploading and merging still belong to the multipart state machine.
+  if ('state' in result) {
+    if (result.state === 'ready') {
+      // ready 必须携带当前调用方可访问的文件记录，避免把未知响应写入成功状态。
+      // Ready must carry a file record accessible to the caller, preventing an unknown response from entering success state.
+      if (!result.file) throw makeUploadError('INVALID_RESPONSE', '秒传响应缺少文件信息', false)
+      return result.file
+    }
+    if (
+      result.state === 'missing' ||
+      result.state === 'uploading' ||
+      result.state === 'merging' ||
+      result.state === 'processing'
+    )
+      return undefined
+    // 未知状态不能退化为未命中，否则服务端协议错误会导致意外的二进制上传。
+    // Unknown states must not degrade into a miss, or a server protocol error could trigger an unexpected binary upload.
+    throw makeUploadError('INVALID_RESPONSE', '秒传响应状态无效', false)
+  }
+  // 旧协议的 exists 命中缺失文件记录属于协议错误，避免错误地把本地行标记成功。
+  // A legacy hit without its file record is a protocol error, preventing the local row from being marked successful incorrectly.
+  if (result.exists && !result.file)
+    throw makeUploadError('INVALID_RESPONSE', '秒传响应缺少文件信息', false)
+  return result.exists ? result.file : undefined
 }
 
 /** Coordinates hashing, instant upload, normal uploads and resumable multipart uploads. */
@@ -262,6 +303,20 @@ export function useUploadQueue(options: UploadQueueOptions) {
     )
     ensureTaskActive(uid, taskVersion)
     options.updateFile(uid, { uploadId: session.uploadId, status: 'queued' })
+    // 合并或后处理中的共享会话不能继续写入分片；完成接口必须幂等地返回处理中或最终结果。
+    // A shared session that is merging or processing cannot accept chunks; completion must idempotently return processing or the final result.
+    if (session.state === 'merging' || session.state === 'processing') {
+      options.updateFile(uid, { status: 'merging', percent: 99 })
+      const context = requestMeta(
+        data,
+        await options.resolveHeaders(),
+        await options.resolveQuery(),
+      )
+      ensureTaskActive(uid, taskVersion)
+      return completeMultipart(session.uploadId, { fileId, sha256, data }, context)
+    }
+    // 服务端是续传事实来源；仅对确认未持久化的索引调度上传。
+    // The server is the source of truth for resumption; schedule uploads only for indexes confirmed as not persisted.
     const completed = new Set(session.uploadedChunks ?? [])
     const progress = Array.from({ length: totalChunks }, (_, index) =>
       completed.has(index) ? Math.min(chunkSize, file.size - index * chunkSize) : 0,
@@ -353,9 +408,6 @@ export function useUploadQueue(options: UploadQueueOptions) {
       const transport = requireTransport()
       const data = await options.resolveData()
       ensureTaskActive(uid, taskVersion)
-      target = await prepareFile(uid, taskVersion, target, data)
-      ensureTaskActive(uid, taskVersion)
-      if (!target?.file || !target.fileId) return
       const isMultipart = target.file.size > options.normalUploadThreshold
       const needsHash =
         (options.instantUpload && !!transport.checkFile) || (isMultipart && options.resume)
@@ -385,18 +437,20 @@ export function useUploadQueue(options: UploadQueueOptions) {
           await options.resolveQuery(),
         )
         ensureTaskActive(uid, taskVersion)
-        const check = await transport.checkFile(
-          fileMeta(target.file, sha256, target.fileId),
-          checkContext,
-        )
+        const check = await transport.checkFile(fileMeta(target.file, sha256), checkContext)
         ensureTaskActive(uid, taskVersion)
-        if (check.exists) {
-          if (!check.file) throw makeUploadError('INVALID_RESPONSE', '秒传响应缺少文件信息', false)
-          finishSuccess(uid, check.file)
+        const instantResult = resolveInstantUploadResult(check)
+        if (instantResult) {
+          finishSuccess(uid, instantResult)
           return
         }
       }
       ensureTaskActive(uid, taskVersion)
+      // 秒传未命中后才创建业务文件记录，避免命中共享内容时遗留无效远端记录。
+      // Create the business file record only after an instant-upload miss, avoiding orphaned remote records for shared-content hits.
+      target = await prepareFile(uid, taskVersion, target, data)
+      ensureTaskActive(uid, taskVersion)
+      if (!target?.file || !target.fileId) return
       const response = isMultipart
         ? await uploadMultipart(uid, taskVersion, target.file, data, sha256, target.fileId)
         : await uploadNormal(uid, taskVersion, target.file, target.fileId, data)

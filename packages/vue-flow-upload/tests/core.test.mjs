@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto'
 import test from 'node:test'
 import {
   createFlowUploadI18n,
+  createHttpUploadTransport,
   createHttpDownloadTransport,
   createHttpFileQueryTransport,
   ChunkScheduler,
@@ -73,6 +74,60 @@ class DownloadTransportXmlHttpRequest {
       this.response = nextResponse.response ?? null
       this.responseText = nextResponse.responseText ?? ''
       this.responseHeaders = new Map(Object.entries(nextResponse.headers ?? {}))
+      this.onload()
+    })
+  }
+}
+
+/**
+ * 在 Node 测试中模拟秒传检查需要的最小 XHR 行为。
+ * Simulates the minimum XHR behavior required by instant-upload checks in Node tests.
+ */
+class UploadTransportXmlHttpRequest {
+  /** 测试预置的下一份 JSON 响应。 Next JSON response prepared by the test. */
+  static response = undefined
+
+  /** 所有已发送请求，供协议断言读取。 All sent requests, available for protocol assertions. */
+  static requests = []
+
+  /** 当前请求记录的请求头。 Request headers recorded for the current request. */
+  headers = new Map()
+
+  /** 当前请求的 HTTP 状态码。 HTTP status code for the current request. */
+  status = 0
+
+  /** 当前请求的文本响应。 Text response for the current request. */
+  responseText = ''
+
+  /** 记录请求方法与地址。 Records the request method and URL. */
+  open(method, url) {
+    this.method = method
+    this.url = url
+  }
+
+  /** 记录适配器写入的请求头。 Records headers written by the adapter. */
+  setRequestHeader(name, value) {
+    this.headers.set(name, value)
+  }
+
+  /** 测试仅验证成功请求，不需要实现 XHR 取消逻辑。 Successful-request tests do not need to implement XHR cancellation. */
+  addEventListener() {}
+
+  /** 与 addEventListener 对应的空实现，满足适配器的资源清理调用。 No-op counterpart for addEventListener, satisfying the adapter cleanup call. */
+  removeEventListener() {}
+
+  /** 异步返回预设结果，保持与真实 XHR 一致的回调时序。 Completes with the prepared result asynchronously to preserve real XHR callback timing. */
+  send(body) {
+    // 保存控制面 JSON 请求体，供断言验证请求边界。
+    // Retain the control-plane JSON body so assertions can verify the request boundary.
+    this.body = body
+    UploadTransportXmlHttpRequest.requests.push(this)
+    // 每个测试只发送一个检查请求，响应在发送时快照以防后续测试覆盖。
+    // Each test sends one check request, so snapshot the response at send time before later tests can replace it.
+    const response = UploadTransportXmlHttpRequest.response
+    globalThis.queueMicrotask(() => {
+      this.status = response.status
+      this.responseText = JSON.stringify(response.body)
       this.onload()
     })
   }
@@ -252,6 +307,39 @@ test('HTTP download transport maps direct download and archive lifecycle endpoin
     assert.equal(DownloadTransportXmlHttpRequest.requests[3].method, 'DELETE')
   } finally {
     /** 恢复全局 XHR，确保本测试不会影响其他测试。 Restores global XHR so this test cannot affect other tests. */
+    globalThis.XMLHttpRequest = originalXmlHttpRequest
+  }
+})
+
+test('HTTP upload transport preserves shared instant-upload states', async () => {
+  /** 保存并替换浏览器 XHR，验证内置检查端点不会丢失共享上传状态。 Saves and replaces browser XHR to verify the built-in check endpoint preserves shared-upload state. */
+  const originalXmlHttpRequest = globalThis.XMLHttpRequest
+  globalThis.XMLHttpRequest = UploadTransportXmlHttpRequest
+  UploadTransportXmlHttpRequest.requests = []
+  UploadTransportXmlHttpRequest.response = {
+    status: 200,
+    body: { state: 'uploading', uploadId: 'shared-1', uploadedChunks: [0, 2] },
+  }
+  try {
+    /** 只配置秒传端点的适配器，隔离检查响应的 JSON 映射。 Adapter configured with only a check endpoint to isolate JSON mapping of the check response. */
+    const transport = createHttpUploadTransport({ url: '/files', checkUrl: '/files/check' })
+    /** 组件传输层使用的最小公共上下文。 Minimal shared context used by the component transport layer. */
+    const context = { headers: {}, data: {}, fileFieldName: 'file', dataFieldName: 'data' }
+    /** 新协议响应必须以判别式状态完整返回给上传队列。 The new protocol response must reach the upload queue with its discriminated state intact. */
+    const result = await transport.checkFile(
+      {
+        name: 'shared.bin',
+        size: 3,
+        mimeType: 'application/octet-stream',
+        lastModified: 0,
+        sha256: 'a'.repeat(64),
+      },
+      context,
+    )
+    assert.deepEqual(result, { state: 'uploading', uploadId: 'shared-1', uploadedChunks: [0, 2] })
+    assert.equal(UploadTransportXmlHttpRequest.requests[0].method, 'POST')
+    assert.equal(UploadTransportXmlHttpRequest.requests[0].url, '/files/check')
+  } finally {
     globalThis.XMLHttpRequest = originalXmlHttpRequest
   }
 })

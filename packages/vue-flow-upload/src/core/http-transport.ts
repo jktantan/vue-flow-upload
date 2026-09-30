@@ -1,5 +1,7 @@
 import type {
   MultipartSession,
+  FileCheckResult,
+  LegacyFileCheckResult,
   RequestContext,
   UploadChunkInput,
   UploadError,
@@ -115,7 +117,7 @@ export function createHttpUploadTransport(options: HttpUploadTransportOptions): 
   }
   if (options.checkUrl) {
     transport.checkFile = (input, context) =>
-      sendJson<{ exists: boolean; file?: UploadSuccessResult }>(
+      sendJson<FileCheckResult | LegacyFileCheckResult>(
         options,
         resolveRequestUrl(options.checkUrl!, options.baseUrl),
         'POST',
