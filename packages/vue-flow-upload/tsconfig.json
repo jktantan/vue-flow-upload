@@ -11,7 +11,10 @@
     "types": ["vite/client"],
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.tsbuildinfo",
     "noUnusedLocals": true,
-    "noUnusedParameters": true
+    "noUnusedParameters": true,
+    /* 组件源码会被文档站与 playground 直接读取，禁止仅 TS 可用的语法，保证运行时能直接剥离类型。
+       Component sources are read directly by the docs site and playground, so TS-only syntax is rejected to keep runtime type stripping working. */
+    "erasableSyntaxOnly": true
   },
   "include": ["src/**/*.ts", "src/**/*.vue"]
 }
