@@ -13,6 +13,12 @@ const enNav = [
   { text: 'Configuration & API', link: '/en/api/flow-upload' },
   { text: 'Demos', link: '/en/demos/basic-upload' },
 ]
+/** 俄语站顶部导航。 Russian-site top navigation. */
+const ruNav = [
+  { text: 'Начало работы', link: '/ru/guide/getting-started' },
+  { text: 'Конфигурация и API', link: '/ru/api/flow-upload' },
+  { text: 'ДЕМО', link: '/ru/demos/basic-upload' },
+]
 /** 中文站按学习顺序组织的侧边栏。 Chinese-site sidebar organized in learning order. */
 const zhSidebar = [
   {
@@ -75,6 +81,37 @@ const enSidebar = [
     ],
   },
 ]
+/** 俄语站按学习顺序组织的侧边栏。 Russian-site sidebar organized in learning order. */
+const ruSidebar = [
+  {
+    text: 'Начало работы',
+    items: [
+      { text: 'Быстрый старт', link: '/ru/guide/getting-started' },
+      { text: 'Глобальная конфигурация и Nuxt', link: '/ru/guide/global-config' },
+      { text: 'Частые сценарии', link: '/ru/guide/common-usage' },
+      { text: 'Соглашение с бэкендом', link: '/ru/guide/backend-api-contract' },
+    ],
+  },
+  {
+    text: 'Конфигурация и API',
+    items: [
+      { text: 'FlowUpload', link: '/ru/api/flow-upload' },
+      { text: 'AvatarUpload', link: '/ru/api/avatar-upload' },
+      { text: 'Адаптер загрузки', link: '/ru/api/transport' },
+      { text: 'Адаптер скачивания', link: '/ru/api/download-transport' },
+      { text: 'Адаптер запроса файлов', link: '/ru/api/query-transport' },
+    ],
+  },
+  {
+    text: 'ДЕМО',
+    items: [
+      { text: 'Базовая загрузка', link: '/ru/demos/basic-upload' },
+      { text: 'Ручная загрузка', link: '/ru/demos/manual-upload' },
+      { text: 'Полная загрузка', link: '/ru/demos/full-upload' },
+      { text: 'Загрузка аватара', link: '/ru/demos/avatar-upload' },
+    ],
+  },
+]
 
 /**
  * 使用者文档站的导航与构建配置；只收录接入说明、API 和可操作示例。
@@ -92,7 +129,10 @@ export default defineConfig({
   title: 'Vue Flow Upload',
   /** 文档站简短说明，用于搜索结果和首页辅助文案。 Short site description for search results and homepage supporting copy. */
   description: 'Vue 3 上传组件的使用说明、配置参考与在线示例。',
-  /** 文档根路径为中文，/en/ 路径提供完整英文内容。 The documentation root is Chinese, while /en/ provides complete English content. */
+  /**
+   * 文档根路径为中文，/en/ 与 /ru/ 分别提供完整英文与俄文内容。
+   * The documentation root is Chinese, while /en/ and /ru/ provide complete English and Russian content.
+   */
   locales: {
     root: {
       label: '简体中文',
@@ -113,6 +153,17 @@ export default defineConfig({
         sidebar: enSidebar,
         outline: { level: [2, 3], label: 'On this page' },
         langMenuLabel: 'Change language',
+      },
+    },
+    ru: {
+      label: 'Русский',
+      lang: 'ru-RU',
+      link: '/ru/',
+      themeConfig: {
+        nav: ruNav,
+        sidebar: ruSidebar,
+        outline: { level: [2, 3], label: 'На этой странице' },
+        langMenuLabel: 'Сменить язык',
       },
     },
   },
@@ -193,6 +244,29 @@ export default defineConfig({
                   navigateUpKeyAriaLabel: 'Up arrow',
                   navigateDownKeyAriaLabel: 'Down arrow',
                   closeText: 'Close',
+                  closeKeyAriaLabel: 'Esc',
+                },
+              },
+            },
+          },
+          ru: {
+            translations: {
+              button: {
+                buttonText: 'Поиск по документации',
+                buttonAriaLabel: 'Поиск по документации',
+              },
+              modal: {
+                displayDetails: 'Показать подробный список',
+                resetButtonTitle: 'Сбросить условия поиска',
+                backButtonTitle: 'Закрыть поиск',
+                noResultsText: 'Ничего не найдено',
+                footer: {
+                  selectText: 'Выбрать',
+                  selectKeyAriaLabel: 'Enter',
+                  navigateText: 'Перейти',
+                  navigateUpKeyAriaLabel: 'Стрелка вверх',
+                  navigateDownKeyAriaLabel: 'Стрелка вниз',
+                  closeText: 'Закрыть',
                   closeKeyAriaLabel: 'Esc',
                 },
               },

@@ -9,29 +9,32 @@ import {
   type UploadTheme,
 } from 'vue-flow-upload'
 import { createDemoDownloadTransport, createDemoUploadTransport } from '../demo-transport'
+import { DEMO_COPY, resolveDemoLocale, type FullUploadDemoCopy } from '../demo-text'
 
 /** 完整版示例中可切换的主题预设。 Theme presets selectable in the full demo. */
 const THEMES: UploadTheme[] = ['default', 'element-plus', 'ant-design-vue']
 /**
- * 可逐个关闭的操作权限及其界面文案；未关闭的权限不写入对象，保持组件“未填写即允许”的语义。
- * Per-operation permissions that can be switched off individually, with their labels; enabled ones are omitted so the component keeps its “omitted means allowed” semantics.
+ * 可逐个关闭的操作权限及其文案键；未关闭的权限不写入对象，保持组件“未填写即允许”的语义。
+ * Per-operation permissions that can be switched off individually, with their copy keys; enabled ones are omitted so the component keeps its “omitted means allowed” semantics.
  */
-const PERMISSION_FIELDS: { key: keyof UploadPermissions; zh: string; en: string }[] = [
-  { key: 'select', zh: '选择', en: 'Select' },
-  { key: 'upload', zh: '上传', en: 'Upload' },
-  { key: 'remove', zh: '删除', en: 'Remove' },
-  { key: 'retry', zh: '重试', en: 'Retry' },
-  { key: 'preview', zh: '预览', en: 'Preview' },
-  { key: 'download', zh: '下载', en: 'Download' },
-  { key: 'downloadAll', zh: '全部下载', en: 'Download all' },
+const PERMISSION_FIELDS: { key: keyof UploadPermissions; label: keyof FullUploadDemoCopy }[] = [
+  { key: 'select', label: 'permissionSelect' },
+  { key: 'upload', label: 'permissionUpload' },
+  { key: 'remove', label: 'permissionRemove' },
+  { key: 'retry', label: 'permissionRetry' },
+  { key: 'preview', label: 'permissionPreview' },
+  { key: 'download', label: 'permissionDownload' },
+  { key: 'downloadAll', label: 'permissionDownloadAll' },
 ]
 /** 归档轮询间隔（毫秒）；示例把它缩短，使打包下载的处理过程可被观察到。 Archive polling interval in milliseconds; the demo shortens it so archive processing is observable. */
 const DEMO_ARCHIVE_POLLING_INTERVAL_MS = 600
 
-/** 当前文档语言决定示例自身文案。 Current documentation language determines the demo's own copy. */
+/** 当前文档语言决定示例文案与组件默认语言。 Current documentation language determines demo copy and the component's default language. */
 const { lang } = useData()
-/** 是否正在浏览英文文档路径。 Whether the current documentation path is English. */
-const isEnglish = computed(() => lang.value === 'en-US')
+/** 归一化后的示例语言。 Normalized demo locale. */
+const demoLocale = computed(() => resolveDemoLocale(lang.value))
+/** 当前语言的示例文案。 Demo copy for the current language. */
+const text = computed(() => DEMO_COPY[demoLocale.value].full)
 
 /** 示例维护的受控文件列表。 Controlled file list maintained by the demo. */
 const files = ref<UploadFileItem[]>([])
@@ -72,8 +75,8 @@ const maxSizeMb = ref(0)
 const maxCount = ref(0)
 /** 组件主题预设或自定义主题适配器。 Component theme preset. */
 const theme = ref<UploadTheme>('default')
-/** 组件内置文案语言，可与文档语言不同，便于对比两种语言的布局。 Component copy language, independent of the document language so both layouts can be compared. */
-const locale = ref<'zh-CN' | 'en-US'>('zh-CN')
+/** 组件内置文案语言；初始与文档语言一致，之后可独立切换以对比两种语言的布局。 Component copy language; starts equal to the documentation language and can then be switched independently to compare both layouts. */
+const locale = ref<'zh-CN' | 'en-US' | 'ru-RU'>(resolveDemoLocale(lang.value))
 
 /** 传给组件的权限对象；未被关闭的权限不写入，保持组件的默认允许语义。 Permission object passed to the component; enabled permissions are omitted to keep the default allowed semantics. */
 const permissions = computed<UploadPermissions>(() => {
@@ -93,12 +96,6 @@ const maxSizeBytes = computed(() =>
 )
 /** 解析后的数量上限；`0` 时交给组件默认值。 Resolved count limit; `0` keeps the component default. */
 const maxCountValue = computed(() => (maxCount.value > 0 ? maxCount.value : undefined))
-/** 示例说明文案，随文档语言切换。 Demo caption, switching with the document language. */
-const demoCaption = computed(() =>
-  isEnglish.value
-    ? 'Change any control to see how the component disables or reshapes itself. Uploads, downloads, and archives are simulated in the browser.'
-    : '改动任意控件，观察组件如何禁用或改变形态。上传、下载与打包均在浏览器内模拟。',
-)
 
 /** 浏览器内模拟的上传适配器；卸载时释放其排队的计时器。 Browser-only upload adapter; its queued timers are released on unmount. */
 const demoUpload = createDemoUploadTransport()
@@ -131,89 +128,85 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <section
-    class="demo-shell"
-    :aria-label="isEnglish ? 'Full-featured upload demo' : '完整功能上传示例'"
-  >
+  <section class="demo-shell" :aria-label="text.ariaLabel">
     <div class="demo-controls demo-controls--stacked">
       <fieldset>
-        <legend>{{ isEnglish ? 'Operation' : '操作' }}</legend>
+        <legend>{{ text.groupOperation }}</legend>
         <label>
-          {{ isEnglish ? 'List type' : '列表形态' }}
+          {{ text.listType }}
           <select v-model="listType">
-            <option value="list">{{ isEnglish ? 'List' : '列表' }}</option>
-            <option value="picture">{{ isEnglish ? 'Picture wall' : '照片墙' }}</option>
+            <option value="list">{{ text.listTypeList }}</option>
+            <option value="picture">{{ text.listTypePicture }}</option>
           </select>
         </label>
         <label
           ><input v-model="drag" type="checkbox" />
-          {{ isEnglish ? 'Drag and drop' : '拖拽上传' }}</label
+          {{ text.drag }}</label
         >
         <label
           ><input v-model="selectable" type="checkbox" />
-          {{ isEnglish ? 'Batch select' : '批量选择' }}</label
+          {{ text.batchSelect }}</label
         >
         <label
           ><input v-model="showFileList" type="checkbox" />
-          {{ isEnglish ? 'File list' : '显示文件列表' }}</label
+          {{ text.fileList }}</label
         >
         <label
           ><input v-model="showOperation" type="checkbox" />
-          {{ isEnglish ? 'Toolbar' : '显示工具栏' }}</label
+          {{ text.toolbar }}</label
         >
       </fieldset>
 
       <fieldset>
-        <legend>{{ isEnglish ? 'Permissions' : '权限' }}</legend>
+        <legend>{{ text.groupPermissions }}</legend>
         <label v-for="field in PERMISSION_FIELDS" :key="field.key">
           <input v-model="permissionSwitches[field.key]" type="checkbox" />
-          {{ isEnglish ? field.en : field.zh }}
+          {{ text[field.label] }}
         </label>
         <label
           ><input v-model="disabled" type="checkbox" />
-          {{ isEnglish ? 'Disable all' : '全部禁用' }}</label
+          {{ text.disableAll }}</label
         >
       </fieldset>
 
       <fieldset>
-        <legend>{{ isEnglish ? 'Selection limits' : '选择限制' }}</legend>
+        <legend>{{ text.groupLimits }}</legend>
         <label>
-          {{ isEnglish ? 'Accepted types' : '接受类型' }}
+          {{ text.acceptedTypes }}
           <select v-model="accept">
-            <option value="all">{{ isEnglish ? 'Any file' : '全部文件' }}</option>
-            <option value="image">{{ isEnglish ? 'Images' : '仅图片' }}</option>
-            <option value="media">
-              {{ isEnglish ? 'Images, PDF, ZIP' : '图片、PDF、ZIP' }}
-            </option>
+            <option value="all">{{ text.acceptAll }}</option>
+            <option value="image">{{ text.acceptImage }}</option>
+            <option value="media">{{ text.acceptMedia }}</option>
           </select>
         </label>
         <label>
-          {{ isEnglish ? 'Max size MB (0 = none)' : '单文件上限 MB（0 不限）' }}
+          {{ text.maxSize }}
           <input v-model.number="maxSizeMb" type="number" min="0" step="1" />
         </label>
         <label>
-          {{ isEnglish ? 'Max count (0 = none)' : '数量上限（0 不限）' }}
+          {{ text.maxCount }}
           <input v-model.number="maxCount" type="number" min="0" step="1" />
         </label>
       </fieldset>
 
       <fieldset>
-        <legend>{{ isEnglish ? 'State, theme and language' : '状态、主题与语言' }}</legend>
+        <legend>{{ text.groupState }}</legend>
         <label
           ><input v-model="autoUpload" type="checkbox" />
-          {{ isEnglish ? 'Auto upload' : '自动上传' }}</label
+          {{ text.autoUpload }}</label
         >
         <label>
-          {{ isEnglish ? 'Theme' : '主题' }}
+          {{ text.theme }}
           <select v-model="theme">
             <option v-for="name in THEMES" :key="name" :value="name">{{ name }}</option>
           </select>
         </label>
         <label>
-          {{ isEnglish ? 'Component language' : '组件语言' }}
+          {{ text.componentLanguage }}
           <select v-model="locale">
             <option value="zh-CN">zh-CN</option>
             <option value="en-US">en-US</option>
+            <option value="ru-RU">ru-RU</option>
           </select>
         </label>
       </fieldset>
@@ -227,17 +220,12 @@ onBeforeUnmount(() => {
         :disabled="files.length === 0"
         @click="submitFiles"
       >
-        {{ isEnglish ? 'Start upload' : '开始上传' }}
+        {{ text.startUpload }}
       </button>
-      <button
-        class="demo-action"
-        type="button"
-        :disabled="files.length === 0"
-        @click="clearFiles"
-      >
-        {{ isEnglish ? 'Clear list' : '清空列表' }}
+      <button class="demo-action" type="button" :disabled="files.length === 0" @click="clearFiles">
+        {{ text.clearList }}
       </button>
-      <p class="demo-caption">{{ demoCaption }}</p>
+      <p class="demo-caption">{{ text.caption }}</p>
     </div>
 
     <FlowUpload
@@ -261,11 +249,7 @@ onBeforeUnmount(() => {
       :locale="locale"
       :archive-polling-interval="DEMO_ARCHIVE_POLLING_INTERVAL_MS"
     >
-      <template #tip>{{
-        isEnglish
-          ? 'Permission, layout, and selection limits apply immediately; nothing is sent to a server.'
-          : '权限、布局与选择限制即时生效；此示例不会发送任何网络请求。'
-      }}</template>
+      <template #tip>{{ text.tip }}</template>
     </FlowUpload>
   </section>
 </template>

@@ -7,11 +7,14 @@ import {
   type UploadFileItem,
   type UploadTransport,
 } from 'vue-flow-upload'
+import { DEMO_COPY, resolveDemoLocale } from '../demo-text'
 
-/** 当前文档语言决定头像演示台自身文案和组件 locale。 Current documentation language determines avatar-demo copy and component locale. */
+/** 当前文档语言决定示例文案与组件 locale。 Current documentation language determines demo copy and the component locale. */
 const { lang } = useData()
-/** 是否正在浏览英文文档路径。 Whether the current documentation path is English. */
-const isEnglish = computed(() => lang.value === 'en-US')
+/** 归一化后的示例语言。 Normalized demo locale. */
+const demoLocale = computed(() => resolveDemoLocale(lang.value))
+/** 当前语言的示例文案。 Demo copy for the current language. */
+const text = computed(() => DEMO_COPY[demoLocale.value].avatar)
 
 /** 文档头像示例维护的受控头像列表。 Controlled avatar list maintained by the documentation avatar demo. */
 const avatarFiles = ref<UploadFileItem[]>([])
@@ -61,41 +64,30 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <section
-    class="demo-shell"
-    :aria-label="isEnglish ? 'Interactive avatar upload demo' : '头像上传交互示例'"
-  >
-    <div
-      class="demo-controls"
-      :aria-label="isEnglish ? 'Avatar demo settings' : '头像示例配置'"
-    >
+  <section class="demo-shell" :aria-label="text.ariaLabel">
+    <div class="demo-controls" :aria-label="text.settingsLabel">
       <label>
-        {{ isEnglish ? 'Shape' : '形状' }}
+        {{ text.shape }}
         <select v-model="avatarShape">
-          <option value="circle">{{ isEnglish ? 'Circle' : '圆形' }}</option>
-          <option value="square">{{ isEnglish ? 'Square' : '方形' }}</option>
+          <option value="circle">{{ text.shapeCircle }}</option>
+          <option value="square">{{ text.shapeSquare }}</option>
         </select>
       </label>
       <label
         ><input v-model="avatarReadOnly" type="checkbox" />
-        {{ isEnglish ? 'Read only' : '只读' }}</label
+        {{ text.readOnly }}</label
       >
       <label
         ><input v-model="avatarPreview" type="checkbox" />
-        {{ isEnglish ? 'Enable preview' : '允许预览' }}</label
+        {{ text.preview }}</label
       >
     </div>
-    <p class="demo-caption">
-      {{
-        isEnglish
-          ? 'Select an image, adjust it in the crop box, and confirm. Upload is simulated entirely in the browser.'
-          : '选择一张图片，在裁剪框中调整后确认；上传过程仅在浏览器内模拟。'
-      }}
-    </p>
+    <p class="demo-caption">{{ text.caption }}</p>
     <AvatarUpload
       v-model="avatarFiles"
+      belong-id="demo-profile-1"
       :transport="avatarTransport"
-      :locale="isEnglish ? 'en-US' : 'zh-CN'"
+      :locale="demoLocale"
       accept="image/*"
       :max-size="5 * 1024 * 1024"
       :width="190"

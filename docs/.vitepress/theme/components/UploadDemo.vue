@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, ref } from 'vue'
 import { useData } from 'vitepress'
 import { FlowUpload, type UploadFileItem } from 'vue-flow-upload'
 import { createDemoUploadTransport } from '../demo-transport'
+import { DEMO_COPY, resolveDemoLocale } from '../demo-text'
 
 /**
  * 文档上传示例的输入；手动模式仅用于演示实例方法，不改变组件的生产行为。
@@ -15,25 +16,21 @@ interface UploadDemoProps {
 
 /** 经过 TypeScript 约束的示例输入。 TypeScript-constrained demo input. */
 const props = withDefaults(defineProps<UploadDemoProps>(), { manual: false })
-/** 当前文档语言决定演示台自身文案和组件 locale。 Current documentation language determines demo-owned copy and the component locale. */
+/** 当前文档语言决定示例文案与组件 locale。 Current documentation language determines demo copy and the component locale. */
 const { lang } = useData()
-/** 是否正在浏览英文文档路径。 Whether the current documentation path is English. */
-const isEnglish = computed(() => lang.value === 'en-US')
+/** 归一化后的示例语言。 Normalized demo locale. */
+const demoLocale = computed(() => resolveDemoLocale(lang.value))
+/** 当前语言的示例文案。 Demo copy for the current language. */
+const text = computed(() => DEMO_COPY[demoLocale.value].upload)
 /** 文档示例所维护的受控文件列表。 Controlled file list maintained by the documentation demo. */
 const files = ref<UploadFileItem[]>([])
 /** 供手动模式调用的组件公开方法。 Component exposed methods used by manual mode. */
 const uploader = ref<{ submit: () => Promise<void> }>()
 /** 文档示例共用的浏览器内上传适配器；卸载时统一释放它排队的计时器。 Shared browser-only upload adapter for the demo; its queued timers are released together on unmount. */
 const demoUpload = createDemoUploadTransport()
-/** 根据模式生成清晰的示例提示。 Produces a clear demo hint based on the selected mode. */
+/** 示例说明文案，随演示模式变化。 Caption following the selected demo mode. */
 const demoCaption = computed(() =>
-  props.manual
-    ? isEnglish.value
-      ? 'Select files, then choose “Start upload” to run the queue.'
-      : '选择文件后，点击“开始上传”触发队列。'
-    : isEnglish.value
-      ? 'Select or drop files to see the component’s real upload states.'
-      : '选择或拖入文件，查看组件的真实上传状态变化。',
+  props.manual ? text.value.captionManual : text.value.captionAuto,
 )
 
 /**
@@ -54,10 +51,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <section
-    class="demo-shell"
-    :aria-label="isEnglish ? 'Interactive file upload demo' : '文件上传交互示例'"
-  >
+  <section class="demo-shell" :aria-label="text.ariaLabel">
     <div class="demo-toolbar">
       <button
         v-if="manual"
@@ -66,7 +60,7 @@ onBeforeUnmount(() => {
         :disabled="files.length === 0"
         @click="submitSelectedFiles"
       >
-        {{ isEnglish ? 'Start upload' : '开始上传' }}
+        {{ text.startUpload }}
       </button>
       <p class="demo-caption">{{ demoCaption }}</p>
     </div>
@@ -76,16 +70,12 @@ onBeforeUnmount(() => {
       belong-id="demo-order-1"
       :auto-upload="!manual"
       :transport="demoUpload.transport"
-      :locale="isEnglish ? 'en-US' : 'zh-CN'"
+      :locale="demoLocale"
       accept="image/*,.pdf,.zip"
       drag
       :max-count="3"
     >
-      <template #tip>{{
-        isEnglish
-          ? 'Images, PDFs, and ZIP files; this demo sends no network request.'
-          : '支持图片、PDF、ZIP；此示例不会发送网络请求。'
-      }}</template>
+      <template #tip>{{ text.tip }}</template>
     </FlowUpload>
   </section>
 </template>
