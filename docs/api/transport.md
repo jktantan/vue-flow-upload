@@ -42,6 +42,20 @@ const transport = createHttpUploadTransport({
 
 `{fileId}`、`{uploadId}` 和 `{index}` 是模板占位符；动态 ID 会由内置适配器编码后写入 URL。
 
+### 创建选项
+
+除上述地址外，`createHttpUploadTransport` 还接受以下选项：
+
+| 选项            | 默认值   | 说明                                                                                          |
+| --------------- | -------- | --------------------------------------------------------------------------------------------- |
+| `baseUrl`       | —        | 相对端点前附加的 API 前缀或源站；完整 `http(s)` 地址不受影响。                                 |
+| `method`        | `'POST'` | 普通上传使用的 HTTP 方法，可设为 `'PUT'`。                                                     |
+| `credentials`   | —        | 设为 `'include'` 时随跨域请求发送 Cookie。                                                     |
+| `timeout`       | `60000`  | 单次请求超时（毫秒）。                                                                        |
+| `parseResponse` | —        | 将上传响应的 `XMLHttpRequest` 转换为 `UploadSuccessResult`；默认解析 JSON，空响应视为 `{}`。    |
+
+`deleteUrl`、`multipart.chunkUrl`、`multipart.completeUrl` 和 `multipart.cancelUrl` 除字符串模板外也可传入回调函数，例如 `(fileId) => \`/files/${fileId}\``，由调用方自行拼接并编码动态值。
+
 ## 开发自定义上传适配器
 
 当项目使用 Axios、Fetch 封装、签名直传或对象存储 SDK 时，实现 `UploadTransport` 并传给 `transport`。最小实现只需要 `uploadFile`；其他方法按后端能力增量实现。

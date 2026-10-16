@@ -4,7 +4,7 @@
 
 ## 联调前的共同约定
 
-- 所有控制面接口（创建、秒传检查、分片初始化/合并、查询、归档）使用 JSON；成功响应应直接是本页所示对象，不能额外包一层 `code`、`data`。若项目已有 `{ code, data }` 包装，请在适配器的 `parseResponse`、`parseArchiveResponse` 或 `parseResponse` 中解包。
+- 所有控制面接口（创建、秒传检查、分片初始化/合并、查询、归档）使用 JSON；成功响应应直接是本页所示对象，不能额外包一层 `code`、`data`。若项目已有 `{ code, data }` 包装，请在适配器的 `parseResponse`（上传与查询）、`parseArchiveResponse` 或 `parseDownloadResponse` 中解包。
 - 普通上传使用 `multipart/form-data`，浏览器自动生成 boundary；请勿要求前端手动设置 `Content-Type`。
 - `auth.headers` 会作为 HTTP 请求头发送；`auth.query` 会追加到每个内置上传、下载、查询 URL。业务归属不要放到 URL query，应放在 `data` 或 `query`。
 - 任一 `2xx` 状态码都视为成功；空响应只允许普通上传、删除、分片上传和取消归档。查询、秒传检查、创建记录、分片初始化、合并和归档创建/查询必须返回 JSON。
@@ -202,16 +202,13 @@ Content-Disposition: attachment; filename*=UTF-8''invoice.pdf
 | 查询任务 | `GET archive.taskUrl` | 无 body | `ArchiveTask` |
 | 取消任务 | `DELETE archive.cancelUrl` | 无 body | 可为空 |
 
-默认按当前可见文件创建任务时，body 为：
+“下载选中项”与“全部下载”默认只提交已持久化文件的 ID 列表，body 为：
 
 ```json
-{
-  "fileIds": ["file_123", "file_456"],
-  "archiveName": "order-1001-attachments.zip"
-}
+{ "fileIds": ["file_123", "file_456"] }
 ```
 
-设置 `all-download-scope` 后，组件可能使用服务端查询范围代替一长串文件 ID：
+设置 `all-download-scope` 后，组件改用服务端查询范围，避免传递一长串文件 ID：
 
 ```json
 {
@@ -219,12 +216,11 @@ Content-Disposition: attachment; filename*=UTF-8''invoice.pdf
     "type": "server-query",
     "queryKey": "order-attachments",
     "query": { "orderId": "order-1001", "includeArchived": false }
-  },
-  "archiveName": "order-1001-attachments.zip"
+  }
 }
 ```
 
-另一种显式范围的 `scope` 为 `{ "type": "file-ids", "fileIds": ["file_123"] }`。服务端应只接受调用方有权限访问的文件；不能仅信任传入 ID。
+另一种显式范围的 `scope` 为 `{ "type": "file-ids", "fileIds": ["file_123"] }`。`DownloadTransport.createArchive` 还接受可选的 `archiveName`，但组件当前不设置该字段；需要固定归档名时请在自定义适配器或服务端补充。服务端应只接受调用方有权限访问的文件；不能仅信任传入 ID。
 
 `ArchiveTask` 的响应格式如下，`status` 只能为 `pending`、`processing`、`success`、`failed`、`canceled`：
 

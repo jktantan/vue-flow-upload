@@ -66,7 +66,7 @@ onBeforeUnmount(() => {
     :aria-label="isEnglish ? 'Interactive avatar upload demo' : '头像上传交互示例'"
   >
     <div
-      class="avatar-demo-controls"
+      class="demo-controls"
       :aria-label="isEnglish ? 'Avatar demo settings' : '头像示例配置'"
     >
       <label>

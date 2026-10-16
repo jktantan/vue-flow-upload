@@ -11,6 +11,7 @@ import AvatarDemo from '../.vitepress/theme/components/AvatarDemo.vue'
 ```vue
 <AvatarUpload
   v-model="avatarFiles"
+  belong-id="profile-1"
   :transport="transport"
   accept="image/*"
   :max-size="5 * 1024 * 1024"

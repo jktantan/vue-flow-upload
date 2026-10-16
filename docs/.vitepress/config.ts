@@ -39,6 +39,7 @@ const zhSidebar = [
     items: [
       { text: '基础上传', link: '/demos/basic-upload' },
       { text: '手动上传', link: '/demos/manual-upload' },
+      { text: '完整上传', link: '/demos/full-upload' },
       { text: '头像上传', link: '/demos/avatar-upload' },
     ],
   },
@@ -69,6 +70,7 @@ const enSidebar = [
     items: [
       { text: 'Basic upload', link: '/en/demos/basic-upload' },
       { text: 'Manual upload', link: '/en/demos/manual-upload' },
+      { text: 'Full-featured upload', link: '/en/demos/full-upload' },
       { text: 'Avatar upload', link: '/en/demos/avatar-upload' },
     ],
   },

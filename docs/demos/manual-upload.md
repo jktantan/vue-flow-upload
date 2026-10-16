@@ -25,7 +25,7 @@ function submitFiles(): void {
 </script>
 
 <template>
-  <FlowUpload ref="uploader" v-model="files" :auto-upload="false" :transport="transport" />
+  <FlowUpload ref="uploader" v-model="files" belong-id="order-1" :auto-upload="false" :transport="transport" />
   <button type="button" @click="submitFiles">开始上传</button>
 </template>
 ```

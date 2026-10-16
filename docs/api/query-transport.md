@@ -18,11 +18,13 @@ Playground 的“本地 SQLite”模式通过 `createHttpFileQueryTransport` 调
 | 分页   | `{ enabled: true, currentPage, pageSize }` | `{ enabled: true, currentPage, pageSize, total }` |
 
 分页响应中的 `currentPage` 和 `pageSize` 是后端实际采用的值，可用于纠正越界页；`total` 是符合当前筛选条件的全部记录数。两种模式都必须返回 `files`。
-内置 HTTP 适配器会校验每条文件记录的字符串 `name`，以及提供时的 `type`、`status`、`fileId`、`uid`、URL、大小和进度字段；分页数字必须为有效的非负整数，页码与页大小还须大于零。无效响应以 `INVALID_RESPONSE` 报告。
+内置 HTTP 适配器会校验分页模式与每条文件记录：`name` 必填且必须是字符串；提供时的 `type`、`uid`、`fileId`、`url`、`thumbnailUrl` 必须是字符串，`size` 必须是非负有限数，`percent` 必须在 0–100 之间，`status` 必须是组件已知的文件状态；记录中出现浏览器专属的 `file` 字段会被拒绝。分页数字必须为整数且非负，`currentPage`、`pageSize` 还须大于零，`pagination.enabled` 必须与请求一致。无效响应以 `INVALID_RESPONSE` 报告。
 
 ## HTTP 查询适配器
 
 `createHttpFileQueryTransport` 使用 JSON `POST` 调用 `queryUrl`。该地址的职责是根据业务归属、`extra` 匹配条件和明确的分页模式返回文件元数据；它不是上传或下载二进制的地址。
+
+除 `queryUrl` 外，适配器还接受 `baseUrl`（相对地址前缀）、`credentials`（`'include'` 时发送跨域 Cookie）、`timeout`（默认 60000 毫秒）和 `parseResponse(response, input)`（自定义结果转换，默认验证 `files` 与分页结构）。
 
 ```ts
 import { createHttpFileQueryTransport } from 'vue-flow-upload'

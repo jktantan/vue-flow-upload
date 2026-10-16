@@ -196,13 +196,13 @@ createApp(App).use(createFlowUploadI18n({ locale: 'en-US' }))
 | ---------------------------------------------------------------------- | -------------------------------------------------------------------------------- | -------------------------------------------- |
 | `action` / `transport`                                                 | 内置普通上传 URL / 自定义协议；同时传入时 `transport` 优先                       | —                                            |
 | `create-action`、`delete-action`                                       | 上传前创建文件记录 / 按 `fileId` 清理远端文件及上传会话                          | —                                            |
-| `v-model`、`default-file-list`                                         | 受控文件列表 / 非受控初始列表；远端回显建议提供 `uid`、`fileId`、`url`、`status` | `[]`                                         |
+| `v-model`、`default-file-list`                                         | 受控文件列表 / 非受控初始列表；远端回显建议提供 `uid`、`fileId`、`url`、`status` | `—`、`[]`                                     |
 | `multiple`、`max-count`、`max-size`、`accept`                          | 选择和校验限制                                                                   | `true`、无限制、无限制、全部                 |
 | `auto-upload`                                                          | 选择后立刻上传；关闭后调用实例 `submit()`                                        | `true`                                       |
 | `drag`、`directory`                                                    | 启用整组件拖拽上传及操作区提示、浏览器支持的目录选择                             | `true`、`false`                              |
 | `width`、`height`                                                      | 上传组件的 CSS 尺寸；数字按 px 处理。`height="auto"` 会填满具有明确高度的父容器  | `auto`、`600px`                              |
 | `show-file-list`                                                       | 是否渲染内置列表                                                                 | `true`                                       |
-| `pagination`                                                           | `false` 关闭，或传入受控分页状态；翻页后由业务方拉取对应文件并更新 `v-model`     | `false`                                      |
+| `pagination`                                                           | `false` 关闭，或传入受控分页状态；翻页后由业务方拉取对应文件并更新 `v-model`     | 未设置                                       |
 | `list-type`                                                            | `list` 或 `picture`；`picture` 以图片墙卡片展示                                  | `list`                                       |
 | `data`                                                                 | 对象或返回对象的异步函数；认证头请在全局 `auth.headers` 中配置                   | `{}`                                         |
 | `normal-upload-threshold`、`chunk-size`                                | 超过阈值时走分片；需 transport 支持分片                                          | 10 MiB、1 MiB                                |
@@ -218,7 +218,8 @@ createApp(App).use(createFlowUploadI18n({ locale: 'en-US' }))
 ## 事件、插槽与实例
 
 事件：`change(file, files)`、`progress(file, percent)`、`success(file, response)`、`error(file, error)`、`remove(file)`、
-`exceed(files)`；分页开启时还会发出 `update:pagination(value)` 和 `pagination-change(currentPage, pageSize)`；下载与归档还会发出
+`exceed(files)`；配置查询适配器时还会发出 `query-loading(isLoading)`、`query-success(result)` 和 `query-error(error)`；分页开启时发出
+`update:pagination(value)` 与 `pagination-change(currentPage, pageSize)`；下载与归档还会发出
 `download-start/success/error`、`archive-start/progress/success/error`
 。完整参数和事件表见 [FlowUpload API](../../docs/api/flow-upload.md)。
 
@@ -274,7 +275,8 @@ async function loadFiles(currentPage: number, pageSize: number) {
 - `#tip`：紧跟选择区的说明。
 - `#file="{ file, remove, preview, download, pause, resume, retry }"`：替换单个文件条目。
 
-通过 `ref` 可调用 `submit()`、`abort(file?)`、`pause(uid)`、`resume(uid)`、`retry(uid)`、`remove(uid)`、`clear()`/
-`clearFiles()`、`handleStart(file)`、`handleRemove(file)`；此外还提供下载与归档方法。
+通过 `ref` 可调用 `submit()`、`abort(file?)`、`pause(uid)`、`resume(uid)`、`retry(uid)`、`remove(uid | file)`、`clear()`/
+`clearFiles()`、`handleStart(file)`、`handleRemove(uid | file)`、`refreshQuery()`，以及下载与归档方法 `download(uid)`、
+`downloadSelected(uids)`、`downloadAll()`、`cancelArchive(taskId)`。
 
 完整后端分片协议见 [`docs/guide/backend-api-contract.md`](../../docs/guide/backend-api-contract.md)。

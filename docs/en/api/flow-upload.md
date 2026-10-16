@@ -14,7 +14,7 @@
 | `download-transport`                         | `DownloadTransport`                   | —                        | Direct download and archive protocol.                                     |
 | `query-transport`                            | `FileQueryTransport`                  | —                        | File-list loading and pagination protocol.                                |
 | `query-on-mount`                             | `boolean`                             | `true`                   | Load through the query transport after mount.                             |
-| `pagination`                                 | `false \| UploadPagination`           | `false`                  | Enables pagination; query transport loads the selected page.              |
+| `pagination`                                 | `false \| UploadPagination`           | not set                  | Enables pagination; query transport loads the selected page.              |
 | `accept`, `max-size`, `max-count`            | —                                     | —                        | Browser file restrictions.                                                |
 | `auto-upload`                                | `boolean`                             | `true`                   | Starts upload immediately after selection.                                |
 | `multiple`, `drag`, `directory`              | `boolean`                             | `true`, `true`, `false`  | Allows multi-select, dropping files, or folder selection where supported. |
@@ -24,6 +24,7 @@
 | `disabled`, `permissions`                    | `boolean`, `UploadPermissions`        | `false`, `{}`            | Disables all actions or controls them individually.                       |
 | `data`, `file-field-name`, `data-field-name` | `UploadData`, `string`, `string`      | —, `'file'`, `'data'`    | Business payload and multipart field names.                               |
 | `create-action`, `delete-action`, `method`   | `string`, `string`, `'POST' \| 'PUT'` | —, —, `'POST'`           | Built-in transport endpoints and normal-upload HTTP method.               |
+| `i18n`, `theme`, `on-preview`                | `FlowUploadI18nOptions`, `UploadTheme`, `(file) => void` | —, `'default'`, —        | Component i18n config, theme preset or adapter, and custom preview handler. |
 
 ## Large-file and archive options
 
@@ -49,6 +50,6 @@
 | `query-loading`, `query-success`, `query-error` | `(boolean)`, `(result)`, `(error)`   | File-query lifecycle; cancelled requests do not emit an error. |
 | `update:pagination`, `pagination-change`        | `(value)`, `(currentPage, pageSize)` | Controlled pagination changes.                                 |
 
-The component instance exposes `submit()`, `abort()`, `retry()`, `pause()`, `resume()`, `remove()`, `clear()`, `download()`, `downloadAll()`, and `refreshQuery()`.
+The component instance exposes `submit()`, `abort(file?)`, `retry(uid)`, `pause(uid)`, `resume(uid)`, `remove(uid | file)`, `clear()`, `clearFiles()`, `handleStart(file)`, `handleRemove(uid | file)`, `download(uid)`, `downloadSelected(uids)`, `downloadAll()`, `cancelArchive(taskId)`, and `refreshQuery()`.
 
 `hashStrategy` on an `UploadFileItem` records the client implementation that completed SHA-256 (`web-crypto`, `wasm`, or `local`). It is diagnostic only and never changes the digest or server protocol.

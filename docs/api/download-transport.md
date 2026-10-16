@@ -46,6 +46,18 @@ const downloadTransport = createHttpDownloadTransport({
 
 归档状态只接受 `pending`、`processing`、`success`、`failed` 或 `canceled`。后端响应结构不同可提供 `parseArchiveResponse`；下载响应不直接返回 Blob 时可提供 `parseDownloadResponse`。
 
+### 创建选项
+
+除上述地址外，`createHttpDownloadTransport` 还接受以下选项：
+
+| 选项                    | 默认值  | 说明                                                                                              |
+| ----------------------- | ------- | ------------------------------------------------------------------------------------------------- |
+| `baseUrl`               | —       | 相对端点前附加的 API 前缀或源站；完整 `http(s)` 地址不受影响。                                     |
+| `credentials`           | —       | 设为 `'include'` 时随跨域请求发送 Cookie。                                                         |
+| `timeout`               | `60000` | 单次下载或归档请求的超时（毫秒）。                                                                |
+| `parseDownloadResponse` | —       | `(response, fallbackFileName) => DownloadResource`；默认读取 Blob 与 `Content-Disposition` 文件名。 |
+| `parseArchiveResponse`  | —       | `(response) => ArchiveTask`；默认要求 `taskId` 与合法 `status`。                                   |
+
 ## 开发自定义下载适配器
 
 当下载需要短期签名 URL、对象存储 SDK、公司请求层或非标准归档协议时，实现 `DownloadTransport` 并传给 `download-transport`。

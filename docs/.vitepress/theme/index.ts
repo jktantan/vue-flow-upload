@@ -1,6 +1,6 @@
 import DefaultTheme from 'vitepress/theme'
 import type { Theme } from 'vitepress'
-import { vueFlowUpload } from 'vue-flow-upload'
+import { createFlowUploadI18n, vueFlowUpload } from 'vue-flow-upload'
 import '../../../packages/vue-flow-upload/src/styles/flow-upload.scss'
 // 显式引入 Viewer.js 样式，避免 VitePress 外部化组件库时丢失查看器布局规则。
 // Import Viewer.js styles explicitly so VitePress externalization cannot drop the viewer layout rules.
@@ -18,6 +18,9 @@ const theme: Theme = {
    * Installs the component plugin for interactive examples; each demo supplies a mock transport and makes no real network requests.
    */
   enhanceApp({ app }) {
+    // 提供宿主 i18n 实例，使未显式传入 locale 的组件也有可用文案，并避免缺少注入的运行时警告。
+    // Provides a host i18n instance so components without an explicit locale always have copy and no missing-injection warning is raised.
+    app.use(createFlowUploadI18n())
     app.use(vueFlowUpload)
   },
 }

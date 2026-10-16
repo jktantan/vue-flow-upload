@@ -34,6 +34,7 @@
 
 .vp-doc .demo-toolbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
   margin-bottom: 16px;
@@ -102,9 +103,9 @@
   max-width: none;
 }
 
-/* 头像示例把三个常用展示开关放在上传组件上方，便于直接比较交互组合。
- * The avatar demo places its three common display controls above the uploader for direct comparison. */
-.vp-doc .avatar-demo-controls {
+/* 示例把常用参数控件放在组件上方，便于直接比较不同组合；上传与头像示例共用同一套控件样式。
+ * Demos place parameter controls above the component so combinations are easy to compare; the upload and avatar demos share one control style. */
+.vp-doc .demo-controls {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -112,7 +113,33 @@
   margin-bottom: 16px;
 }
 
-.vp-doc .avatar-demo-controls label {
+/* 参数较多的完整示例按 fieldset 分组竖排，避免控件挤在一行难以阅读。
+ * The full demo with many parameters stacks fieldset groups so controls stay readable instead of crowding one line. */
+.vp-doc .demo-controls--stacked {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+}
+
+.vp-doc .demo-controls--stacked fieldset {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 10px;
+}
+
+.vp-doc .demo-controls--stacked legend {
+  padding: 0 6px;
+  color: var(--vp-c-text-2);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.vp-doc .demo-controls label {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -120,7 +147,8 @@
   font-size: 13px;
 }
 
-.vp-doc .avatar-demo-controls select {
+.vp-doc .demo-controls select,
+.vp-doc .demo-controls input[type='number'] {
   min-height: 30px;
   border: 1px solid var(--vp-c-divider);
   border-radius: 6px;
@@ -129,9 +157,15 @@
   background: var(--vp-c-bg);
 }
 
+.vp-doc .demo-controls input[type='number'] {
+  width: 84px;
+}
+
 .vp-doc .demo-action {
+  flex: none;
   min-height: 32px;
   padding: 0 12px;
+  white-space: nowrap;
   border: 1px solid var(--vp-c-brand-1);
   border-radius: 6px;
   color: #fff;
@@ -179,29 +213,12 @@
   visibility: visible;
 }
 
-/* 复用 VitePress 原生语言菜单，仅将当前语言代码直接显示在按钮中，避免新增第二个语言下拉。
- * Reuse the native VitePress language menu and show the current language code in its button, avoiding a second language dropdown. */
-.VPNavBarTranslations .option-icon {
-  display: none;
-}
-
-.VPNavBarTranslations .text::before {
-  content: 'CN';
-  color: var(--vp-c-text-1);
-  font-size: 13px;
-  font-weight: 500;
-}
-
-html[lang='en-US'] .VPNavBarTranslations .text::before {
-  content: 'EN';
-}
-
 @media (max-width: 640px) {
   .vp-doc .demo-shell {
     padding: 14px;
   }
 
-  .vp-doc .avatar-demo-controls {
+  .vp-doc .demo-controls {
     align-items: flex-start;
     flex-direction: column;
     gap: 9px;
