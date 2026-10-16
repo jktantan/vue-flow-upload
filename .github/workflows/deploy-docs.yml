@@ -1,0 +1,70 @@
+# 把 VitePress 文档站发布到 GitHub Pages；仅在文档、组件源码或本工作流变化时触发。
+# Publishes the VitePress site to GitHub Pages; runs only when docs, component source, or this workflow change.
+name: Deploy docs
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'docs/**'
+      - 'packages/vue-flow-upload/src/**'
+      - 'package.json'
+      - 'pnpm-workspace.yaml'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/deploy-docs.yml'
+  # 允许在仓库设置完成后手动触发一次首次部署。
+  # Allows a manual first deployment after the repository settings are ready.
+  workflow_dispatch:
+
+# GitHub Pages 部署需要写入 Pages 与使用 OIDC 令牌的最小权限。
+# Minimal permissions for publishing to Pages and using an OIDC token.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同一时间只保留一个部署，避免并发推送互相覆盖。
+# Keeps a single deployment at a time so concurrent pushes cannot overwrite each other.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    # 构建超时上限，避免依赖安装异常时任务长时间占用。
+    # Upper build timeout so an abnormal dependency install cannot hold a runner for long.
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      # 版本取自根 package.json 的 packageManager 字段。
+      # The version comes from the packageManager field in the root package.json.
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      # 仓库当前未提交 pnpm-lock.yaml，因此显式允许解析依赖。
+      # The repository does not commit pnpm-lock.yaml yet, so dependency resolution is explicitly allowed.
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+      # 先获取 Pages 元数据（如站点 base 路径），再进行构建。
+      # Fetch Pages metadata (such as the site base path) before building.
+      - uses: actions/configure-pages@v5
+      - name: Build documentation
+        run: pnpm build:docs
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/.vitepress/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

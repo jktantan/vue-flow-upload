@@ -81,6 +81,13 @@ const enSidebar = [
  * Navigation and build configuration for the consumer docs; it contains only onboarding, API, and runnable examples.
  */
 export default defineConfig({
+  /**
+   * GitHub Pages 项目页把站点挂在仓库子路径下；本地 docs:dev 与 docs:preview 也从同一路径访问，
+   * 避免构建产物里的绝对资源路径在线上 404。
+   * The GitHub Pages project site serves the docs from a repository sub-path; local docs:dev and docs:preview
+   * use the same path so absolute asset URLs in the build output never 404.
+   */
+  base: '/vue-flow-upload/',
   /** 文档站标题，显示在浏览器标题和导航栏中。 Site title shown in the browser title and navigation bar. */
   title: 'Vue Flow Upload',
   /** 文档站简短说明，用于搜索结果和首页辅助文案。 Short site description for search results and homepage supporting copy. */

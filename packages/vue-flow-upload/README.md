@@ -1,11 +1,93 @@
 # vue-flow-upload
 
-> 完整的接入步骤、参数表、事件、实例方法、头像和分片示例见 [使用文档](../../docs/guide/getting-started.md)。维护者与后端协作资料见 [`internal-docs/`](../../internal-docs/)。
+[![npm version](https://img.shields.io/npm/v/vue-flow-upload.svg)](https://www.npmjs.com/package/vue-flow-upload)
+[![license](https://img.shields.io/npm/l/vue-flow-upload.svg)](https://github.com/jktantan/vue-flow-upload/blob/main/packages/vue-flow-upload/LICENSE)
+
+面向 Vue 3 的文件与头像上传组件：普通上传开箱即用，大文件由分片、断点续传、SHA-256 秒传与并发调度承接，并可选下载与服务端打包。
+
+Vue 3 file and avatar upload components: normal uploads work out of the box, while chunked upload, resumable sessions, SHA-256 instant upload, and concurrency scheduling cover large files, with optional downloads and server-side archives.
+
+- **文档站**：<https://jktantan.github.io/vue-flow-upload/>
+- **可操作 DEMO**：<https://jktantan.github.io/vue-flow-upload/demos/full-upload.html> —— 实时切换列表/照片墙、逐项权限、拖拽、主题与语言
+- **后端联调协议**：<https://jktantan.github.io/vue-flow-upload/guide/backend-api-contract.html>
+
+## 安装
+
+```bash
+pnpm add vue-flow-upload
+```
+
+`vue`（`^3.5.0`）是 peer dependency，由宿主应用提供；Nuxt 用户需自行安装 Nuxt 3 或 4。
+
+## 最小使用
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue'
+import { FlowUpload, type UploadFileItem } from 'vue-flow-upload'
+import 'vue-flow-upload/style.css'
+
+// 受控文件列表；组件通过 update:modelValue 回写完整状态。
+// Controlled file list; the component writes the complete state back through update:modelValue.
+const files = ref<UploadFileItem[]>([])
+</script>
+
+<template>
+  <FlowUpload
+    v-model="files"
+    belong-id="order-1"
+    action="/api/files"
+    drag
+    accept="image/*,.pdf"
+    :max-size="20 * 1024 * 1024"
+  >
+    <template #tip>单个文件不超过 20 MB</template>
+  </FlowUpload>
+</template>
+```
+
+`action` 是内置 XHR `transport` 的普通上传 URL 快捷写法，支持 `method`、`data`、`create-action`、`delete-action` 与全局 `auth` 配置；它只实现普通上传。秒传、分片、续传、非标准响应结构或项目请求封装需要 `transport`。两者同时提供时，`transport` 优先，因此一个组件实例只应维护一种协议入口。
+
+认证配置只在 `app.use(vueFlowUpload, config)` 初始化时设置：`baseUrl` 为内置 HTTP 端点添加统一前缀，`credentials` 控制 Cookie，`headers` 控制认证请求头，`query` 添加统一 URL 参数。它们会应用到所有内置上传、分片、合并、删除和头像请求；完整 `http(s)` 地址不会拼接 `baseUrl`。不要在组件上重复配置认证信息，也不要把敏感 Token 放在 query 中。
+
+## AvatarUpload 头像组件
+
+`AvatarUpload` 是独立的单头像组件：选择图片后以 1:1 比例裁剪为 512 × 512 文件，不显示文件列表或上传进度，支持预览、更新、删除，以及在裁剪对话框内拖入新图片。
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue'
+import { AvatarUpload, type UploadFileItem } from 'vue-flow-upload'
+
+// 单元素头像列表；组件只渲染第一项。
+// Single-entry avatar list; the component renders only the first item.
+const avatar = ref<UploadFileItem[]>([])
+</script>
+
+<template>
+  <AvatarUpload
+    v-model="avatar"
+    belong-id="profile-1"
+    action="/avatar"
+    update-action="/avatar/{fileId}"
+    delete-action="/avatar/{fileId}"
+    accept="image/*"
+    shape="circle"
+  />
+</template>
+```
+
+首次上传走 `action`；已有头像并配置 `update-action` 时，组件会向替换 `{fileId}` 后的 URL 发出 `PUT`，并提交 `file`、`fileId` 两个 multipart 字段。首次响应必须返回 `fileId`，否则无法生成后续更新 URL。`baseUrl` 会加到相对地址前，完整 `http(s)` URL 不受影响。若使用自定义 `transport` 处理更新，请不要传 `update-action`。
+
+`shape` 控制头像卡片和裁剪框的视觉轮廓，可选 `square`（默认）或 `circle`；圆形仅是展示遮罩，上传结果仍是 512 × 512 方形图片。`read-only` 会禁止选择、替换和删除，但 `preview` 保持开启时仍可预览已有头像：
+
+```vue
+<AvatarUpload v-model="avatar" belong-id="profile-1" read-only shape="circle" />
+```
 
 ## Nuxt 接入
 
-在 `nuxt.config.ts` 中添加模块。模块会注册仅客户端渲染的 `FlowUpload` 和 `AvatarUpload`，并自动导入组件样式；因此不会在 SSR
-阶段访问浏览器文件、预览或裁剪 API。
+在 `nuxt.config.ts` 中添加模块。模块会注册仅客户端渲染的 `FlowUpload` 和 `AvatarUpload`，并自动导入组件样式；因此不会在 SSR 阶段访问浏览器文件、预览或裁剪 API。
 
 ```ts
 export default defineNuxtConfig({
@@ -43,84 +125,14 @@ export default defineNuxtPlugin((nuxtApp) => {
 
 ```vue
 <template>
-  <FlowUpload v-model="files" action="/files" />
+  <FlowUpload v-model="files" belong-id="order-1" action="/files" />
 </template>
 ```
 
 设置 `prefix: 'App'` 会将注册名改为 `AppFlowUpload` 和 `AppAvatarUpload`。这里的 `prefix` 只影响组件名，接口前缀请使用插件配置的
 `baseUrl`。
 
-## AvatarUpload 头像模式
-
-`AvatarUpload` 是独立的单头像组件：选择图片后以 1:1 比例裁剪为 512 × 512 文件，不显示文件列表或上传进度，支持预览、更新、删除，以及在裁剪对话框内拖入新图片。
-
-```vue
-<script setup lang="ts">
-import { ref } from 'vue'
-import { AvatarUpload, type UploadFileItem } from 'vue-flow-upload'
-const avatar = ref<UploadFileItem[]>([])
-</script>
-
-<template>
-  <AvatarUpload
-    v-model="avatar"
-    action="/avatar"
-    update-action="/avatar/{fileId}"
-    delete-action="/avatar/{fileId}"
-    accept="image/*"
-    shape="circle"
-  />
-</template>
-```
-
-首次上传走 `action`；已有头像并配置 `update-action` 时，组件会向替换 `{fileId}` 后的 URL 发出 `PUT`，并提交 `file`、`fileId`
-两个 multipart 字段。首次响应必须返回 `fileId`，否则无法生成后续更新 URL。`baseUrl` 会加到相对地址前，完整 `http(s)` URL
-不受影响。若使用自定义 `transport` 处理更新，请不要传 `update-action`。
-
-`shape` 控制头像卡片和裁剪框的视觉轮廓，可选 `square`（默认）或 `circle`；圆形仅是展示遮罩，上传结果仍是 512 × 512 方形图片。`read-only` 会禁止选择、替换和删除，但 `preview` 保持开启时仍可预览已有头像：
-
-```vue
-<AvatarUpload v-model="avatar" read-only shape="circle" />
-```
-
-面向 Vue 3 的上传组件：普通文件上传开箱即用，并为大文件提供分片、断点续传、SHA-256 秒传、并发调度、失败重试和下载归档。
-
-## 安装与最小使用
-
-```bash
-pnpm add vue-flow-upload
-```
-
-```vue
-<script setup lang="ts">
-import { ref } from 'vue'
-import { FlowUpload, type UploadFileItem } from 'vue-flow-upload'
-import 'vue-flow-upload/style.css'
-
-const files = ref<UploadFileItem[]>([])
-</script>
-
-<template>
-  <FlowUpload
-    v-model="files"
-    belong-id="order-1"
-    action="/api/files"
-    drag
-    accept="image/*,.pdf"
-    :max-size="20 * 1024 * 1024"
-  >
-    <template #tip>单个文件不超过 20 MB</template>
-  </FlowUpload>
-</template>
-```
-
-`action` 是内置 XHR `transport` 的普通上传 URL 快捷写法，支持 `method`、`data`、`create-action`、`delete-action` 与全局 `auth` 配置；它只实现普通上传。秒传、分片、续传、非标准响应结构或项目请求封装需要 `transport`。两者同时提供时，`transport` 优先，因此一个组件实例只应维护一种协议入口。
-
-认证配置只在 `app.use(vueFlowUpload, config)` 初始化时设置：`baseUrl` 为内置 HTTP 端点添加统一前缀，`credentials` 控制
-Cookie，`headers` 控制认证请求头，`query` 添加统一 URL 参数。它们会应用到所有内置上传、分片、合并、删除和头像请求；完整
-`http(s)` 地址不会拼接 `baseUrl`。不要在组件上重复配置认证信息，也不要把敏感 Token 放在 query 中。
-
-### 上传 HTTP 适配器
+## 上传 HTTP 适配器
 
 ```ts
 import { createHttpUploadTransport } from 'vue-flow-upload'
@@ -137,9 +149,9 @@ const transport = createHttpUploadTransport({
 })
 ```
 
-上传地址职责：`url` 上传普通文件；`checkUrl` 检查秒传或共享上传状态；`multipart.initUrl` 原子创建/恢复分片会话；`multipart.chunkUrl` 上传一个缺失分片；`multipart.completeUrl` 幂等合并分片；`multipart.cancelUrl` 仅释放当前调用方会话租约。完整约定见 [上传传输适配器](../../docs/api/transport.md) 和[后端接口协议](../../docs/guide/backend-api-contract.md)。
+上传地址职责：`url` 上传普通文件；`checkUrl` 检查秒传或共享上传状态；`multipart.initUrl` 原子创建/恢复分片会话；`multipart.chunkUrl` 上传一个缺失分片；`multipart.completeUrl` 幂等合并分片；`multipart.cancelUrl` 仅释放当前调用方会话租约。完整约定见 [上传传输适配器](https://jktantan.github.io/vue-flow-upload/api/transport.html) 和[后端接口协议](https://jktantan.github.io/vue-flow-upload/guide/backend-api-contract.html)。
 
-### 下载 HTTP 适配器
+## 下载 HTTP 适配器
 
 ```ts
 import { createHttpDownloadTransport } from 'vue-flow-upload'
@@ -154,15 +166,15 @@ const downloadTransport = createHttpDownloadTransport({
 })
 ```
 
-下载地址职责：`downloadUrl` 下载单个 `{fileId}` 文件；`archive.createUrl` 创建批量归档任务；`archive.taskUrl` 轮询 `{taskId}` 状态和最终下载地址；`archive.cancelUrl` 取消未完成任务。将 `downloadTransport` 传给组件的 `download-transport` 即可启用下载。适配器会接收组件解析的认证头和 query；如需相对地址的 API 前缀、跨域 Cookie 或自定义超时，请在创建时配置 `baseUrl`、`credentials`、`timeout`。完整约定见 [下载传输适配器](../../docs/api/download-transport.md)。
+下载地址职责：`downloadUrl` 下载单个 `{fileId}` 文件；`archive.createUrl` 创建批量归档任务；`archive.taskUrl` 轮询 `{taskId}` 状态和最终下载地址；`archive.cancelUrl` 取消未完成任务。将 `downloadTransport` 传给组件的 `download-transport` 即可启用下载。适配器会接收组件解析的认证头和 query；如需相对地址的 API 前缀、跨域 Cookie 或自定义超时，请在创建时配置 `baseUrl`、`credentials`、`timeout`。完整约定见 [下载传输适配器](https://jktantan.github.io/vue-flow-upload/api/download-transport.html)。
 
-### 文件查询 HTTP 适配器
+## 文件查询 HTTP 适配器
 
 配置 `query-transport` 后，列表删除成功会等待后台列表回读再结束删除交互；回读失败触发 `query-error`，不会撤销已经成功的删除。
 
 Playground 的本地 SQLite 模式使用此内置适配器请求 `POST /api/files/query`，直接验证组件管理的加载、分页和取消流程。本地接口共用演示数据集，不实现业务归属或 `extra` 筛选。
 
-`createHttpFileQueryTransport({ queryUrl })` 负责文件元数据查询，不复用上传或下载地址。它以 JSON `POST` 向 `queryUrl` 发送 `{ query, pagination }`：`query` 包含 `belongId`、`belongType`、`extra`，其中 `extra` 是上传扩展数据，也是查询时项目特定的匹配条件；不再维护第二套筛选字段。`pagination.enabled` 明确表示是否分页。分页请求还发送 `currentPage`、`pageSize` 并要求响应返回 `files`、`currentPage`、`pageSize`、`total`；非分页请求和响应均使用 `{ enabled: false }`。文件记录必须包含字符串 `name`；适配器会拒绝无效记录和分页数字，并报告 `INVALID_RESPONSE`。将其传给 `query-transport` 后，组件会自动处理首次加载、`extra` 变化、分页、取消与过期结果。完整约定见 [文件查询传输适配器](../../docs/api/query-transport.md)。
+`createHttpFileQueryTransport({ queryUrl })` 负责文件元数据查询，不复用上传或下载地址。它以 JSON `POST` 向 `queryUrl` 发送 `{ query, pagination }`：`query` 包含 `belongId`、`belongType`、`extra`，其中 `extra` 是上传扩展数据，也是查询时项目特定的匹配条件；不再维护第二套筛选字段。`pagination.enabled` 明确表示是否分页。分页请求还发送 `currentPage`、`pageSize` 并要求响应返回 `files`、`currentPage`、`pageSize`、`total`；非分页请求和响应均使用 `{ enabled: false }`。文件记录必须包含字符串 `name`；适配器会拒绝无效记录和分页数字，并报告 `INVALID_RESPONSE`。将其传给 `query-transport` 后，组件会自动处理首次加载、`extra` 变化、分页、取消与过期结果。完整约定见 [文件查询传输适配器](https://jktantan.github.io/vue-flow-upload/api/query-transport.html)。
 
 ## 国际化
 
@@ -172,6 +184,8 @@ Playground 的本地 SQLite 模式使用此内置适配器请求 `POST /api/file
 import { createApp } from 'vue'
 import { createFlowUploadI18n } from 'vue-flow-upload'
 
+// 宿主提供一份 i18n 实例，组件在未显式传入 locale 时复用它。
+// The host provides one i18n instance that components reuse when no explicit locale is given.
 createApp(App).use(createFlowUploadI18n({ locale: 'en-US' }))
 ```
 
@@ -221,7 +235,16 @@ createApp(App).use(createFlowUploadI18n({ locale: 'en-US' }))
 `exceed(files)`；配置查询适配器时还会发出 `query-loading(isLoading)`、`query-success(result)` 和 `query-error(error)`；分页开启时发出
 `update:pagination(value)` 与 `pagination-change(currentPage, pageSize)`；下载与归档还会发出
 `download-start/success/error`、`archive-start/progress/success/error`
-。完整参数和事件表见 [FlowUpload API](../../docs/api/flow-upload.md)。
+。完整参数和事件表见 [FlowUpload API](https://jktantan.github.io/vue-flow-upload/api/flow-upload.html)。
+
+插槽：
+
+- `#tip`：紧跟选择区的说明。
+- `#file="{ file, remove, preview, download, pause, resume, retry }"`：替换单个文件条目。
+
+通过 `ref` 可调用 `submit()`、`abort(file?)`、`pause(uid)`、`resume(uid)`、`retry(uid)`、`remove(uid | file)`、`clear()`/
+`clearFiles()`、`handleStart(file)`、`handleRemove(uid | file)`、`refreshQuery()`，以及下载与归档方法 `download(uid)`、
+`downloadSelected(uids)`、`downloadAll()`、`cancelArchive(taskId)`。
 
 ## 服务端分页
 
@@ -232,6 +255,8 @@ createApp(App).use(createFlowUploadI18n({ locale: 'en-US' }))
 <script setup lang="ts">
 import { ref } from 'vue'
 
+// 宿主自行加载页面数据；组件只发出分页变更事件。
+// The host loads page data itself; the component only emits pagination changes.
 const files = ref([])
 const loading = ref(false)
 const pagination = ref({ total: 0, currentPage: 1, pageSize: 20 })
@@ -254,6 +279,7 @@ async function loadFiles(currentPage: number, pageSize: number) {
 <template>
   <FlowUpload
     v-model="files"
+    belong-id="order-1"
     :pagination="paginationEnabled ? pagination : false"
     :loading="loading"
     @update:pagination="(value) => (pagination = value)"
@@ -272,11 +298,13 @@ async function loadFiles(currentPage: number, pageSize: number) {
 上传完成接口可返回 `{ "fileId": "...", "status": "processing" }`，组件会保持黄色状态。状态切换完全由后端更新数据库记录决定：业务方刷新文件列表后，将后端返回的
 `status: "success"` 连同最终 `url` 更新到 `v-model`，组件才显示绿色“已完成”。组件不会轮询处理任务或自行把文件变为成功。
 
-- `#tip`：紧跟选择区的说明。
-- `#file="{ file, remove, preview, download, pause, resume, retry }"`：替换单个文件条目。
+## 文档
 
-通过 `ref` 可调用 `submit()`、`abort(file?)`、`pause(uid)`、`resume(uid)`、`retry(uid)`、`remove(uid | file)`、`clear()`/
-`clearFiles()`、`handleStart(file)`、`handleRemove(uid | file)`、`refreshQuery()`，以及下载与归档方法 `download(uid)`、
-`downloadSelected(uids)`、`downloadAll()`、`cancelArchive(taskId)`。
+- 文档站（中文 / English）：<https://jktantan.github.io/vue-flow-upload/>
+- 完整后端分片协议：<https://jktantan.github.io/vue-flow-upload/guide/backend-api-contract.html>
+- 仓库与问题反馈：<https://github.com/jktantan/vue-flow-upload>
+- 维护者资料（设计、协议、开发指南）：<https://github.com/jktantan/vue-flow-upload/tree/main/internal-docs>
 
-完整后端分片协议见 [`docs/guide/backend-api-contract.md`](../../docs/guide/backend-api-contract.md)。
+## 许可证
+
+[Apache-2.0](https://github.com/jktantan/vue-flow-upload/blob/main/packages/vue-flow-upload/LICENSE) © tantan
