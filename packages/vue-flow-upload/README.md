@@ -3,9 +3,11 @@
 [![npm version](https://img.shields.io/npm/v/vue-flow-upload.svg)](https://www.npmjs.com/package/vue-flow-upload)
 [![license](https://img.shields.io/npm/l/vue-flow-upload.svg)](https://github.com/jktantan/vue-flow-upload/blob/main/packages/vue-flow-upload/LICENSE)
 
+Vue 3 file and avatar upload components: normal uploads work out of the box, while chunked upload, resumable sessions, SHA-256 instant upload, and concurrency scheduling cover large files, with optional downloads and server-side archives.
+
 面向 Vue 3 的文件与头像上传组件：普通上传开箱即用，大文件由分片、断点续传、SHA-256 秒传与并发调度承接，并可选下载与服务端打包。
 
-Vue 3 file and avatar upload components: normal uploads work out of the box, while chunked upload, resumable sessions, SHA-256 instant upload, and concurrency scheduling cover large files, with optional downloads and server-side archives.
+**中文** | [English](https://github.com/jktantan/vue-flow-upload/blob/main/packages/vue-flow-upload/README.en.md) | [Русский](https://github.com/jktantan/vue-flow-upload/blob/main/packages/vue-flow-upload/README.ru.md)
 
 - **文档站**：<https://jktantan.github.io/vue-flow-upload/>
 - **可操作 DEMO**：<https://jktantan.github.io/vue-flow-upload/demos/full-upload.html> —— 实时切换列表/照片墙、逐项权限、拖拽、主题与语言
