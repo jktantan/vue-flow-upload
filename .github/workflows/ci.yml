@@ -1,0 +1,44 @@
+# 提交与合并请求的质量闸门：先跑规范、类型与测试，再验证组件包可以构建。
+# Quality gate for pushes and pull requests: lint, types, and tests first, then verify the library builds.
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+# 同一分支上的新推送会取消尚未完成的旧任务，节省 CI 时长。
+# A newer push on the same branch cancels the incomplete older run to save CI minutes.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      # pnpm 版本取自根 package.json 的 packageManager 字段。
+      # The pnpm version comes from the packageManager field in the root package.json.
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      # 仓库暂未提交 pnpm-lock.yaml，因此显式允许解析依赖。
+      # The repository does not commit pnpm-lock.yaml yet, so dependency resolution is explicitly allowed.
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+      - name: Lint
+        run: pnpm lint
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Test
+        run: pnpm test
+      - name: Build library
+        run: pnpm build:lib
