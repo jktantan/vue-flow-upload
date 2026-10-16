@@ -191,9 +191,25 @@ export function useUploadQueue(options: UploadQueueOptions) {
     }
   }
 
-  function finishSuccess(uid: string, response: UploadSuccessResult) {
-    // Commit success atomically, then emit progress before success for predictable consumer state.
-    const success = options.updateFile(uid, {
+  /**
+   * 写入一次最终状态；写入前确认任务仍处于当前请求注册版本，避免取消/重启后写入陈旧结果。
+   * Writes a final state only when the caller still owns the active task version, preventing canceled or superseded uploads from overwriting state.
+   */
+  function commitFinalState(
+    uid: string,
+    taskVersion: number,
+    patch: Partial<UploadFileItem>,
+  ): UploadFileItem | undefined {
+    if (!isTaskActive(uid, taskVersion)) return undefined
+    return options.updateFile(uid, patch)
+  }
+
+  /**
+   * 写入成功态；版本未匹配时静默放弃，避免取消/重启后误上报成功。
+   * Commits the success state and silently drops it when the task version no longer matches, so canceled or restarted uploads cannot report success.
+   */
+  function finishSuccessV(uid: string, taskVersion: number, response: UploadSuccessResult) {
+    const success = commitFinalState(uid, taskVersion, {
       status: 'success',
       percent: 100,
       fileId: response.fileId ?? options.files.value.find((file) => file.uid === uid)?.fileId,
@@ -208,11 +224,14 @@ export function useUploadQueue(options: UploadQueueOptions) {
     }
   }
 
-  function finishUpload(uid: string, response: UploadSuccessResult) {
-    // The backend owns post-processing state (merge, COS/OSS/Blob transfer, scanning, etc.).
-    // A processing response must remain processing until the host refreshes its file record.
+  /**
+   * 写入服务端完成/处理结果；确保仅当前任务版本可以写入最终状态。
+   * Writes the server-finished result and only lets the active task version publish a terminal state.
+   */
+  function finishUploadV(uid: string, taskVersion: number, response: UploadSuccessResult) {
+    if (!isTaskActive(uid, taskVersion)) return
     if (response.status === 'processing') {
-      const processing = options.updateFile(uid, {
+      const processing = commitFinalState(uid, taskVersion, {
         status: 'processing',
         percent: 100,
         fileId: response.fileId ?? options.files.value.find((file) => file.uid === uid)?.fileId,
@@ -222,7 +241,7 @@ export function useUploadQueue(options: UploadQueueOptions) {
       if (processing) options.onProgress(processing, 100)
       return
     }
-    finishSuccess(uid, response)
+    finishSuccessV(uid, taskVersion, response)
   }
 
   async function prepareFile(
@@ -441,7 +460,7 @@ export function useUploadQueue(options: UploadQueueOptions) {
         ensureTaskActive(uid, taskVersion)
         const instantResult = resolveInstantUploadResult(check)
         if (instantResult) {
-          finishSuccess(uid, instantResult)
+          finishSuccessV(uid, taskVersion, instantResult)
           return
         }
       }
@@ -455,7 +474,7 @@ export function useUploadQueue(options: UploadQueueOptions) {
         ? await uploadMultipart(uid, taskVersion, target.file, data, sha256, target.fileId)
         : await uploadNormal(uid, taskVersion, target.file, target.fileId, data)
       ensureTaskActive(uid, taskVersion)
-      finishUpload(uid, response)
+      finishUploadV(uid, taskVersion, response)
     } catch (cause) {
       if (activeTasks.get(uid) !== taskVersion) return
       if (isAbortError(cause)) return

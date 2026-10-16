@@ -64,6 +64,10 @@ function delay(milliseconds: number, signal: AbortSignal) {
 export function useDownloadManager(options: DownloadManagerOptions) {
   // One controller per archive task allows independent cancellation and cleanup.
   const archiveControllers = new Map<string, AbortController>()
+  /** 单次轮询请求允许的最大尝试次数，超过后视为不可恢复错误。 Maximum attempts allowed for a single poll request before a non-recoverable error is raised. */
+  const ARCHIVE_POLL_MAX_ATTEMPTS = 3
+  /** 轮询失败后的初始退避时间（毫秒）；后续按指数增长。 Base backoff after a poll failure in milliseconds; subsequent waits grow exponentially. */
+  const ARCHIVE_POLL_BACKOFF_MS = 1_000
 
   function successfulFileIds(uids: string[]) {
     // Archives may contain only persisted successful files; local rows have no usable server id.
@@ -104,12 +108,8 @@ export function useDownloadManager(options: DownloadManagerOptions) {
         if (Date.now() >= deadline)
           throw makeUploadError('ARCHIVE_TIMEOUT', '打包下载任务超时', true)
         await delay(options.archivePollingInterval, controller.signal)
-        const context = await options.requestMeta()
         if (controller.signal.aborted) return
-        task = await transport.getArchiveTask(task.taskId, context)
-        // 轮询请求可能不支持中止；忽略取消后才返回的成功结果。
-        // A polling transport may not support abort; ignore success returned after cancellation.
-        if (controller.signal.aborted) return
+        task = await pollArchiveTask(transport, task.taskId, controller)
       }
       if (controller.signal.aborted) return
       if (task.status === 'success' && task.downloadUrl) {
@@ -126,17 +126,49 @@ export function useDownloadManager(options: DownloadManagerOptions) {
     }
   }
 
+  /**
+   * 轮询归档任务，单请求失败后按指数退避重试。轮询周期是稳定的，不被退避叠加。
+   * Polls an archive task and retries a single failure with exponential backoff so transient errors do not abort the polling loop.
+   */
+  async function pollArchiveTask(
+    transport: DownloadTransport,
+    taskId: string,
+    controller: AbortController,
+  ): Promise<ArchiveTask> {
+    let attempt = 0
+    while (true) {
+      if (controller.signal.aborted) throw makeUploadError('ABORTED', '下载任务已取消', false)
+      try {
+        const context = await options.requestMeta()
+        if (controller.signal.aborted) throw makeUploadError('ABORTED', '下载任务已取消', false)
+        return await transport.getArchiveTask(taskId, context)
+      } catch (cause) {
+        // 用户取消或非瞬态错误立即放弃；退避前再次确认未被中止。
+        // User cancellation or a non-transient error gives up immediately; recheck cancellation before sleeping.
+        if (isAbortError(cause)) throw cause
+        const error = normalizeUploadError(cause)
+        if (!error.retriable || attempt >= ARCHIVE_POLL_MAX_ATTEMPTS) throw cause
+        attempt += 1
+        await delay(ARCHIVE_POLL_BACKOFF_MS * 2 ** (attempt - 1), controller.signal)
+      }
+    }
+  }
+
+  /** 创建阶段尚无 taskId，使用该占位符区分轮询期错误。 Distinct placeholder used when an error occurs before a taskId has been issued. */
+  const ARCHIVE_BEGIN_PLACEHOLDER = '__begin__'
   async function createArchive(input: { fileIds?: string[]; scope?: DownloadScope }) {
     // Start the server job and surface failures that happen before polling begins.
     const transport = options.transport.value
     if (!transport || !options.canDownloadAll.value) return
+    let taskId: string = ARCHIVE_BEGIN_PLACEHOLDER
     try {
       const task = await transport.createArchive(input, await options.requestMeta())
+      taskId = task.taskId
       const ids = input.fileIds ?? (input.scope?.type === 'file-ids' ? input.scope.fileIds : [])
       options.onArchiveStart(task.taskId, ids)
       await followArchive(task)
     } catch (cause) {
-      options.onArchiveError('', normalizeUploadError(cause))
+      options.onArchiveError(taskId, normalizeUploadError(cause))
     }
   }
 
@@ -156,11 +188,23 @@ export function useDownloadManager(options: DownloadManagerOptions) {
       })
   }
 
+  /**
+   * 用户请求取消归档的对外 API；先中止本地轮询再尽力通知服务端。
+   * Public API to cancel an archive. Aborts local polling first, then asks the server to cancel.
+   * 取消请求失败仍然只发出一个标准化错误事件，避免静默失败或未处理拒绝。
+   * A cancellation failure still emits a single normalized error event, avoiding silent failures or unhandled rejections.
+   */
   async function cancelArchive(taskId: string) {
-    // Abort local polling first, then request best-effort server-side cancellation when supported.
     archiveControllers.get(taskId)?.abort()
     const transport = options.transport.value
-    if (transport?.cancelArchive) await transport.cancelArchive(taskId, await options.requestMeta())
+    if (!transport?.cancelArchive) return
+    try {
+      await transport.cancelArchive(taskId, await options.requestMeta())
+    } catch (cause) {
+      // 已中止的轮询仍需让上游看到一次失败；区分用户主动取消与服务器拒绝。
+      // A canceled polling loop must still surface the failure; distinguish user-initiated cancellation from a server rejection.
+      if (!isAbortError(cause)) options.onArchiveError(taskId, normalizeUploadError(cause))
+    }
   }
 
   function clear() {
