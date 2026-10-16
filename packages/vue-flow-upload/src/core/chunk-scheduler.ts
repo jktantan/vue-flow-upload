@@ -17,8 +17,13 @@ export class ChunkScheduler {
   private readonly activeByFile = new Map<string, number>()
   private activeRequests = 0
 
+  /** 并发策略；`update()` 就地修改其字段，因此保留只读引用即可。 Concurrency policy whose fields are mutated in place by `update()`, so a readonly reference suffices. */
+  private readonly options: ChunkSchedulerOptions
+
   /** 保存并发策略；实际调度在任务入队后立即尝试执行。 Stores concurrency policy; scheduling starts when a task is enqueued. */
-  constructor(private readonly options: ChunkSchedulerOptions) {}
+  constructor(options: ChunkSchedulerOptions) {
+    this.options = options
+  }
 
   /** Updates limits for queued work without interrupting active requests. */
   update(next: Partial<ChunkSchedulerOptions>) {

@@ -38,7 +38,9 @@ jobs:
         run: pnpm lint
       - name: Typecheck
         run: pnpm typecheck
-      - name: Test
-        run: pnpm test
+      # 组件测试从 dist 导入，因此必须先构建库再运行测试。
+      # Component tests import from dist, so the library build must run before the tests.
       - name: Build library
         run: pnpm build:lib
+      - name: Test
+        run: pnpm test

@@ -5,6 +5,12 @@
     "types": ["vite/client"],
     "allowArbitraryExtensions": true,
 
+    /* 与 vite.config.ts 的 alias 对齐：类型检查直接读组件源码，不依赖 packages 的构建产物。
+       Matches the alias in vite.config.ts so type checking reads component sources instead of build output. */
+    "paths": {
+      "vue-flow-upload": ["../packages/vue-flow-upload/src/index.ts"]
+    },
+
     /* Linting */
     "noUnusedLocals": true,
     "noUnusedParameters": true,
