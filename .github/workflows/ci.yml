@@ -30,10 +30,10 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      # 仓库暂未提交 pnpm-lock.yaml，因此显式允许解析依赖。
-      # The repository does not commit pnpm-lock.yaml yet, so dependency resolution is explicitly allowed.
+      # 使用仓库内的 lockfile 安装，保证 CI 与本地解析出相同版本。
+      # Installs from the committed lockfile so CI resolves the same versions as the local setup.
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
       - name: Lint
         run: pnpm lint
       - name: Typecheck
