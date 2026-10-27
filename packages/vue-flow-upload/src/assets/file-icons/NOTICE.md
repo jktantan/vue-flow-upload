@@ -1,26 +1,12 @@
 # File icons
 
-The SVG files in this directory are copied from
-[`@uiw/file-icons` v1.3.2](https://github.com/uiwjs/file-icons), distributed
-under the MIT License. They are retained locally so the upload component has no
-runtime dependency on a CDN.
+The SVG files in this directory were downloaded from
+[iconfont](https://www.iconfont.cn/). The icon sets used here are published on
+iconfont as public and free to use. The files are retained locally so the upload
+component has no runtime dependency on a CDN.
 
-Copyright (c) uiwjs
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of
-this software and associated documentation files (the "Software"), to deal in
-the Software without restriction, including without limitation the rights to
-use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
-of the Software, and to permit persons to whom the Software is furnished to do
-so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+Copyright of each icon remains with its original uploader on iconfont. No
+separate license file was bundled with the downloaded assets, so the icon set
+pages on iconfont remain the authoritative source for the exact usage terms. If
+you redistribute this package, review those terms for the specific icon sets
+before doing so.

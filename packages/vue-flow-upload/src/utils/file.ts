@@ -1,15 +1,6 @@
 import type { FileMeta, UploadFileItem, UploadUserFile } from '../types'
-import audioIcon from '../assets/file-icons/audio.svg?url'
-import documentIcon from '../assets/file-icons/document.svg?url'
 import fileIcon from '../assets/file-icons/file.svg?url'
-import imageIcon from '../assets/file-icons/image.svg?url'
-import jsonIcon from '../assets/file-icons/json.svg?url'
-import excelIcon from '../assets/file-icons/microsoft-excel.svg?url'
-import powerpointIcon from '../assets/file-icons/microsoft-powerpoint.svg?url'
-import wordIcon from '../assets/file-icons/microsoft-word.svg?url'
-import pdfIcon from '../assets/file-icons/pdf.svg?url'
-import videoIcon from '../assets/file-icons/video.svg?url'
-import zipIcon from '../assets/file-icons/zip.svg?url'
+import { findExtensionIconUrl, findMimeIconUrl } from './file-icon'
 
 /** 生成浏览器安全的行唯一标识，并兼容旧运行环境。 Generates a browser-safe row id with an older-runtime fallback. */
 export function createUid() {
@@ -81,51 +72,17 @@ export function fileTypeLabel(file: UploadFileItem) {
   return extension ? extension.slice(0, 3).toUpperCase() : 'FILE'
 }
 
-/** Resolves a local, colorful SVG using MIME type first and extension as a fallback. */
-/** 优先按 MIME、其次按常见扩展名选择内置图标。 Chooses the built-in icon by MIME type, then extension. */
+/**
+ * 优先按扩展名选择专属图标，其次按 MIME 类别回退，最后使用通用文件图标。
+ * Prefers an extension-specific icon, then falls back to the MIME category and finally the generic file icon.
+ */
 export function fileIconUrl(file: UploadFileItem) {
+  // 从文件名提取小写扩展名，兼容带多个点的文件名和无扩展名的情况。
+  // Extracts a lowercase extension, tolerating multi-dot names and names without an extension.
   const extension = file.name.split('.').pop()?.toLowerCase() ?? ''
-  const type = file.type.toLowerCase()
-  if (type === 'application/pdf' || extension === 'pdf') return pdfIcon
-  if (type.includes('word') || ['doc', 'docx', 'dot', 'dotx', 'odt', 'rtf'].includes(extension))
-    return wordIcon
-  if (
-    type.includes('excel') ||
-    type.includes('spreadsheet') ||
-    ['xls', 'xlsx', 'xlsm', 'csv', 'ods'].includes(extension)
-  )
-    return excelIcon
-  if (
-    type.includes('powerpoint') ||
-    type.includes('presentation') ||
-    ['ppt', 'pptx', 'pps', 'ppsx', 'odp'].includes(extension)
-  )
-    return powerpointIcon
-  if (type.startsWith('audio/') || ['mp3', 'wav', 'ogg', 'm4a', 'flac', 'aac'].includes(extension))
-    return audioIcon
-  if (type.startsWith('video/') || ['mp4', 'mov', 'avi', 'mkv', 'webm', 'mpeg'].includes(extension))
-    return videoIcon
-  if (
-    type.startsWith('image/') ||
-    ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'tiff'].includes(extension)
-  )
-    return imageIcon
-  if (
-    type.includes('zip') ||
-    type.includes('compressed') ||
-    ['zip', 'rar', '7z', 'tar', 'gz', 'tgz'].includes(extension)
-  )
-    return zipIcon
-  if (
-    type.includes('json') ||
-    ['json', 'xml', 'yaml', 'yml', 'js', 'ts', 'tsx', 'jsx', 'html', 'css', 'md'].includes(
-      extension,
-    )
-  )
-    return jsonIcon
-  if (type.startsWith('text/') || ['txt', 'log', 'ini', 'cfg'].includes(extension))
-    return documentIcon
-  return fileIcon
+  const extensionIcon = findExtensionIconUrl(extension)
+  if (extensionIcon) return extensionIcon
+  return findMimeIconUrl(file.type) ?? fileIcon
 }
 
 /** 数字尺寸转为 px，字符串 CSS 尺寸原样保留。 Converts numeric sizes to px while preserving CSS expressions. */
