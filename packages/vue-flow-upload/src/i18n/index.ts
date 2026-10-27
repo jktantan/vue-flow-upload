@@ -1,3 +1,4 @@
+import type { ComputedRef, InjectionKey } from 'vue'
 import { createI18n, type I18n, type I18nOptions } from 'vue-i18n-lite'
 import type { UploadMessages } from '../types'
 
@@ -7,6 +8,12 @@ export interface FlowUploadI18nOptions {
   locale?: string
   messages?: LocaleMessages
 }
+
+/**
+ * 组件树内部传递已解析 i18n 实例的注入键；使用计算属性包装，使语言切换能驱动子树重新渲染。
+ * Injection key carrying the resolved i18n instance through the component tree; the computed wrapper lets locale changes re-render descendants.
+ */
+export const flowUploadI18nKey: InjectionKey<ComputedRef<I18n>> = Symbol('vue-flow-upload-i18n')
 type I18nCompatibleMessages = NonNullable<I18nOptions['messages']>
 type LocaleModule = { default?: LocaleMessage }
 

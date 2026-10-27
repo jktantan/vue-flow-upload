@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, inject } from 'vue'
 import { useI18n } from 'vue-i18n-lite'
-import { createFlowUploadI18n, getUploadMessages } from '../../i18n'
+import { createFlowUploadI18n, flowUploadI18nKey, getUploadMessages } from '../../i18n'
 import type { UploadPagination } from '../../types'
 
 /** 受控分页输入；父组件始终负责加载所选页面。 Controlled pagination input; the parent remains responsible for loading the selected page. */
@@ -26,9 +26,14 @@ interface UploadPaginationEmits {
 const emit = defineEmits<UploadPaginationEmits>()
 /** At least one page is rendered even when the server reports an empty result set. */
 const pageCount = computed(() => Math.max(1, Math.ceil(props.total / props.pageSize)))
+/** 宿主全局注入的 i18n 实例。 Host-wide injected i18n instance. */
 const inheritedI18n = useI18n()
+/** FlowUpload 解析后的 i18n 实例，优先使用以跟随组件的 locale 配置。 Resolved FlowUpload i18n instance, preferred so the component locale configuration is honored. */
+const providedI18n = inject(flowUploadI18nKey, undefined)
+/** 组件独立使用时的内置语言兜底，固定为默认语言。 Built-in fallback for standalone usage, fixed to the default locale. */
 const localI18n = createFlowUploadI18n()
-const text = computed(() => getUploadMessages(inheritedI18n ?? localI18n))
+/** 分页文案；优先使用组件树实例，语言切换后随计算属性自动更新。 Pagination copy; prefers the component-tree instance and updates through the computed value when the locale changes. */
+const text = computed(() => getUploadMessages(providedI18n?.value ?? inheritedI18n ?? localI18n))
 /** Five-page sliding window around the current page, clamped at both ends. */
 const pages = computed(() => {
   const start = Math.max(1, Math.min(props.currentPage - 2, pageCount.value - 4))

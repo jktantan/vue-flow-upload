@@ -1,9 +1,23 @@
 <script setup lang="ts">
 /* eslint-disable vue/require-default-prop -- omitted values are semantically distinct in the public API */
-import { computed, getCurrentInstance, inject, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import {
+  computed,
+  getCurrentInstance,
+  inject,
+  onBeforeUnmount,
+  onMounted,
+  provide,
+  ref,
+  watch,
+} from 'vue'
 import { useI18n } from 'vue-i18n-lite'
 import { ChunkScheduler } from './core/chunk-scheduler'
-import { createFlowUploadI18n, getUploadMessages, type FlowUploadI18nOptions } from './i18n'
+import {
+  createFlowUploadI18n,
+  flowUploadI18nKey,
+  getUploadMessages,
+  type FlowUploadI18nOptions,
+} from './i18n'
 import { resolveTheme } from './themes'
 import { createHttpUploadTransport } from './core/http-transport'
 import { vueFlowUploadConfigKey } from './config'
@@ -380,6 +394,9 @@ const i18n = computed(() =>
 )
 /** 解析成模板可直接读取的完整消息字典。 Complete resolved message dictionary for direct template consumption. */
 const text = computed(() => getUploadMessages(i18n.value))
+// 将最终解析的 i18n 实例提供给子树，让分页等内部控件跟随同一语言。
+// Provide the resolved i18n instance to the subtree so internal controls such as pagination follow the same locale.
+provide(flowUploadI18nKey, i18n)
 /** 翻译组件文案并插入变量的简写函数。 Shorthand for translating component-owned messages with interpolation values. */
 const t = (key: string, values?: Record<string, string | number>) =>
   i18n.value.t(`VueFlowUpload.${key}`, values)
