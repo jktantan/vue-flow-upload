@@ -218,7 +218,7 @@ The default palette follows Element Plus light colors and switches to its dark p
 }
 ```
 
-`theme="element-plus"` / `theme="ant-design-vue"` provide presets, and `ThemeAdapter` accepts custom class names and variables. Legacy variable names (`--vfu-signal`, `--vfu-ink`, `--vfu-muted`, `--vfu-line`, `--vfu-danger`, `--vfu-radius`) remain supported. See [Theming and styles](https://jktantan.github.io/vue-flow-upload/en/guide/theming.html) for the full token list, dark mode, and override examples.
+`theme="element-plus"` / `theme="ant-design-vue"` provide presets, and `ThemeAdapter` accepts custom class names and variables. Legacy variable names (`--vfu-signal`, `--vfu-ink`, `--vfu-muted`, `--vfu-line`, `--vfu-danger`, `--vfu-radius`) remain supported. The bundled cropperjs and Viewer.js consume the same tokens: the crop outline follows the primary color, viewer controls follow light/dark mode, and styles only target the component's own instances. See [Theming and styles](https://jktantan.github.io/vue-flow-upload/en/guide/theming.html) for the full token list, dark mode, and override examples.
 
 ## Common props (summary)
 

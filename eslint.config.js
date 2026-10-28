@@ -23,6 +23,7 @@ export default tseslint.config(
         URL: 'readonly',
         XMLHttpRequest: 'readonly',
         crypto: 'readonly',
+        document: 'readonly',
         window: 'readonly',
       },
     },

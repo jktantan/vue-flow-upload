@@ -1,0 +1,127 @@
+// 第三方裁剪与预览组件的 token 覆盖。
+// Token overrides for third-party crop and preview widgets.
+//
+// 覆盖范围严格限定在组件自己的裁剪器（.vfu-avatar-cropper）和查看器（.vfu-viewer）内，
+// 不会影响宿主项目中其他 cropperjs / Viewer.js 实例。
+// Overrides stay inside the component's own cropper (.vfu-avatar-cropper) and viewer (.vfu-viewer),
+// so other cropperjs / Viewer.js instances in the host application remain untouched.
+
+// -----------------------------------------------------------------------------
+// cropperjs：头像裁剪器
+// cropperjs: avatar cropper
+// -----------------------------------------------------------------------------
+
+.vfu-avatar-cropper {
+  // 裁剪框边框跟随主色；客户覆盖 --vfu-color-primary 即可同步。
+  // The crop outline follows the primary color, so overriding --vfu-color-primary keeps it in sync.
+  .cropper-view-box {
+    outline-color: var(--vfu-cropper-outline, var(--vfu-color-primary));
+  }
+
+  // 拖拽手柄与边线同样跟随主色，并允许单独覆盖。
+  // Drag handles and edge lines also follow the primary color and can be overridden separately.
+  .cropper-line,
+  .cropper-point,
+  .cropper-point.point-se::before {
+    background-color: var(--vfu-cropper-handle, var(--vfu-color-primary));
+  }
+
+  .cropper-modal {
+    background-color: var(--vfu-cropper-mask);
+  }
+
+  .cropper-dashed {
+    border-color: var(--vfu-cropper-guide);
+  }
+
+  .cropper-center::before,
+  .cropper-center::after {
+    background-color: var(--vfu-cropper-guide);
+  }
+
+  // 用 token 重绘透明图片的棋盘格，替代 cropperjs 内置的固定灰白位图；
+  // 深色模式下棋盘格随 token 一起变暗，不再出现刺眼的浅色底纹。
+  // Repaint the transparency checkerboard with tokens instead of cropperjs' fixed gray bitmap;
+  // in dark mode the checkerboard darkens with the tokens instead of showing a bright base pattern.
+  .cropper-bg {
+    background-color: var(--vfu-cropper-canvas-bg);
+    background-image:
+      linear-gradient(45deg, var(--vfu-cropper-canvas-grid) 25%, transparent 25%),
+      linear-gradient(-45deg, var(--vfu-cropper-canvas-grid) 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, var(--vfu-cropper-canvas-grid) 75%),
+      linear-gradient(-45deg, transparent 75%, var(--vfu-cropper-canvas-grid) 75%);
+    background-position:
+      0 0,
+      0 8px,
+      8px -8px,
+      -8px 0;
+    background-size: 16px 16px;
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Viewer.js：图片查看器
+// Viewer.js: image viewer
+// -----------------------------------------------------------------------------
+
+.vfu-viewer {
+  // 背景只由 .viewer-backdrop 提供；.viewer-container 保持 Viewer.js 默认透明，避免叠加第二层底色。
+  // The backdrop alone owns the background; .viewer-container keeps Viewer.js' default transparency so no second base layer is stacked.
+  &.viewer-backdrop {
+    background-color: var(--vfu-viewer-backdrop);
+    // 深色主题用低透明度浅色加模糊，避免 50% 白色把页面洗成中灰。
+    // Dark themes combine a low-opacity light surface with blur so a 50% white wash cannot turn the page gray.
+    -webkit-backdrop-filter: var(--vfu-viewer-backdrop-filter);
+    backdrop-filter: var(--vfu-viewer-backdrop-filter);
+  }
+
+  // 视频播放器需要不透明黑底，避免半透明查看器遮罩叠在视频上。
+  // The video player needs an opaque black base so the translucent viewer mask does not sit on top of the video.
+  .viewer-player {
+    background-color: var(--vfu-color-black);
+  }
+
+  // 图标由白色 SVG 位图绘制；浅色背景通过 filter 反转为深色，深色背景保持原样。
+  // Icons are white SVG bitmaps; the light surface inverts them to dark while the dark surface keeps them as-is.
+  .viewer-toolbar > ul > li::before,
+  .viewer-button::before {
+    filter: var(--vfu-viewer-icon-filter);
+  }
+
+  .viewer-navbar {
+    background-color: var(--vfu-viewer-surface);
+  }
+
+  // 工具栏按钮与关闭按钮共用同一套表面色，避免出现两种透明度。
+  // Toolbar items and the close button share one surface color instead of two different opacities.
+  .viewer-toolbar > ul > li,
+  .viewer-button {
+    background-color: var(--vfu-viewer-surface);
+  }
+
+  .viewer-toolbar > ul > li:focus,
+  .viewer-toolbar > ul > li:hover,
+  .viewer-button:focus,
+  .viewer-button:hover {
+    background-color: var(--vfu-viewer-surface-hover);
+  }
+
+  .viewer-toolbar > ul > li:focus,
+  .viewer-button:focus {
+    box-shadow: 0 0 3px var(--vfu-viewer-focus-ring);
+  }
+
+  .viewer-tooltip {
+    background-color: var(--vfu-tooltip-bg);
+    color: var(--vfu-tooltip-color);
+  }
+
+  .viewer-title {
+    color: var(--vfu-viewer-title-color);
+  }
+
+  .viewer-loading::after {
+    border-color: var(--vfu-viewer-spinner-track);
+    border-left-color: var(--vfu-viewer-spinner-active);
+  }
+}

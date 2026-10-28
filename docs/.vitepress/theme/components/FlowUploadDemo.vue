@@ -10,6 +10,8 @@ import {
 } from 'vue-flow-upload'
 import { createDemoDownloadTransport, createDemoUploadTransport } from '../demo-transport'
 import { DEMO_COPY, resolveDemoLocale, type FullUploadDemoCopy } from '../demo-text'
+import { DEFAULT_THEME_COLOR, useDemoTheme } from '../theme-colors'
+import ThemeColorPicker from './ThemeColorPicker.vue'
 
 /** 完整版示例中可切换的主题预设。 Theme presets selectable in the full demo. */
 const THEMES: UploadTheme[] = ['default', 'element-plus', 'ant-design-vue']
@@ -30,7 +32,7 @@ const PERMISSION_FIELDS: { key: keyof UploadPermissions; label: keyof FullUpload
 const DEMO_ARCHIVE_POLLING_INTERVAL_MS = 600
 
 /** 当前文档语言决定示例文案与组件默认语言。 Current documentation language determines demo copy and the component's default language. */
-const { lang } = useData()
+const { lang, isDark } = useData()
 /** 归一化后的示例语言。 Normalized demo locale. */
 const demoLocale = computed(() => resolveDemoLocale(lang.value))
 /** 当前语言的示例文案。 Demo copy for the current language. */
@@ -75,6 +77,10 @@ const maxSizeMb = ref(0)
 const maxCount = ref(0)
 /** 组件主题预设或自定义主题适配器。 Component theme preset. */
 const theme = ref<UploadTheme>('default')
+/** 当前示例主色；色板控件直接覆盖组件的 --vfu-color-primary 派生 token。 Current demo primary color; the swatches override the component's --vfu-color-primary tokens. */
+const primaryColor = ref(DEFAULT_THEME_COLOR)
+/** 主色与深浅模式对应的 token；同时写入根节点，供 Teleport 弹窗继承。 Tokens for the primary color and color scheme; also written to the root so teleported dialogs inherit them. */
+const themeStyle = useDemoTheme(primaryColor, isDark)
 /** 组件内置文案语言；初始与文档语言一致，之后可独立切换以对比两种语言的布局。 Component copy language; starts equal to the documentation language and can then be switched independently to compare both layouts. */
 const locale = ref<'zh-CN' | 'en-US' | 'ru-RU'>(resolveDemoLocale(lang.value))
 
@@ -128,7 +134,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <section class="demo-shell" :aria-label="text.ariaLabel">
+  <section class="demo-shell" :aria-label="text.ariaLabel" :style="themeStyle">
     <div class="demo-controls demo-controls--stacked">
       <fieldset>
         <legend>{{ text.groupOperation }}</legend>
@@ -139,22 +145,10 @@ onBeforeUnmount(() => {
             <option value="picture">{{ text.listTypePicture }}</option>
           </select>
         </label>
-        <label
-          ><input v-model="drag" type="checkbox" />
-          {{ text.drag }}</label
-        >
-        <label
-          ><input v-model="selectable" type="checkbox" />
-          {{ text.batchSelect }}</label
-        >
-        <label
-          ><input v-model="showFileList" type="checkbox" />
-          {{ text.fileList }}</label
-        >
-        <label
-          ><input v-model="showOperation" type="checkbox" />
-          {{ text.toolbar }}</label
-        >
+        <label><input v-model="drag" type="checkbox" /> {{ text.drag }}</label>
+        <label><input v-model="selectable" type="checkbox" /> {{ text.batchSelect }}</label>
+        <label><input v-model="showFileList" type="checkbox" /> {{ text.fileList }}</label>
+        <label><input v-model="showOperation" type="checkbox" /> {{ text.toolbar }}</label>
       </fieldset>
 
       <fieldset>
@@ -163,10 +157,7 @@ onBeforeUnmount(() => {
           <input v-model="permissionSwitches[field.key]" type="checkbox" />
           {{ text[field.label] }}
         </label>
-        <label
-          ><input v-model="disabled" type="checkbox" />
-          {{ text.disableAll }}</label
-        >
+        <label><input v-model="disabled" type="checkbox" /> {{ text.disableAll }}</label>
       </fieldset>
 
       <fieldset>
@@ -191,16 +182,17 @@ onBeforeUnmount(() => {
 
       <fieldset>
         <legend>{{ text.groupState }}</legend>
-        <label
-          ><input v-model="autoUpload" type="checkbox" />
-          {{ text.autoUpload }}</label
-        >
+        <label><input v-model="autoUpload" type="checkbox" /> {{ text.autoUpload }}</label>
         <label>
           {{ text.theme }}
           <select v-model="theme">
             <option v-for="name in THEMES" :key="name" :value="name">{{ name }}</option>
           </select>
         </label>
+        <div class="demo-color-field">
+          <span>{{ text.themeColor }}</span>
+          <ThemeColorPicker v-model="primaryColor" :label="text.themeColor" />
+        </div>
         <label>
           {{ text.componentLanguage }}
           <select v-model="locale">

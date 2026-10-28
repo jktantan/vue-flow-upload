@@ -218,7 +218,7 @@ createApp(App).use(createFlowUploadI18n({ locale: 'ru-RU' }))
 }
 ```
 
-`theme="element-plus"` / `theme="ant-design-vue"` задают пресеты, а `ThemeAdapter` принимает свой класс и переменные. Старые имена переменных (`--vfu-signal`, `--vfu-ink`, `--vfu-muted`, `--vfu-line`, `--vfu-danger`, `--vfu-radius`) по-прежнему поддерживаются. Полный список токенов, тёмный режим и примеры переопределения: [Темы и стили](https://jktantan.github.io/vue-flow-upload/ru/guide/theming.html).
+`theme="element-plus"` / `theme="ant-design-vue"` задают пресеты, а `ThemeAdapter` принимает свой класс и переменные. Старые имена переменных (`--vfu-signal`, `--vfu-ink`, `--vfu-muted`, `--vfu-line`, `--vfu-danger`, `--vfu-radius`) по-прежнему поддерживаются. Встроенные cropperjs и Viewer.js используют те же токены: рамка кадрирования следует основному цвету, элементы просмотрщика — светлой/тёмной теме, а стили применяются только к экземплярам компонента. Полный список токенов, тёмный режим и примеры переопределения: [Темы и стили](https://jktantan.github.io/vue-flow-upload/ru/guide/theming.html).
 
 ## Основные props (кратко)
 

@@ -256,6 +256,9 @@ function previewAvatar() {
         // 确保头像查看器位于 VitePress 导航和文档内容之上。
         // Keep the avatar viewer above VitePress navigation and document content.
         zIndex: 4000,
+        // 与列表预览共用同一查看器样式作用域。
+        // Shares the same viewer style scope as the list preview.
+        className: 'vfu-viewer',
       },
     })
 }

@@ -221,7 +221,7 @@ createApp(App).use(createFlowUploadI18n({ locale: 'en-US' }))
 }
 ```
 
-`theme="element-plus"` / `theme="ant-design-vue"` 提供预设，`ThemeAdapter` 可传入自定义类名与变量。旧变量名（`--vfu-signal`、`--vfu-ink`、`--vfu-muted`、`--vfu-line`、`--vfu-danger`、`--vfu-radius`）仍然兼容。完整 token 列表、深色模式与覆盖示例见 [主题与样式](https://jktantan.github.io/vue-flow-upload/guide/theming.html)。
+`theme="element-plus"` / `theme="ant-design-vue"` 提供预设，`ThemeAdapter` 可传入自定义类名与变量。旧变量名（`--vfu-signal`、`--vfu-ink`、`--vfu-muted`、`--vfu-line`、`--vfu-danger`、`--vfu-radius`）仍然兼容。内置 cropperjs 与 Viewer.js 也已接入 token：裁剪框跟随主色，查看器控件随深浅模式切换，且样式只作用于组件自身实例。完整 token 列表、深色模式与覆盖示例见 [主题与样式](https://jktantan.github.io/vue-flow-upload/guide/theming.html)。
 
 ## 常用属性（摘要）
 

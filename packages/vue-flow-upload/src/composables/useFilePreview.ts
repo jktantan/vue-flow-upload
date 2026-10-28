@@ -53,6 +53,9 @@ export function useFilePreview(options: FilePreviewOptions) {
             // 确保查看器弹层位于宿主页面导航和内容之上。
             // Keep the viewer overlay above host navigation and page content.
             zIndex: 4000,
+            // 标记组件创建的查看器，使样式覆盖只作用于 .vfu-viewer，不影响宿主其他 Viewer 实例。
+            // Marks viewers created by this component so style overrides only target .vfu-viewer and leave host instances untouched.
+            className: 'vfu-viewer',
             title: (image) => fileNames.get(image.src) ?? file.name,
           },
         })

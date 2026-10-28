@@ -12,6 +12,7 @@ import {
   type UploadPermissions,
   type UploadTransport,
 } from 'vue-flow-upload'
+import { createThemeStyle, DEFAULT_THEME_COLOR, THEME_COLOR_PRESETS } from './theme-colors'
 
 /** 演示台中的受控分页状态。 Controlled pagination state used by the workbench. */
 type PlaygroundPagination = {
@@ -53,6 +54,30 @@ const PLAYGROUND_NETWORK_ERROR_MESSAGES = {
 const PLAYGROUND_BELONG_ID = 'playground-demo'
 /** 演示台上传和头像共享的固定业务归属类型。 Fixed business-owner type shared by playground uploads and avatars. */
 const PLAYGROUND_BELONG_TYPE = 'playground'
+
+/** 当前演示主色；色板直接覆盖组件的 --vfu-color-primary 派生 token。 Primary color of the workbench; swatches override the component's --vfu-color-primary tokens. */
+const primaryColor = ref(DEFAULT_THEME_COLOR)
+/** 是否启用深色模式；类挂在 html 上，使 Teleport 弹窗也能继承同一套 token。 Whether dark mode is on; the class sits on html so teleported dialogs inherit the same tokens. */
+const isDark = ref(false)
+/** 主色与深浅模式对应的内联 token，只作用于演示台容器。 Inline tokens for the primary color and color scheme, scoped to the workbench. */
+const themeStyle = computed(() => createThemeStyle(primaryColor.value, isDark.value))
+
+/**
+ * 深色类必须挂在 html 上，裁剪器、确认框等 Teleport 到 body 的弹窗才能继承同一套 token；
+ * 主色变量同样写入根节点，使弹窗和查看器跟随色板切换。
+ * The dark class must sit on html so croppers and confirm dialogs teleported to body inherit the same tokens;
+ * primary variables are written to the root for the same reason, keeping dialogs and viewers in sync with the swatches.
+ */
+watch(
+  [primaryColor, isDark],
+  ([color, dark]) => {
+    document.documentElement.classList.toggle('dark', dark)
+    for (const [name, value] of Object.entries(createThemeStyle(color, dark))) {
+      document.documentElement.style.setProperty(name, value)
+    }
+  },
+  { immediate: true },
+)
 
 const files = ref<UploadFileItem[]>([
   {
@@ -211,6 +236,12 @@ function hashStrategyLabel(file: UploadFileItem): string {
 
 onBeforeUnmount(() => {
   if (loadingTimer !== undefined) window.clearTimeout(loadingTimer)
+  // 离开演示台时移除全局深色类与主色变量，避免影响后续页面。
+  // Remove the global dark class and primary variables when leaving the workbench so later pages are unaffected.
+  document.documentElement.classList.remove('dark')
+  for (const name of Object.keys(createThemeStyle(primaryColor.value, isDark.value))) {
+    document.documentElement.style.removeProperty(name)
+  }
 })
 
 const mockTransport: UploadTransport = {
@@ -519,7 +550,7 @@ function handleAvatarSuccess(file: UploadFileItem): void {
 </script>
 
 <template>
-  <main class="workbench">
+  <main class="workbench" :class="{ 'workbench--dark': isDark }" :style="themeStyle">
     <header class="workbench__header">
       <div>
         <p class="eyebrow">Vue Flow Upload · 验证台</p>
@@ -540,6 +571,23 @@ function handleAvatarSuccess(file: UploadFileItem): void {
           <h2>参数面板</h2>
           <p>按组件 API 分类。所有修改即时应用。</p>
         </div>
+
+        <details open class="control-group">
+          <summary>外观</summary>
+          <div class="control-group__content">
+            <fieldset class="choice-fieldset">
+              <legend>主题色</legend>
+              <label v-for="preset in THEME_COLOR_PRESETS" :key="preset.id">
+                <input v-model="primaryColor" type="radio" :value="preset.primary" />
+                {{ preset.name }}
+              </label>
+            </fieldset>
+            <label class="switch"><input v-model="isDark" type="checkbox" /> 深色模式</label>
+            <p class="control-hint">
+              主色覆盖 --vfu-color-primary 及其浅色变体；深色类挂在 html 上，弹窗与查看器同样生效。
+            </p>
+          </div>
+        </details>
 
         <details open class="control-group">
           <summary>传输与数据</summary>
@@ -1095,6 +1143,43 @@ h1 {
   margin: 28px auto;
   padding: 0;
   background: transparent;
+}
+
+/* 演示台深色外观只调整面板与标题，组件本身完全依赖 --vfu-* token。 */
+/* The workbench dark appearance only adjusts panels and headings; components rely entirely on --vfu-* tokens. */
+.workbench--dark {
+  .workbench__header h1,
+  .control-panel__head h2,
+  .preview-panel__head h2 {
+    color: #e5eaf3;
+  }
+
+  .workbench__intro {
+    color: #a3a6ad;
+  }
+
+  .workbench__status {
+    border-color: #414243;
+    background: #1d1e1f;
+    color: #cfd3dc;
+  }
+
+  .control-panel,
+  .preview-panel {
+    border-color: #414243;
+    background: #1d1e1f;
+    box-shadow: none;
+  }
+
+  .control-panel__head,
+  .preview-panel__head,
+  .control-group {
+    border-color: #363637;
+  }
+
+  .control-group summary {
+    color: #e5eaf3;
+  }
 }
 
 .workbench__header {

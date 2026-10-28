@@ -35,6 +35,8 @@ export interface AvatarDemoCopy {
   shapeSquare: string
   readOnly: string
   preview: string
+  /** 主色切换控件的标签。 Label of the primary-color switcher. */
+  themeColor: string
   caption: string
 }
 
@@ -68,6 +70,8 @@ export interface FullUploadDemoCopy {
   maxCount: string
   autoUpload: string
   theme: string
+  /** 主色切换控件的标签。 Label of the primary-color switcher. */
+  themeColor: string
   componentLanguage: string
   startUpload: string
   clearList: string
@@ -100,6 +104,7 @@ export const DEMO_COPY: Record<DemoLocale, DemoCopy> = {
       shapeSquare: '方形',
       readOnly: '只读',
       preview: '允许预览',
+      themeColor: '主题色',
       caption: '选择一张图片，在裁剪框中调整后确认；上传过程仅在浏览器内模拟。',
     },
     full: {
@@ -131,6 +136,7 @@ export const DEMO_COPY: Record<DemoLocale, DemoCopy> = {
       maxCount: '数量上限（0 不限）',
       autoUpload: '自动上传',
       theme: '主题',
+      themeColor: '主题色',
       componentLanguage: '组件语言',
       startUpload: '开始上传',
       clearList: '清空列表',
@@ -154,6 +160,7 @@ export const DEMO_COPY: Record<DemoLocale, DemoCopy> = {
       shapeSquare: 'Square',
       readOnly: 'Read only',
       preview: 'Enable preview',
+      themeColor: 'Primary color',
       caption:
         'Select an image, adjust it in the crop box, and confirm. Upload is simulated entirely in the browser.',
     },
@@ -186,6 +193,7 @@ export const DEMO_COPY: Record<DemoLocale, DemoCopy> = {
       maxCount: 'Max count (0 = none)',
       autoUpload: 'Auto upload',
       theme: 'Theme',
+      themeColor: 'Primary color',
       componentLanguage: 'Component language',
       startUpload: 'Start upload',
       clearList: 'Clear list',
@@ -211,6 +219,7 @@ export const DEMO_COPY: Record<DemoLocale, DemoCopy> = {
       shapeSquare: 'Квадрат',
       readOnly: 'Только чтение',
       preview: 'Разрешить просмотр',
+      themeColor: 'Основной цвет',
       caption:
         'Выберите изображение, настройте его в рамке обрезки и подтвердите. Загрузка полностью имитируется в браузере.',
     },
@@ -243,6 +252,7 @@ export const DEMO_COPY: Record<DemoLocale, DemoCopy> = {
       maxCount: 'Макс. количество (0 — без ограничений)',
       autoUpload: 'Автозагрузка',
       theme: 'Тема',
+      themeColor: 'Основной цвет',
       componentLanguage: 'Язык компонента',
       startUpload: 'Начать загрузку',
       clearList: 'Очистить список',

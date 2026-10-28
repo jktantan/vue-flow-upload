@@ -1,6 +1,6 @@
 {
   "name": "vue-flow-upload",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Vue 3 file and avatar upload components with chunked upload, resume, SHA-256 instant upload, downloads, and pluggable transports.",
   "keywords": [
     "vue",

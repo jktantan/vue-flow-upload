@@ -30,7 +30,7 @@ syncDarkMode()
 
 ## Override design tokens
 
-Every customizable value is a `--vfu-*` CSS custom property declared on a zero-specificity `:where(:root)`. Hosts can override on `:root`, a business container, or the component root without raising selector specificity:
+Every customizable value is a `--vfu-*` CSS custom property declared on a zero-specificity `:where(:root)`. Hosts can override on `:root` or any ancestor without raising specificity. Note that the avatar cropper and removal confirmation are teleported to `body`, so they only inherit overrides placed on `:root` / `html`; if a project switches primary color inside a business container, mirror the same variables onto `:root` so dialogs and the viewer stay in sync.
 
 ```css
 /* Align brand color, radius, and file row height with the host project. */
@@ -48,53 +48,74 @@ If the host installs Element Plus and configures its theme variables, overriding
 
 ### Colors
 
-| Token                             | Purpose                                                |
-| --------------------------------- | ------------------------------------------------------ |
-| `--vfu-color-primary`             | Primary action, progress, selected state, focus ring   |
-| `--vfu-color-primary-light-3`     | Primary hover state                                    |
-| `--vfu-color-primary-light-7`     | Light borders and hints                                |
-| `--vfu-color-primary-light-9`     | Light hover surface                                    |
-| `--vfu-color-success`             | Upload succeeded                                       |
-| `--vfu-color-warning`             | Processing state and drag hint                         |
-| `--vfu-color-danger`              | Failed/rejected state and destructive actions          |
-| `--vfu-color-text-primary`        | Headings and primary text                              |
-| `--vfu-color-text-regular`        | Regular text                                           |
-| `--vfu-color-text-secondary`      | Secondary text and status copy                         |
-| `--vfu-color-text-disabled`       | Disabled text                                          |
-| `--vfu-color-border`              | Container and card borders                             |
-| `--vfu-color-border-lighter`      | Row dividers                                           |
-| `--vfu-color-fill-light`          | Row hover and thumbnail placeholder                    |
-| `--vfu-bg-color`                  | List, toolbar, and footer background                   |
-| `--vfu-bg-color-overlay`          | Dialogs, cropper, and floating action surfaces         |
-| `--vfu-mask-color`                | Loading mask                                           |
-| `--vfu-mask-color-strong`         | Avatar and picture-wall action overlay                 |
-| `--vfu-tooltip-bg` / `color`      | Action tooltips                                        |
-| `--vfu-shadow-sm` / `md` / `lg`   | Panel, editor, and confirm-dialog shadows              |
+| Token                           | Purpose                                              |
+| ------------------------------- | ---------------------------------------------------- |
+| `--vfu-color-primary`           | Primary action, progress, selected state, focus ring |
+| `--vfu-color-primary-light-3`   | Primary hover state                                  |
+| `--vfu-color-primary-light-7`   | Light borders and hints                              |
+| `--vfu-color-primary-light-9`   | Light hover surface                                  |
+| `--vfu-color-success`           | Upload succeeded                                     |
+| `--vfu-color-warning`           | Processing state and drag hint                       |
+| `--vfu-color-danger`            | Failed/rejected state and destructive actions        |
+| `--vfu-color-text-primary`      | Headings and primary text                            |
+| `--vfu-color-text-regular`      | Regular text                                         |
+| `--vfu-color-text-secondary`    | Secondary text and status copy                       |
+| `--vfu-color-text-disabled`     | Disabled text                                        |
+| `--vfu-color-border`            | Container and card borders                           |
+| `--vfu-color-border-lighter`    | Row dividers                                         |
+| `--vfu-color-fill-light`        | Row hover and thumbnail placeholder                  |
+| `--vfu-bg-color`                | List, toolbar, and footer background                 |
+| `--vfu-bg-color-overlay`        | Dialogs, cropper, and floating action surfaces       |
+| `--vfu-mask-color`              | Loading mask                                         |
+| `--vfu-mask-color-strong`       | Avatar and picture-wall action overlay               |
+| `--vfu-tooltip-bg` / `color`    | Action tooltips                                      |
+| `--vfu-shadow-sm` / `md` / `lg` | Panel, editor, and confirm-dialog shadows            |
 
 `primary`, `success`, `warning`, `danger`, and `info` also expose `-light-3`, `-light-5`, `-light-7`, `-light-8`, and `-light-9` variants named after Element Plus.
 
 ### Radii, typography, and sizes
 
-| Token                                | Default  |
-| ------------------------------------ | -------- |
-| `--vfu-radius-small`                 | `4px`    |
-| `--vfu-radius-base`                  | `6px`    |
-| `--vfu-radius-large`                 | `8px`    |
-| `--vfu-radius-round`                 | `99px`   |
-| `--vfu-font-family`                  | `Inter, ui-sans-serif, system-ui, sans-serif` |
-| `--vfu-font-size-tiny` / `small`     | `11px` / `12px` |
-| `--vfu-font-size-medium` / `base`    | `13px` / `14px` |
-| `--vfu-font-size-large`              | `16px`   |
-| `--vfu-file-row-height`              | `52px`   |
-| `--vfu-file-thumbnail-size`          | `41px`   |
-| `--vfu-file-actions-width`           | `104px`  |
-| `--vfu-toolbar-height`               | `50px`   |
-| `--vfu-footer-height`                | `46px`   |
-| `--vfu-action-size`                  | `28px`   |
-| `--vfu-picture-wall-size`            | `192px`  |
-| `--vfu-picture-wall-caption-height`  | `44px`   |
+| Token                               | Default                                       |
+| ----------------------------------- | --------------------------------------------- |
+| `--vfu-radius-small`                | `4px`                                         |
+| `--vfu-radius-base`                 | `6px`                                         |
+| `--vfu-radius-large`                | `8px`                                         |
+| `--vfu-radius-round`                | `99px`                                        |
+| `--vfu-font-family`                 | `Inter, ui-sans-serif, system-ui, sans-serif` |
+| `--vfu-font-size-tiny` / `small`    | `11px` / `12px`                               |
+| `--vfu-font-size-medium` / `base`   | `13px` / `14px`                               |
+| `--vfu-font-size-large`             | `16px`                                        |
+| `--vfu-file-row-height`             | `52px`                                        |
+| `--vfu-file-thumbnail-size`         | `41px`                                        |
+| `--vfu-file-actions-width`          | `104px`                                       |
+| `--vfu-toolbar-height`              | `50px`                                        |
+| `--vfu-footer-height`               | `46px`                                        |
+| `--vfu-action-size`                 | `28px`                                        |
+| `--vfu-picture-wall-size`           | `192px`                                       |
+| `--vfu-picture-wall-caption-height` | `44px`                                        |
 
 Stacking tokens (`--vfu-z-index-mask`, `-overlay`, `-tooltip`, `-toast`, `-dialog`, `-confirm`) let the component fit into an existing z-index scale.
+
+### Third-party preview and cropping
+
+The bundled cropperjs and Viewer.js now consume the same tokens:
+
+| Token                                            | Purpose                                                                                        |
+| ------------------------------------------------ | ---------------------------------------------------------------------------------------------- |
+| `--vfu-viewer-backdrop`                          | Viewer mask: light themes keep Viewer.js' default translucent black; dark themes use 14% white |
+| `--vfu-viewer-backdrop-filter`                   | Mask filter: `none` in light themes, `blur(16px)` glass in dark themes                         |
+| `--vfu-viewer-surface`                           | Toolbar, thumbnail bar, and close-button surface; 12% white in dark themes                     |
+| `--vfu-viewer-surface-hover`                     | Control hover/focus surface                                                                    |
+| `--vfu-viewer-title-color`                       | Image title text                                                                               |
+| `--vfu-viewer-focus-ring`                        | Control focus ring                                                                             |
+| `--vfu-viewer-icon-filter`                       | Icon filter: both themes keep white icons by default; override with `invert(1)` when needed    |
+| `--vfu-viewer-spinner-track` / `-active`         | Viewer loading indicator                                                                       |
+| `--vfu-cropper-mask`                             | Crop mask                                                                                      |
+| `--vfu-cropper-guide`                            | Crop grid and center guides                                                                    |
+| `--vfu-cropper-canvas-bg` / `-grid`              | Checkerboard base and grid for transparent images                                              |
+| `--vfu-cropper-outline` / `--vfu-cropper-handle` | Crop outline and drag handles; follows `--vfu-color-primary` when unset                        |
+
+Cropper styles are scoped to `.vfu-avatar-cropper`, and viewer styles only target the `.vfu-viewer` container created by the component, so overrides never touch other cropperjs / Viewer.js instances in the host. Changing `--vfu-color-primary` updates the crop outline, handles, and viewer controls together.
 
 ## Theme presets
 

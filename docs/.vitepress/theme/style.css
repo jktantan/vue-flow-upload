@@ -147,6 +147,49 @@
   font-size: 13px;
 }
 
+/* 主色色板与控件标签共享同一行；色块用内联背景色表示预设。 */
+/* Primary swatches share the control row; each swatch uses an inline background color for its preset. */
+.vp-doc .demo-color-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--vp-c-text-1);
+  font-size: 13px;
+}
+
+.vp-doc .demo-theme-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.vp-doc .demo-theme-picker__swatch {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--vp-c-divider);
+  cursor: pointer;
+  transition:
+    transform 0.15s,
+    border-color 0.15s;
+}
+
+.vp-doc .demo-theme-picker__swatch:hover {
+  transform: scale(1.1);
+}
+
+.vp-doc .demo-theme-picker__swatch:focus-visible {
+  outline: 2px solid var(--vp-c-brand-1);
+  outline-offset: 2px;
+}
+
+.vp-doc .demo-theme-picker__swatch[aria-pressed='true'] {
+  border-color: var(--vp-c-bg);
+  box-shadow: 0 0 0 2px var(--vp-c-text-1);
+}
+
 .vp-doc .demo-controls select,
 .vp-doc .demo-controls input[type='number'] {
   min-height: 30px;

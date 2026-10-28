@@ -8,9 +8,11 @@ import {
   type UploadTransport,
 } from 'vue-flow-upload'
 import { DEMO_COPY, resolveDemoLocale } from '../demo-text'
+import { DEFAULT_THEME_COLOR, useDemoTheme } from '../theme-colors'
+import ThemeColorPicker from './ThemeColorPicker.vue'
 
 /** 当前文档语言决定示例文案与组件 locale。 Current documentation language determines demo copy and the component locale. */
-const { lang } = useData()
+const { lang, isDark } = useData()
 /** 归一化后的示例语言。 Normalized demo locale. */
 const demoLocale = computed(() => resolveDemoLocale(lang.value))
 /** 当前语言的示例文案。 Demo copy for the current language. */
@@ -24,6 +26,10 @@ const avatarShape = ref<AvatarShape>('circle')
 const avatarReadOnly = ref(false)
 /** 示例中控制大图查看入口是否可用的预览开关。 Preview switch that controls whether the full-image viewer is available in the demo. */
 const avatarPreview = ref(true)
+/** 当前示例主色；色板控件覆盖组件 token，裁剪框与查看器也会同步。 Current demo primary color; the swatches override component tokens so the cropper and viewer follow as well. */
+const primaryColor = ref(DEFAULT_THEME_COLOR)
+/** 主色与深浅模式对应的 token；同时写入根节点，供裁剪器与查看器继承。 Tokens for the primary color and color scheme; also written to the root so the cropper and viewer inherit them. */
+const themeStyle = useDemoTheme(primaryColor, isDark)
 /** 模拟上传计时器；离开页面时清理以避免异步回写。 Simulated upload timer; cleared on navigation to prevent async writes. */
 let uploadTimer: number | undefined
 
@@ -64,7 +70,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <section class="demo-shell" :aria-label="text.ariaLabel">
+  <section class="demo-shell" :aria-label="text.ariaLabel" :style="themeStyle">
     <div class="demo-controls" :aria-label="text.settingsLabel">
       <label>
         {{ text.shape }}
@@ -73,14 +79,12 @@ onBeforeUnmount(() => {
           <option value="square">{{ text.shapeSquare }}</option>
         </select>
       </label>
-      <label
-        ><input v-model="avatarReadOnly" type="checkbox" />
-        {{ text.readOnly }}</label
-      >
-      <label
-        ><input v-model="avatarPreview" type="checkbox" />
-        {{ text.preview }}</label
-      >
+      <div class="demo-color-field">
+        <span>{{ text.themeColor }}</span>
+        <ThemeColorPicker v-model="primaryColor" :label="text.themeColor" />
+      </div>
+      <label><input v-model="avatarReadOnly" type="checkbox" /> {{ text.readOnly }}</label>
+      <label><input v-model="avatarPreview" type="checkbox" /> {{ text.preview }}</label>
     </div>
     <p class="demo-caption">{{ text.caption }}</p>
     <AvatarUpload

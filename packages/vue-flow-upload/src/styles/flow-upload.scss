@@ -1,5 +1,6 @@
 @use 'tokens' as *;
 @use 'mixins' as *;
+@use 'third-party';
 
 // 组件样式表：只负责结构与状态，所有视觉取值来自 `_tokens.scss`。
 // Component stylesheet: structure and states only; every visual value comes from `_tokens.scss`.

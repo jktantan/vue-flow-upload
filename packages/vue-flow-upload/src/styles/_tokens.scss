@@ -65,6 +65,22 @@ $vfu-light-tokens: (
   'tooltip-bg': (null, #303133),
   'tooltip-color': (null, #ffffff),
   'spinner-track': (null, rgb(255 255 255 / 35%)),
+  // 第三方裁剪与预览组件。 Third-party crop and preview widgets.
+  // 浅色主题沿用 Viewer.js 默认：容器透明，仅由 .viewer-backdrop 提供半透明黑遮罩。
+  // Light themes keep Viewer.js' default: a transparent container with only .viewer-backdrop supplying the translucent black mask.
+  'viewer-backdrop': (null, rgb(0 0 0 / 50%)),
+  'viewer-backdrop-filter': (null, none),
+  'viewer-surface': (null, rgb(0 0 0 / 50%)),
+  'viewer-surface-hover': (null, rgb(0 0 0 / 80%)),
+  'viewer-title-color': (null, #cccccc),
+  'viewer-focus-ring': (null, #ffffff),
+  'viewer-spinner-track': (null, rgb(255 255 255 / 10%)),
+  'viewer-spinner-active': (null, rgb(255 255 255 / 50%)),
+  'viewer-icon-filter': (null, none),
+  'cropper-mask': (null, rgb(0 0 0 / 50%)),
+  'cropper-guide': (null, #eeeeee),
+  'cropper-canvas-bg': (null, #f5f7fa),
+  'cropper-canvas-grid': (null, #e4e7ed),
   // 阴影。 Shadows.
   'shadow-sm': (null, 0 2px 12px rgb(0 0 0 / 8%)),
   'shadow-md': (null, 0 12px 32px rgb(0 0 0 / 20%)),
@@ -294,6 +310,59 @@ $vfu-dark-tokens: (
   'spinner-track': (
     null,
     rgb(255 255 255 / 25%),
+  ),
+  // 第三方裁剪与预览组件。 Third-party crop and preview widgets.
+  'viewer-backdrop': (
+      null,
+      rgb(255 255 255 / 14%),
+    ),
+  'viewer-backdrop-filter': (
+    null,
+    blur(16px),
+  ),
+  'viewer-surface': (
+    null,
+    rgb(255 255 255 / 12%),
+  ),
+  'viewer-surface-hover': (
+    null,
+    rgb(255 255 255 / 24%),
+  ),
+  'viewer-title-color': (
+    null,
+    #e5eaf3,
+  ),
+  'viewer-focus-ring': (
+    null,
+    #ffffff,
+  ),
+  'viewer-spinner-track': (
+    null,
+    rgb(255 255 255 / 15%),
+  ),
+  'viewer-spinner-active': (
+    null,
+    rgb(255 255 255 / 55%),
+  ),
+  'viewer-icon-filter': (
+    null,
+    none,
+  ),
+  'cropper-mask': (
+    null,
+    rgb(0 0 0 / 60%),
+  ),
+  'cropper-guide': (
+    null,
+    #cfd3dc,
+  ),
+  'cropper-canvas-bg': (
+    null,
+    #262727,
+  ),
+  'cropper-canvas-grid': (
+    null,
+    #303030,
   ),
   'shadow-sm': (
     null,
