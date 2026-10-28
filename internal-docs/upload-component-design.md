@@ -75,7 +75,7 @@ MiB）、`chunkConcurrency`（3）、`maxConcurrentFiles`（2）、`maxConcurren
 
 - `listType=list` 使用文件列表；`picture` 使用图片墙；本地预览使用对象 URL，完成后优先使用服务端
   `url/thumbnailUrl`。
-- `theme` 可传 `'default'`、`'element-plus'`、`'ant-design-vue'` 或 `ThemeAdapter`。当前主题适配器仅提供名称/类名/变量映射，不会自动安装第三方组件库。
+- `theme` 可传 `'default'`、`'element-plus'`、`'ant-design-vue'` 或 `ThemeAdapter`。默认 token 对齐 Element Plus 浅色/深色板，并优先继承宿主已有的 `--el-*` 变量；深色在 `dark` / `vfu-dark` 下生效。主题适配器仅提供名称/类名/变量映射，不会自动安装第三方组件库。
 - 成功、上传中、失败等已进入上传流程的文件删除前显示确认框，并要求 `deleteFile`；未开始或校验拒绝的文件直接移除。没有删除能力时远程清理失败且文件保留。
 - 下载必须提供 `downloadTransport`。单文件调用 `downloadFile`；多选或全部下载调用服务端异步 `createArchive`
   ，组件按轮询间隔查询任务，直到成功、失败、取消或超时。

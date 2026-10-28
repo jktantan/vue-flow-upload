@@ -206,6 +206,23 @@ createApp(App).use(createFlowUploadI18n({ locale: 'en-US' }))
 
 旧的 `locale` 与扁平 `messages` 属性继续可用，但建议迁移到 `i18n`。
 
+## 主题与样式
+
+组件默认使用 Element Plus 的浅色色板，并在 `dark` / `vfu-dark` 下切换到其深色色板；若项目已安装 Element Plus，会直接继承 `--el-*` 变量。所有可定制值都是 `--vfu-*` CSS 变量，可在 `:root` 或任意祖先覆盖：
+
+```css
+:root {
+  --vfu-color-primary: #126f67;
+  --vfu-color-primary-light-3: #4a958e;
+  --vfu-color-primary-light-7: #b7d8d4;
+  --vfu-color-primary-light-9: #e7f2f0;
+  --vfu-radius-base: 10px;
+  --vfu-file-row-height: 60px;
+}
+```
+
+`theme="element-plus"` / `theme="ant-design-vue"` 提供预设，`ThemeAdapter` 可传入自定义类名与变量。旧变量名（`--vfu-signal`、`--vfu-ink`、`--vfu-muted`、`--vfu-line`、`--vfu-danger`、`--vfu-radius`）仍然兼容。完整 token 列表、深色模式与覆盖示例见 [主题与样式](https://jktantan.github.io/vue-flow-upload/guide/theming.html)。
+
 ## 常用属性（摘要）
 
 | 属性                                                                   | 说明                                                                             | 默认值                                       |

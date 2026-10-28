@@ -62,7 +62,7 @@
 | `width`                  | `string \| number`            | `'auto'`  | CSS 宽度；数字按像素处理。                                                               |
 | `height`                 | `string \| number`            | `'600px'` | CSS 高度；`'auto'` 表示填满具有明确高度的父容器。                                        |
 | `on-preview`             | `(file) => void \| Promise<void>` | —     | 自定义预览处理；提供后替代内置图片查看器。                                               |
-| `theme`                  | `UploadTheme`                 | `'default'` | 内置主题名（`default`、`element-plus`、`ant-design-vue`）或自定义主题适配器。           |
+| `theme`                  | `UploadTheme`                 | `'default'` | 内置主题名（`default`、`element-plus`、`ant-design-vue`）或自定义主题适配器；默认配色对齐 Element Plus，深色在 `dark` / `vfu-dark` 下生效。 |
 | `archive-polling-interval` | `number`（毫秒）            | `2000`    | 服务端归档任务的轮询间隔。                                                               |
 | `archive-polling-timeout` | `number`（毫秒）             | `600000`  | 服务端归档任务的最长等待时间。                                                           |
 | `all-download-scope`     | `DownloadScope`               | —         | “全部下载”提交给服务端的文件范围或查询范围；未提供时使用当前列表中的已持久化文件。       |

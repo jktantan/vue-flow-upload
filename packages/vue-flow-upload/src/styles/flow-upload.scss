@@ -1,88 +1,77 @@
-/* 上传根节点与 Teleport 弹窗共享同一套默认主题 token，避免组件位置改变导致变量丢失。
- * Upload roots and Teleport dialogs share default theme tokens so moving a component cannot lose variables. */
-:where(.vfu-upload, .vfu-avatar, .vfu-modal) {
-  --vfu-ink: #202938;
-  --vfu-muted: #748094;
-  --vfu-line: #d9dee7;
-  --vfu-signal: #2f6bff;
-  --vfu-danger: #e85757;
-  --vfu-radius: 6px;
-}
+@use 'tokens' as *;
+@use 'mixins' as *;
+
+// 组件样式表：只负责结构与状态，所有视觉取值来自 `_tokens.scss`。
+// Component stylesheet: structure and states only; every visual value comes from `_tokens.scss`.
+
+// =============================================================================
+// 根节点与通用排版
+// Root nodes and shared typography
+// =============================================================================
+
+// 弹窗通过 Teleport 脱离组件树，必须独立声明基础排版与盒模型。
+// Dialogs leave the component tree through Teleport, so they declare base typography and box sizing themselves.
 .vfu-modal {
   box-sizing: border-box;
-  color: var(--vfu-ink);
-  font:
-    14px/1.45 Inter,
-    ui-sans-serif,
-    system-ui,
-    sans-serif;
+  @include vfu-base-typography;
 }
-/* 统一 tooltip 的非定位视觉层，调用处只保留与按钮形状相关的定位规则。
- * Unifies the non-positional tooltip surface; callers retain only button-shape-specific placement rules. */
-@mixin vfu-tooltip-surface {
-  z-index: 12;
-  width: max-content;
-  border-radius: 4px;
-  background: #303133;
-  color: #fff;
-  content: attr(data-tooltip);
-  font-size: 12px;
-  opacity: 0;
-  pointer-events: none;
-  transition:
-    opacity 0.16s,
-    transform 0.16s;
-  white-space: nowrap;
-}
+
 .vfu-upload {
   position: relative;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  color: var(--vfu-ink);
-  text-align: left;
-  font:
-    14px/1.45 Inter,
-    ui-sans-serif,
-    system-ui,
-    sans-serif;
+  @include vfu-base-typography;
 }
+
+// =============================================================================
+// 头像上传
+// Avatar upload
+// =============================================================================
 
 .vfu-avatar {
   position: relative;
   display: inline-block;
   max-width: 100%;
 }
+
 .vfu-avatar-card {
   position: relative;
   width: 100%;
   height: 100%;
   overflow: hidden;
-  border: 1px solid #dcdfe6;
-  border-radius: var(--vfu-radius);
-  background: #f5f7fa;
+  border: 1px solid var(--vfu-color-border);
+  border-radius: var(--vfu-radius-base);
+  background: var(--vfu-color-fill-light);
   cursor: pointer;
+
+  > img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  &.is-disabled {
+    cursor: not-allowed;
+    opacity: 0.7;
+  }
+
+  // 只读头像不暗化，但需要明确不支持替换或删除的指针反馈。
+  // Read-only avatars remain fully visible but signal that replacement and deletion are unavailable.
+  &.is-read-only {
+    cursor: default;
+  }
+
+  // 圆形仅是展示遮罩；裁剪和上传仍使用方形 1:1 图像。
+  // The circle is display-only; cropping and uploading still use square 1:1 images.
+  &.is-circle {
+    border-radius: 50%;
+  }
 }
-.vfu-avatar-card > img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-.vfu-avatar-card.is-disabled {
-  cursor: not-allowed;
-  opacity: 0.7;
-}
-.vfu-avatar-card.is-read-only {
-  /* 只读头像不暗化，但需要明确不支持替换或删除的指针反馈。
-   * Read-only avatars remain fully visible but signal that replacement and deletion are unavailable. */
-  cursor: default;
-}
-.vfu-avatar-card.is-circle {
-  /* 圆形仅是展示遮罩；裁剪和上传仍使用方形 1:1 图像。
-   * The circle is display-only; cropping and uploading still use square 1:1 images. */
-  border-radius: 50%;
-}
+
+// 头像与图片墙共用的悬浮操作层；仅负责视觉，显隐由各自的触发条件控制。
+// Hover action layer shared by avatars and the picture wall; it only handles visuals while each surface controls visibility.
 .vfu-action-mask {
   position: absolute;
   z-index: 1;
@@ -95,11 +84,26 @@
   justify-content: center;
   gap: 4px;
   padding: 0;
-  background: rgb(0 0 0 / 48%);
+  background: var(--vfu-mask-color-strong);
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.2s ease;
+
+  .vfu-action {
+    background: var(--vfu-mask-color-light);
+    color: var(--vfu-color-text-regular);
+
+    &:hover:not(:disabled) {
+      background: var(--vfu-bg-color-overlay);
+      color: var(--vfu-color-primary);
+    }
+
+    &.is-danger:hover:not(:disabled) {
+      color: var(--vfu-color-danger);
+    }
+  }
 }
+
 .vfu-avatar-card:hover .vfu-action-mask,
 .vfu-avatar-card:focus-within .vfu-action-mask,
 .vfu-list.is-picture-wall .vfu-file:hover .vfu-action-mask,
@@ -107,79 +111,71 @@
   opacity: 1;
   pointer-events: auto;
 }
-.vfu-action-mask .vfu-action {
-  background: rgb(255 255 255 / 92%);
-  color: #606266;
-}
-.vfu-action-mask .vfu-action:hover:not(:disabled) {
-  background: #fff;
-  color: #409eff;
-}
-.vfu-action-mask .vfu-action.is-danger:hover:not(:disabled) {
-  color: #f56c6c;
-}
+
 .vfu-avatar-notice {
   position: absolute;
   z-index: 3;
   right: 8px;
   bottom: 8px;
   max-width: calc(100% - 16px);
-  border-radius: 4px;
+  border-radius: var(--vfu-radius-small);
   padding: 6px 8px;
-  background: #303133;
-  color: #fff;
-  font-size: 12px;
+  background: var(--vfu-tooltip-bg);
+  color: var(--vfu-tooltip-color);
+  font-size: var(--vfu-font-size-small);
 }
+
 .vfu-avatar-dialog {
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  z-index: var(--vfu-z-index-dialog);
   display: grid;
   place-items: center;
   padding: 20px;
-  background: rgb(0 0 0 / 55%);
-  color: var(--vfu-ink);
-  font:
-    14px/1.45 Inter,
-    ui-sans-serif,
-    system-ui,
-    sans-serif;
+  background: var(--vfu-overlay-color);
+  @include vfu-base-typography;
 }
+
 .vfu-modal__backdrop {
   position: absolute;
   inset: 0;
-  background: rgb(0 0 0 / 45%);
+  background: var(--vfu-overlay-color);
 }
-/* 模态内容必须显式高于 backdrop，避免绝对定位遮罩覆盖插槽中的对话框。
- * Modal content must explicitly sit above the backdrop so the absolute overlay cannot cover slotted dialogs. */
+
+// 模态内容必须显式高于 backdrop，避免绝对定位遮罩覆盖插槽中的对话框。
+// Modal content must explicitly sit above the backdrop so the absolute overlay cannot cover slotted dialogs.
 .vfu-modal > :not(.vfu-modal__backdrop) {
   position: relative;
   z-index: 1;
 }
+
 .vfu-avatar-editor {
-  width: min(90vw, 620px);
-  max-height: calc(100vh - 40px);
   display: flex;
   flex-direction: column;
+  width: min(90vw, 620px);
+  max-height: calc(100vh - 40px);
   overflow: hidden;
-  border-radius: var(--vfu-radius);
-  background: #fff;
-  box-shadow: 0 12px 32px rgb(0 0 0 / 20%);
+  border-radius: var(--vfu-radius-base);
+  background: var(--vfu-bg-color-overlay);
+  box-shadow: var(--vfu-shadow-md);
 }
+
 .vfu-avatar-editor__header {
   display: flex;
   min-height: 52px;
   align-items: center;
   justify-content: space-between;
   padding: 0 16px;
-  border-bottom: 1px solid var(--vfu-line);
+  border-bottom: 1px solid var(--vfu-color-border);
+
+  h2 {
+    margin: 0;
+    color: var(--vfu-color-text-primary);
+    font-size: var(--vfu-font-size-large);
+    font-weight: 600;
+  }
 }
-.vfu-avatar-editor__header h2 {
-  margin: 0;
-  color: var(--vfu-ink);
-  font-size: 16px;
-  font-weight: 600;
-}
+
 .vfu-avatar-editor__close {
   display: grid;
   width: 30px;
@@ -188,93 +184,107 @@
   border: 0;
   border-radius: 50%;
   background: transparent;
-  color: var(--vfu-muted);
+  color: var(--vfu-color-text-secondary);
   cursor: pointer;
   font-size: 24px;
   line-height: 1;
+
+  &:hover:not(:disabled) {
+    background: var(--vfu-color-fill-light);
+    color: var(--vfu-color-text-primary);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
 }
-.vfu-avatar-editor__close:hover:not(:disabled) {
-  background: #f5f7fa;
-  color: var(--vfu-ink);
-}
-.vfu-avatar-editor__close:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
-}
+
 .vfu-avatar-cropper {
   position: relative;
   height: min(55vh, 440px);
   min-height: 220px;
-  background: #f5f7fa;
+  background: var(--vfu-color-fill-light);
+
+  &.is-dragging {
+    outline: 2px dashed var(--vfu-color-primary);
+    outline-offset: -8px;
+  }
+
+  // 裁剪器用同一遮罩预览圆形最终展示范围。
+  // The cropper uses the same mask to preview the circular display area.
+  &.is-circle .cropper-view-box,
+  &.is-circle .cropper-face {
+    border-radius: 50%;
+  }
+
+  // cropperjs 以行内样式写入容器尺寸，必须提高优先级才能让容器跟随裁剪区域。
+  // cropperjs writes inline container sizes; higher priority is required for the container to follow the crop area.
+  .cropper-container {
+    width: 100% !important;
+    height: 100% !important;
+  }
 }
-.vfu-avatar-cropper.is-dragging {
-  outline: 2px dashed var(--vfu-signal);
-  outline-offset: -8px;
-}
+
 .vfu-avatar-drop-mask {
   position: absolute;
   inset: 0;
-  z-index: 10;
+  z-index: var(--vfu-z-index-overlay);
   display: grid;
   place-items: center;
-  background: rgb(47 107 255 / 28%);
-  color: #fff;
-  font-size: 16px;
+  background: var(--vfu-drop-mask-color-strong);
+  color: var(--vfu-color-white);
+  font-size: var(--vfu-font-size-large);
   font-weight: 600;
   pointer-events: none;
 }
+
 .vfu-avatar-upload-mask {
   position: absolute;
   inset: 0;
-  z-index: 11;
+  z-index: calc(var(--vfu-z-index-overlay) + 1);
   display: grid;
   place-content: center;
   justify-items: center;
   gap: 10px;
-  background: rgb(35 45 65 / 68%);
-  color: #fff;
-  font-size: 14px;
+  background: var(--vfu-overlay-color-strong);
+  color: var(--vfu-color-white);
+  font-size: var(--vfu-font-size-base);
   font-weight: 600;
 }
+
 .vfu-progress-indicator,
 .vfu-loading-indicator {
   display: grid;
   justify-items: center;
   gap: 10px;
+
+  &__spinner {
+    width: 28px;
+    height: 28px;
+    border: 3px solid var(--vfu-spinner-track);
+    border-top-color: var(--vfu-color-white);
+    border-radius: 50%;
+    animation: vfu-avatar-spin 0.8s linear infinite;
+  }
 }
-.vfu-progress-indicator__spinner,
-.vfu-loading-indicator__spinner {
-  width: 28px;
-  height: 28px;
-  border: 3px solid rgb(255 255 255 / 35%);
-  border-top-color: #fff;
-  border-radius: 50%;
-  animation: vfu-avatar-spin 0.8s linear infinite;
-}
+
 @keyframes vfu-avatar-spin {
   to {
     transform: rotate(360deg);
   }
 }
-.vfu-avatar-cropper .cropper-container {
-  width: 100% !important;
-  height: 100% !important;
-}
-.vfu-avatar-cropper.is-circle .cropper-view-box,
-.vfu-avatar-cropper.is-circle .cropper-face {
-  /* 裁剪器用同一遮罩预览圆形最终展示范围。
-   * The cropper uses the same mask to preview the circular display area. */
-  border-radius: 50%;
-}
+
 .vfu-avatar-empty {
   width: 100%;
   height: 100%;
   border: 0;
   background: transparent;
-  color: var(--vfu-muted);
+  color: var(--vfu-color-text-secondary);
   cursor: pointer;
   font: inherit;
 }
+
 .vfu-avatar-editor__footer {
   display: flex;
   min-height: 64px;
@@ -282,41 +292,26 @@
   justify-content: space-between;
   gap: 12px;
   padding: 0 16px;
-  border-top: 1px solid var(--vfu-line);
-  color: var(--vfu-muted);
-  font-size: 13px;
+  border-top: 1px solid var(--vfu-color-border);
+  color: var(--vfu-color-text-secondary);
+  font-size: var(--vfu-font-size-medium);
+
+  > div {
+    display: flex;
+    gap: 8px;
+  }
 }
-.vfu-avatar-editor__footer > div {
-  display: flex;
-  gap: 8px;
-}
+
 .vfu-avatar-editor__feedback {
   min-width: 0;
-}
-.vfu-avatar-editor__feedback p {
-  margin: 3px 0 0;
-  color: var(--vfu-danger);
-  line-height: 1.35;
-}
-@media (prefers-reduced-motion: reduce) {
-  .vfu-progress-indicator__spinner,
-  .vfu-loading-indicator__spinner {
-    animation: none;
+
+  p {
+    margin: 3px 0 0;
+    color: var(--vfu-color-danger);
+    line-height: 1.35;
   }
 }
-@media (max-width: 560px) {
-  .vfu-avatar-editor__footer {
-    align-items: flex-start;
-    flex-direction: column;
-    padding: 12px 16px;
-  }
-  .vfu-avatar-editor__footer > div {
-    width: 100%;
-  }
-  .vfu-avatar-editor__footer .vfu-button {
-    flex: 1;
-  }
-}
+
 .vfu-avatar-preview {
   position: relative;
   display: grid;
@@ -325,14 +320,20 @@
   place-items: center;
   gap: 12px;
   padding: 16px;
-  border-radius: var(--vfu-radius);
-  background: #fff;
+  border-radius: var(--vfu-radius-base);
+  background: var(--vfu-bg-color-overlay);
+
+  img {
+    max-width: 100%;
+    max-height: calc(90vh - 70px);
+    object-fit: contain;
+  }
 }
-.vfu-avatar-preview img {
-  max-width: 100%;
-  max-height: calc(90vh - 70px);
-  object-fit: contain;
-}
+
+// =============================================================================
+// 上传容器、空态与浮层
+// Upload shell, empty state, and overlays
+// =============================================================================
 
 .vfu-upload__operation,
 .vfu-upload__footer {
@@ -355,189 +356,208 @@
   place-content: center;
   justify-items: center;
   gap: 10px;
-  border: 1px solid var(--vfu-line);
-  color: #909399;
+  border: 1px solid var(--vfu-color-border);
+  color: var(--vfu-color-text-secondary);
   text-align: center;
-}
 
-.vfu-upload__empty img {
-  display: block;
-  width: 118px;
-  height: 128px;
-}
+  img {
+    display: block;
+    width: 118px;
+    height: 128px;
+  }
 
-.vfu-upload__empty p {
-  margin: 0;
-  font-size: 14px;
-  line-height: 1.4;
+  p {
+    margin: 0;
+    font-size: var(--vfu-font-size-base);
+    line-height: 1.4;
+  }
 }
 
 .vfu-upload__loading-mask {
   position: absolute;
-  z-index: 5;
-  /* 遮罩只覆盖显示内容，内缩 1px 保留文件列表或空态容器的边框。
-   * The mask covers only display content and is inset by 1px to preserve list or empty-state borders. */
+  z-index: var(--vfu-z-index-mask);
+  // 遮罩只覆盖显示内容，内缩 1px 保留文件列表或空态容器的边框。
+  // The mask covers only display content and is inset by 1px to preserve list or empty-state borders.
   inset: 1px;
   display: grid;
   place-items: center;
-  background: rgb(255 255 255 / 68%);
+  background: var(--vfu-mask-color);
   cursor: progress;
-}
 
-.vfu-upload__loading-mask .vfu-loading-indicator {
-  color: var(--vfu-muted);
-}
-.vfu-upload__loading-mask .vfu-loading-indicator__spinner {
-  border-color: rgb(47 107 255 / 22%);
-  border-top-color: var(--vfu-signal);
+  .vfu-loading-indicator {
+    color: var(--vfu-color-text-secondary);
+  }
+
+  .vfu-loading-indicator__spinner {
+    border-color: var(--vfu-color-primary-light-7);
+    border-top-color: var(--vfu-color-primary);
+  }
 }
 
 .vfu-upload__toast {
   position: absolute;
-  z-index: 20;
+  z-index: var(--vfu-z-index-toast);
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  border-radius: 4px;
+  border-radius: var(--vfu-radius-small);
   padding: 10px 18px;
-  background: rgb(0 0 0 / 72%);
-  color: #fff;
-  font-size: 14px;
+  background: var(--vfu-toast-bg);
+  color: var(--vfu-toast-color);
+  font-size: var(--vfu-font-size-base);
   pointer-events: none;
 }
+
 .vfu-upload__drop-mask {
   position: absolute;
-  z-index: 10;
+  z-index: var(--vfu-z-index-overlay);
   inset: 0;
   display: grid;
   place-items: center;
   box-sizing: border-box;
-  border: 2px dashed #409eff;
-  border-radius: var(--vfu-radius);
-  background: rgb(64 158 255 / 18%);
-  color: #409eff;
+  border: 2px dashed var(--vfu-color-primary);
+  border-radius: var(--vfu-radius-base);
+  background: var(--vfu-drop-mask-color);
+  color: var(--vfu-color-primary);
   pointer-events: none;
 }
+
 .vfu-upload__drop-message {
   padding: 10px 18px;
-  border-radius: var(--vfu-radius);
-  background: rgb(255 255 255 / 92%);
-  box-shadow: 0 2px 12px rgb(0 0 0 / 8%);
-  font-size: 15px;
+  border-radius: var(--vfu-radius-base);
+  background: var(--vfu-mask-color-light);
+  box-shadow: var(--vfu-shadow-sm);
+  font-size: calc(var(--vfu-font-size-base) + 1px);
   font-weight: 500;
 }
+
 .vfu-confirm {
   position: fixed;
-  z-index: 3000;
+  z-index: var(--vfu-z-index-confirm);
   inset: 0;
   display: grid;
   place-items: center;
   padding: 20px;
+
+  &__dialog {
+    position: relative;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    width: min(420px, 100%);
+    gap: 14px;
+    padding: 22px;
+    @include vfu-elevated-surface;
+
+    footer {
+      grid-column: 2;
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 4px;
+    }
+  }
+
+  &__icon {
+    display: grid;
+    width: 24px;
+    height: 24px;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--vfu-color-warning-light-9);
+    color: var(--vfu-color-warning);
+    font-weight: 700;
+  }
+
+  &__content {
+    h3,
+    p {
+      margin: 0;
+    }
+
+    h3 {
+      color: var(--vfu-color-text-primary);
+      font-size: var(--vfu-font-size-large);
+    }
+
+    p {
+      margin-top: 8px;
+      color: var(--vfu-color-text-regular);
+      font-size: var(--vfu-font-size-medium);
+    }
+
+    .vfu-confirm__error {
+      color: var(--vfu-color-danger);
+    }
+  }
 }
-.vfu-confirm__dialog {
-  position: relative;
-  display: grid;
-  grid-template-columns: auto 1fr;
-  width: min(420px, 100%);
-  gap: 14px;
-  border-radius: 8px;
-  padding: 22px;
-  background: #fff;
-  box-shadow: 0 16px 48px rgb(0 0 0 / 20%);
-}
-.vfu-confirm__icon {
-  display: grid;
-  width: 24px;
-  height: 24px;
-  place-items: center;
-  border-radius: 50%;
-  background: #fdf6ec;
-  color: #e6a23c;
-  font-weight: 700;
-}
-.vfu-confirm__content h3,
-.vfu-confirm__content p {
-  margin: 0;
-}
-.vfu-confirm__content h3 {
-  color: #303133;
-  font-size: 16px;
-}
-.vfu-confirm__content p {
-  margin-top: 8px;
-  color: #606266;
-  font-size: 13px;
-}
-.vfu-confirm__content .vfu-confirm__error {
-  color: #f56c6c;
-}
-.vfu-confirm__dialog footer {
-  grid-column: 2;
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 4px;
-}
+
 .vfu-file-input {
   display: none;
 }
+
+// =============================================================================
+// 工具栏与按钮
+// Toolbar and buttons
+// =============================================================================
+
 .vfu-toolbar {
   display: flex;
   align-items: center;
   gap: 12px;
-  min-height: 50px;
+  min-height: var(--vfu-toolbar-height);
   margin: 0;
   padding: 0 16px;
-  border: 1px solid var(--vfu-line);
+  border: 1px solid var(--vfu-color-border);
   border-bottom: 0;
-  background: #fff;
-  color: var(--vfu-muted);
-  font-size: 12px;
-}
-.vfu-toolbar__left {
+  background: var(--vfu-bg-color);
+  color: var(--vfu-color-text-secondary);
+  font-size: var(--vfu-font-size-small);
+
   // 批量操作按内容宽度占位；只让中间拖拽提示吸收剩余宽度。
   // Batch actions reserve their content width; only the centered drag hint absorbs remaining width.
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-.vfu-toolbar__right {
+  &__left {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
   // 主上传操作按内容宽度保留空间，不能参与等比分配后被压缩换行。
   // The primary upload action reserves its content width and must not be compressed by equal flex distribution.
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  justify-content: flex-end;
+  &__right {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: flex-end;
+  }
+
+  &__center {
+    display: inline-flex;
+    flex: 1 1 0;
+    min-width: 0;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    color: var(--vfu-color-warning);
+    font-size: var(--vfu-font-size-medium);
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  // 中间拖拽提示必须在可用空间不足时截断，不能推挤左右操作按钮。
+  // The centered drag hint must truncate when space is insufficient instead of pushing the left and right action buttons.
+  &__drag {
+    @include vfu-ellipsis;
+  }
 }
-.vfu-toolbar__center {
-  display: inline-flex;
-  flex: 1 1 0;
-  min-width: 0;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  color: #e6a23c;
-  font-size: 13px;
-  font-weight: 500;
-  white-space: nowrap;
-}
-// 中间拖拽提示必须在可用空间不足时截断，不能推挤左右操作按钮。
-// The centered drag hint must truncate when space is insufficient instead of pushing the left and right action buttons.
-.vfu-toolbar__drag {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+
 .vfu-button {
-  /* 共用按钮在 Teleport 等脱离组件树的场景下也必须保留可用的默认主题。
-   * Shared buttons retain a usable default theme even when Teleport takes them outside a component tree. */
-  border: 1px solid var(--vfu-signal, #2f6bff);
-  border-radius: var(--vfu-radius, 6px);
+  border: 1px solid var(--vfu-color-primary);
+  border-radius: var(--vfu-radius-base);
   padding: 8px 11px;
-  background: var(--vfu-signal, #2f6bff);
-  color: white;
+  background: var(--vfu-color-primary);
+  color: var(--vfu-color-white);
   cursor: pointer;
   font: inherit;
   font-weight: 400;
@@ -546,75 +566,87 @@
   // Action labels must remain on one line; when space is tight, the drag hint truncates instead of splitting button copy.
   white-space: nowrap;
   transition: background-color 0.2s;
-}
-.vfu-button__icon {
+
   // VitePress 将文档中的 SVG 默认设为 block；恢复为行内图标以避免按钮文字换行。
   // VitePress defaults document SVGs to block; restore an inline icon so button labels stay on one line.
-  display: inline-block;
-  width: 15px;
-  height: 15px;
-  margin-right: 5px;
-  vertical-align: -2px;
-  fill: none;
-  stroke: currentcolor;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 1.8;
+  &__icon {
+    display: inline-block;
+    margin-right: 5px;
+    vertical-align: -2px;
+    @include vfu-line-icon(15px);
+  }
+
+  &:hover:not(:disabled) {
+    border-color: var(--vfu-color-primary-light-3);
+    background: var(--vfu-color-primary-light-3);
+  }
+
+  &.is-danger {
+    border-color: var(--vfu-color-danger);
+    background: var(--vfu-color-danger);
+    color: var(--vfu-color-white);
+
+    &:hover:not(:disabled) {
+      border-color: var(--vfu-color-danger-light-3);
+      background: var(--vfu-color-danger-light-3);
+    }
+  }
+
+  &.is-info {
+    border-color: var(--vfu-color-border);
+    background: var(--vfu-bg-color);
+    color: var(--vfu-color-text-regular);
+
+    &:hover:not(:disabled) {
+      border-color: var(--vfu-color-primary-light-7);
+      background: var(--vfu-color-primary-light-9);
+      color: var(--vfu-color-primary);
+    }
+  }
+
+  &.is-success {
+    border-color: var(--vfu-color-success);
+    background: var(--vfu-color-success);
+
+    &:hover:not(:disabled) {
+      border-color: var(--vfu-color-success-light-3);
+      background: var(--vfu-color-success-light-3);
+    }
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  &--tooltip {
+    position: relative;
+
+    &::after {
+      position: absolute;
+      bottom: calc(100% + 7px);
+      left: 50%;
+      max-width: min(320px, calc(100vw - 32px));
+      padding: 6px 8px;
+      @include vfu-tooltip-surface;
+      font-weight: 400;
+      line-height: 1.35;
+      transform: translate(-50%, 2px);
+    }
+
+    &:hover::after,
+    &:focus-visible::after {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+  }
 }
-.vfu-button:hover:not(:disabled) {
-  border-color: #5e8cff;
-  background: #5e8cff;
-}
-.vfu-button.is-danger {
-  border-color: #f56c6c;
-  background: #f56c6c;
-  color: #fff;
-}
-.vfu-button.is-danger:hover:not(:disabled) {
-  border-color: #f78989;
-  background: #f78989;
-}
-.vfu-button.is-info {
-  border-color: #dcdfe6;
-  background: #fff;
-  color: #606266;
-}
-.vfu-button.is-info:hover:not(:disabled) {
-  border-color: #c6e2ff;
-  background: #ecf5ff;
-  color: #409eff;
-}
-.vfu-button.is-success {
-  border-color: #67c23a;
-  background: #67c23a;
-}
-.vfu-button.is-success:hover:not(:disabled) {
-  border-color: #85ce61;
-  background: #85ce61;
-}
-.vfu-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-.vfu-button--tooltip {
-  position: relative;
-}
-.vfu-button--tooltip::after {
-  position: absolute;
-  bottom: calc(100% + 7px);
-  left: 50%;
-  max-width: min(320px, calc(100vw - 32px));
-  padding: 6px 8px;
-  @include vfu-tooltip-surface;
-  font-weight: 400;
-  line-height: 1.35;
-  transform: translate(-50%, 2px);
-}
-.vfu-button--tooltip:hover::after,
-.vfu-button--tooltip:focus-visible::after {
-  opacity: 1;
-  transform: translate(-50%, 0);
-}
+
+// =============================================================================
+// 文件列表与图片墙
+// File list and picture wall
+// =============================================================================
+
 .vfu-list {
   display: grid;
   flex: 1 1 auto;
@@ -625,163 +657,256 @@
   gap: 0;
   margin: 0;
   padding: 0;
-  border: 1px solid var(--vfu-line);
+  border: 1px solid var(--vfu-color-border);
   list-style: none;
+
+  &.is-picture-wall {
+    // 图片区固定为正方形，信息区固定高度；两者都由 token 控制。
+    // The image area is a fixed square and the metadata strip has a fixed height; both are token-driven.
+    grid-template-columns: repeat(auto-fill, calc(var(--vfu-picture-wall-size) + 2px));
+    grid-auto-rows: calc(
+      var(--vfu-picture-wall-size) + var(--vfu-picture-wall-caption-height) + 2px
+    );
+    gap: 12px;
+    padding: 12px;
+
+    .vfu-file {
+      // 卡片使用纵向 Flex，上下两区均使用固定尺寸。
+      // The card uses vertical Flex with fixed sizes for both areas.
+      position: relative;
+      // 边框计入卡片固定轨道，内部可用空间恰好等于图片区与信息区之和。
+      // The border is included in the fixed card track, leaving inner space exactly equal to the image and metadata areas.
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      height: 100%;
+      min-height: 0;
+      overflow: hidden;
+      border: 1px solid var(--vfu-color-border);
+      border-radius: var(--vfu-radius-base);
+      padding: 0;
+      background: var(--vfu-bg-color);
+
+      &:hover {
+        border-color: var(--vfu-color-primary-light-7);
+        background: var(--vfu-bg-color);
+      }
+    }
+
+    .vfu-file__visual {
+      // 图片区使用固定正方形尺寸，作为 mask 的定位容器。
+      // The image area uses a fixed square size and is the mask's positioning container.
+      position: relative;
+      display: grid;
+      flex: 0 0 var(--vfu-picture-wall-size);
+      width: var(--vfu-picture-wall-size);
+      height: var(--vfu-picture-wall-size);
+      min-height: 0;
+      place-items: center;
+      overflow: hidden;
+      background: var(--vfu-bg-color);
+    }
+
+    .vfu-thumbnail {
+      width: 100%;
+      height: 100%;
+      border-radius: 0;
+
+      img {
+        object-fit: contain;
+      }
+    }
+
+    .vfu-file__icon {
+      width: 64px;
+      height: 64px;
+    }
+
+    .vfu-file__body {
+      // 文件名在固定信息区内垂直居中，顶边紧贴图片区作为唯一分割线。
+      // The filename is vertically centered in fixed metadata, whose top edge touches the image as the only divider.
+      position: relative;
+      display: flex;
+      flex: 0 0 var(--vfu-picture-wall-caption-height);
+      align-items: center;
+      width: 100%;
+      box-sizing: border-box;
+      height: var(--vfu-picture-wall-caption-height);
+      min-height: 0;
+      overflow: hidden;
+      border-top: 1px solid var(--vfu-color-border-lighter);
+      padding: 0 10px;
+    }
+
+    .vfu-file__headline {
+      display: block;
+
+      strong {
+        display: block;
+        width: 100%;
+      }
+
+      span {
+        display: none;
+      }
+    }
+
+    .vfu-file__status {
+      display: none;
+    }
+
+    .vfu-progress {
+      // 进度条贴在信息区底部浮动显示，不参与文件名的垂直居中布局。
+      // The progress bar floats at the metadata area's bottom without participating in filename centering.
+      position: absolute;
+      right: 10px;
+      bottom: 0;
+      left: 10px;
+      display: block;
+      margin: 0;
+    }
+
+    .vfu-select {
+      position: absolute;
+      z-index: 3;
+      top: 9px;
+      left: 9px;
+    }
+
+    // 图片墙的遮罩同时复用文件操作类；在该模式下必须覆盖列表模式的右对齐布局。
+    // Picture-wall overlays also reuse the file-action class; this mode overrides the list layout's right alignment.
+    .vfu-action-mask {
+      flex: 0 0 auto;
+      justify-content: center;
+    }
+  }
 }
+
 .vfu-file {
   display: flex;
   align-items: center;
   gap: 11px;
   min-width: 0;
-  min-height: 52px;
+  min-height: var(--vfu-file-row-height);
   padding: 8px 16px;
   border: 0;
-  border-bottom: 1px solid #edf0f4;
+  border-bottom: 1px solid var(--vfu-color-border-lighter);
   border-radius: 0;
-  background: white;
+  background: var(--vfu-bg-color);
   transition: background-color 0.2s;
+
+  &:hover {
+    background: var(--vfu-color-fill-light);
+  }
+
+  &:last-child {
+    border-bottom: 0;
+  }
+
+  &.is-success {
+    border-color: transparent;
+  }
+
+  &.is-failed,
+  &.is-rejected {
+    background: var(--vfu-color-danger-light-9);
+  }
+
+  // 尚未开始或已结束的处理状态使用次要文本色，进行中与异常使用状态色。
+  // Idle or finished states use secondary text, while in-progress and failed states use status colors.
+  &.is-idle .vfu-file__body small,
+  &.is-queued .vfu-file__body small,
+  &.is-paused .vfu-file__body small,
+  &.is-canceled .vfu-file__body small {
+    color: var(--vfu-color-text-secondary);
+  }
+
+  &.is-validating .vfu-file__body small,
+  &.is-hashing .vfu-file__body small,
+  &.is-checking .vfu-file__body small,
+  &.is-preparing .vfu-file__body small,
+  &.is-uploading .vfu-file__body small,
+  &.is-merging .vfu-file__body small {
+    color: var(--vfu-color-primary);
+  }
+
+  &.is-processing .vfu-file__body small {
+    color: var(--vfu-color-warning);
+  }
+
+  &.is-success .vfu-file__body small {
+    color: var(--vfu-color-success);
+  }
+
+  &.is-failed .vfu-file__body small,
+  &.is-rejected .vfu-file__body small {
+    color: var(--vfu-color-danger);
+  }
 }
-.vfu-file:hover {
-  background: #f8faff;
+
+.vfu-list:not(.is-picture-wall) {
+  .vfu-file {
+    display: grid;
+    grid-template-columns:
+      var(--vfu-file-thumbnail-size) minmax(0, 1fr)
+      var(--vfu-file-actions-width);
+
+    &.has-select {
+      grid-template-columns:
+        24px var(--vfu-file-thumbnail-size) minmax(0, 1fr)
+        var(--vfu-file-actions-width);
+    }
+  }
+
+  .vfu-thumbnail {
+    width: var(--vfu-file-thumbnail-size);
+    height: var(--vfu-file-thumbnail-size);
+    flex: 0 0 var(--vfu-file-thumbnail-size);
+    border-radius: var(--vfu-radius-small);
+  }
+
+  .vfu-file__visual {
+    display: flex;
+    width: var(--vfu-file-thumbnail-size);
+    height: var(--vfu-file-thumbnail-size);
+    align-items: center;
+    justify-content: center;
+  }
 }
-.vfu-file:last-child {
-  border-bottom: 0;
-}
-.vfu-list:not(.is-picture-wall) .vfu-file {
-  display: grid;
-  grid-template-columns: 41px minmax(0, 1fr) 104px;
-}
-.vfu-list:not(.is-picture-wall) .vfu-file.has-select {
-  grid-template-columns: 24px 41px minmax(0, 1fr) 104px;
-}
-.vfu-list.is-picture-wall {
-  /* 图片区固定为 192px 正方形，信息区固定为 44px。
-   * The image area is a fixed 192px square and metadata is fixed at 44px. */
-  --vfu-picture-wall-visual-size: 192px;
-  --vfu-picture-wall-body-height: 44px;
-  grid-template-columns: repeat(auto-fill, calc(var(--vfu-picture-wall-visual-size) + 2px));
-  grid-auto-rows: calc(
-    var(--vfu-picture-wall-visual-size) + var(--vfu-picture-wall-body-height) + 2px
-  );
-  gap: 12px;
-  padding: 12px;
-}
-.vfu-list.is-picture-wall .vfu-file {
-  /* 卡片使用纵向 Flex，上下两区均使用固定尺寸。
-   * The card uses vertical Flex with fixed sizes for both areas. */
-  position: relative;
-  /* 边框计入卡片固定轨道，内部可用空间恰好等于图片区与信息区之和。
-   * The border is included in the fixed card track, leaving inner space exactly equal to the image and metadata areas. */
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  height: 100%;
-  min-height: 0;
-  overflow: hidden;
-  border: 1px solid #dcdfe6;
-  border-radius: var(--vfu-radius);
-  padding: 0;
-  background: #fff;
-}
-.vfu-list.is-picture-wall .vfu-file:hover {
-  border-color: #c6e2ff;
-  background: #fff;
-}
-.vfu-list.is-picture-wall .vfu-file__visual {
-  /* 图片区使用固定正方形尺寸，作为 mask 的定位容器。
-   * The image area uses a fixed square size and is the mask's positioning container. */
-  position: relative;
-  display: grid;
-  flex: 0 0 var(--vfu-picture-wall-visual-size);
-  width: var(--vfu-picture-wall-visual-size);
-  height: var(--vfu-picture-wall-visual-size);
-  min-height: 0;
-  place-items: center;
-  overflow: hidden;
-  background: #fff;
-}
-.vfu-list.is-picture-wall .vfu-thumbnail {
-  width: 100%;
-  height: 100%;
-  border-radius: 0;
-}
-.vfu-list.is-picture-wall .vfu-thumbnail img {
-  object-fit: contain;
-}
-.vfu-list.is-picture-wall .vfu-file__icon {
-  width: 64px;
-  height: 64px;
-}
-.vfu-list.is-picture-wall .vfu-file__body {
-  /* 文件名在固定信息区内垂直居中，顶边紧贴图片区作为唯一分割线。
-   * The filename is vertically centered in fixed metadata, whose top edge touches the image as the only divider. */
-  position: relative;
-  display: flex;
-  flex: 0 0 var(--vfu-picture-wall-body-height);
-  align-items: center;
-  width: 100%;
-  box-sizing: border-box;
-  height: var(--vfu-picture-wall-body-height);
-  min-height: 0;
-  overflow: hidden;
-  border-top: 1px solid #ebeef5;
-  padding: 0 10px;
-}
-.vfu-list.is-picture-wall .vfu-file__headline {
-  display: block;
-}
-.vfu-list.is-picture-wall .vfu-file__headline strong {
-  display: block;
-  width: 100%;
-}
-.vfu-list.is-picture-wall .vfu-file__headline span,
-.vfu-list.is-picture-wall .vfu-file__status {
-  display: none;
-}
-.vfu-list.is-picture-wall .vfu-progress {
-  /* 进度条贴在信息区底部浮动显示，不参与文件名的垂直居中布局。
-   * The progress bar floats at the metadata area's bottom without participating in filename centering. */
-  position: absolute;
-  right: 10px;
-  bottom: 0;
-  left: 10px;
-  display: block;
-  margin: 0;
-}
+
 .vfu-select {
   z-index: 1;
   align-self: center;
   cursor: pointer;
+
+  &--all {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    align-self: center;
+    color: var(--vfu-color-text-primary);
+    cursor: pointer;
+  }
+
+  input {
+    width: 15px;
+    height: 15px;
+    margin: 0;
+    accent-color: var(--vfu-color-primary);
+    cursor: pointer;
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+  }
+
+  &:has(input:disabled) {
+    cursor: not-allowed;
+  }
 }
-.vfu-select--all {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  align-self: center;
-  color: var(--vfu-ink);
-  cursor: pointer;
-}
-.vfu-select input {
-  width: 15px;
-  height: 15px;
-  margin: 0;
-  accent-color: var(--vfu-signal);
-  cursor: pointer;
-}
-.vfu-select input:disabled {
-  cursor: not-allowed;
-  opacity: 0.6;
-}
-.vfu-select:has(input:disabled) {
-  cursor: not-allowed;
-}
-.vfu-list.is-picture-wall .vfu-select {
-  position: absolute;
-  z-index: 3;
-  top: 9px;
-  left: 9px;
-}
+
 .vfu-file__state {
   position: absolute;
   z-index: 2;
@@ -794,33 +919,34 @@
   padding: 5px 5px 0 0;
   box-sizing: border-box;
   clip-path: polygon(100% 0, 0 0, 100% 100%);
-  color: #fff;
+  color: var(--vfu-color-white);
   pointer-events: none;
+
+  &.is-success {
+    background: var(--vfu-color-success);
+  }
+
+  &.is-pending {
+    background: var(--vfu-color-info);
+  }
+
+  &.is-uploading {
+    background: var(--vfu-color-primary);
+  }
+
+  &.is-processing {
+    background: var(--vfu-color-warning);
+  }
+
+  &.is-error {
+    background: var(--vfu-color-danger);
+  }
+
+  svg {
+    @include vfu-line-icon(14px, 2.2);
+  }
 }
-.vfu-file__state.is-success {
-  background: #67c23a;
-}
-.vfu-file__state.is-pending {
-  background: #909399;
-}
-.vfu-file__state.is-uploading {
-  background: #409eff;
-}
-.vfu-file__state.is-processing {
-  background: #e6a23c;
-}
-.vfu-file__state.is-error {
-  background: #f56c6c;
-}
-.vfu-file__state svg {
-  width: 14px;
-  height: 14px;
-  fill: none;
-  stroke: currentcolor;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 2.2;
-}
+
 .vfu-thumbnail {
   width: 100%;
   height: 104px;
@@ -828,217 +954,187 @@
   border: 0;
   border-radius: 2px;
   padding: 0;
-  background: #f5f7fa;
+  background: var(--vfu-color-fill-light);
   cursor: zoom-in;
+
+  &:disabled {
+    cursor: default;
+  }
+
+  &:focus-visible {
+    outline: 2px solid currentcolor;
+    outline-offset: 3px;
+  }
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
 }
-.vfu-thumbnail:disabled {
-  cursor: default;
-}
-.vfu-thumbnail:focus-visible {
-  outline: 2px solid currentcolor;
-  outline-offset: 3px;
-}
-.vfu-thumbnail img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-.vfu-list:not(.is-picture-wall) .vfu-thumbnail {
-  width: 41px;
-  height: 41px;
-  flex: 0 0 41px;
-  border-radius: 4px;
-}
-.vfu-list:not(.is-picture-wall) .vfu-file__visual {
-  display: flex;
-  width: 41px;
-  height: 41px;
-  align-items: center;
-  justify-content: center;
-}
-.vfu-file.is-success {
-  border-color: transparent;
-}
-.vfu-file.is-failed,
-.vfu-file.is-rejected {
-  background: rgb(245 108 108 / 8%);
-}
-.vfu-file.is-idle .vfu-file__body small,
-.vfu-file.is-queued .vfu-file__body small,
-.vfu-file.is-paused .vfu-file__body small,
-.vfu-file.is-canceled .vfu-file__body small {
-  color: #909399;
-}
-.vfu-file.is-validating .vfu-file__body small,
-.vfu-file.is-hashing .vfu-file__body small,
-.vfu-file.is-checking .vfu-file__body small,
-.vfu-file.is-preparing .vfu-file__body small,
-.vfu-file.is-uploading .vfu-file__body small,
-.vfu-file.is-merging .vfu-file__body small {
-  color: #409eff;
-}
-.vfu-file.is-processing .vfu-file__body small {
-  color: #e6a23c;
-}
-.vfu-file.is-success .vfu-file__body small {
-  color: #67c23a;
-}
-.vfu-file.is-failed .vfu-file__body small,
-.vfu-file.is-rejected .vfu-file__body small {
-  color: #f56c6c;
-}
+
 .vfu-file__glyph {
   display: grid;
-  width: 41px;
-  height: 41px;
+  width: var(--vfu-file-thumbnail-size);
+  height: var(--vfu-file-thumbnail-size);
   place-items: center;
   font-size: 8px;
   font-weight: 700;
 }
+
 .vfu-file__icon {
   object-fit: contain;
 }
+
 .vfu-file__body {
   min-width: 0;
   flex: 1 1 0;
+
+  small {
+    color: var(--vfu-color-text-secondary);
+    font-size: var(--vfu-font-size-small);
+
+    &.is-error {
+      color: var(--vfu-color-danger);
+    }
+  }
 }
+
 .vfu-file__headline {
   display: flex;
   min-width: 0;
   gap: 9px;
   align-items: baseline;
+
+  strong {
+    width: 0;
+    min-width: 0;
+    flex: 1 1 auto;
+    @include vfu-ellipsis;
+  }
+
+  span {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    color: var(--vfu-color-text-secondary);
+    font-size: var(--vfu-font-size-small);
+  }
 }
-.vfu-file__headline strong {
-  width: 0;
-  min-width: 0;
-  flex: 1 1 auto;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.vfu-file__headline span {
-  flex: 0 0 auto;
-  white-space: nowrap;
-  color: var(--vfu-muted);
-  font-size: 12px;
-}
-.vfu-file__body small {
-  color: var(--vfu-muted);
-  font-size: 12px;
-}
-.vfu-file__body small.is-error {
-  color: var(--vfu-danger);
-}
+
 .vfu-file__status {
   display: flex;
   min-width: 0;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+
+  small {
+    min-width: 0;
+    @include vfu-ellipsis;
+  }
 }
-.vfu-file__status small {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+
 .vfu-progress {
   height: 4px;
   overflow: hidden;
   margin: 6px 0 3px;
-  border-radius: 99px;
-  background: #ebeef5;
+  border-radius: var(--vfu-radius-round);
+  background: var(--vfu-color-border-lighter);
+
+  i {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--vfu-color-primary);
+    transition: width 0.22s ease;
+  }
 }
-.vfu-progress i {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--vfu-signal);
-  transition: width 0.22s ease;
-}
+
 .vfu-file__percent {
   flex: 0 0 auto;
-  color: var(--vfu-signal);
-  font-size: 12px;
+  color: var(--vfu-color-primary);
+  font-size: var(--vfu-font-size-small);
   font-variant-numeric: tabular-nums;
 }
+
 .vfu-file__actions {
   display: flex;
-  min-height: 28px;
+  min-height: var(--vfu-action-size);
   min-width: 0;
   box-sizing: border-box;
-  flex: 0 0 104px;
+  flex: 0 0 var(--vfu-file-actions-width);
   align-items: center;
   justify-content: flex-end;
   gap: 4px;
 }
-/* 图片墙的遮罩同时复用文件操作类；在该模式下必须覆盖列表模式的右对齐布局。
- * Picture-wall overlays also reuse the file-action class; this mode overrides the list layout's right alignment. */
-.vfu-list.is-picture-wall .vfu-action-mask {
-  flex: 0 0 auto;
-  justify-content: center;
-}
+
 .vfu-action {
   position: relative;
   display: grid;
-  width: 28px;
-  height: 28px;
-  flex: 0 0 28px;
+  width: var(--vfu-action-size);
+  height: var(--vfu-action-size);
+  flex: 0 0 var(--vfu-action-size);
   place-items: center;
   border: 0;
-  border-radius: var(--vfu-radius);
+  border-radius: var(--vfu-radius-base);
   padding: 0;
   background: transparent;
-  color: var(--vfu-muted);
+  color: var(--vfu-color-text-secondary);
   cursor: pointer;
   font: inherit;
   font-size: 0;
+
+  svg {
+    @include vfu-line-icon(16px);
+  }
+
+  &::after {
+    position: absolute;
+    top: calc(100% + 5px);
+    right: 0;
+    max-width: 160px;
+    padding: 5px 7px;
+    @include vfu-tooltip-surface;
+    line-height: 1.2;
+    transform: translateY(-2px);
+  }
+
+  &:hover::after,
+  &:focus-visible::after {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  &.is-danger {
+    color: var(--vfu-color-text-secondary);
+  }
+
+  &:hover:not(:disabled) {
+    background: var(--vfu-color-primary-light-9);
+    color: var(--vfu-color-primary);
+  }
+
+  &.is-danger:hover:not(:disabled) {
+    background: var(--vfu-color-danger-light-9);
+    color: var(--vfu-color-danger);
+  }
 }
-.vfu-action svg {
-  width: 16px;
-  height: 16px;
-  fill: none;
-  stroke: currentcolor;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 1.8;
-}
-.vfu-action::after {
-  position: absolute;
-  top: calc(100% + 5px);
-  right: 0;
-  max-width: 160px;
-  padding: 5px 7px;
-  @include vfu-tooltip-surface;
-  line-height: 1.2;
-  transform: translateY(-2px);
-}
-.vfu-action:hover::after,
-.vfu-action:focus-visible::after {
-  opacity: 1;
-  transform: translateY(0);
-}
-.vfu-action.is-danger {
-  color: var(--vfu-muted);
-}
-.vfu-action:hover:not(:disabled) {
-  background: #ecf5ff;
-  color: var(--vfu-signal);
-}
-.vfu-action.is-danger:hover:not(:disabled) {
-  background: #fef0f0;
-  color: var(--vfu-danger);
-}
+
+// =============================================================================
+// 底栏与分页
+// Footer and pagination
+// =============================================================================
+
 .vfu-list-footer {
   display: flex;
   align-items: center;
-  min-height: 46px;
+  min-height: var(--vfu-footer-height);
   padding: 0 16px;
-  border: 1px solid var(--vfu-line);
+  border: 1px solid var(--vfu-color-border);
   border-top: 0;
-  background: #fff;
-  color: var(--vfu-muted);
-  font-size: 11px;
+  background: var(--vfu-bg-color);
+  color: var(--vfu-color-text-secondary);
+  font-size: var(--vfu-font-size-tiny);
 }
 
 .vfu-pagination {
@@ -1046,146 +1142,210 @@
   align-items: center;
   gap: 6px;
   margin-left: auto;
-  color: #606266;
-  font-size: 13px;
+  color: var(--vfu-color-text-regular);
+  font-size: var(--vfu-font-size-medium);
+
+  button,
+  select,
+  input {
+    height: 28px;
+    border: 1px solid var(--vfu-color-border);
+    border-radius: var(--vfu-radius-small);
+    background: var(--vfu-bg-color);
+    color: inherit;
+    font: inherit;
+  }
+
+  button {
+    min-width: 28px;
+    padding: 0 7px;
+    cursor: pointer;
+
+    &.is-active {
+      border-color: var(--vfu-color-primary);
+      background: var(--vfu-color-primary);
+      color: var(--vfu-color-white);
+    }
+
+    &:disabled {
+      color: var(--vfu-color-text-disabled);
+      cursor: not-allowed;
+    }
+  }
+
+  select {
+    padding: 0 8px;
+  }
+
+  input {
+    width: 42px;
+    padding: 0 5px;
+    text-align: center;
+  }
+
+  &__jumper {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+  }
+
+  &.is-large {
+    button,
+    select,
+    input {
+      height: 32px;
+    }
+  }
+
+  &.is-small {
+    button,
+    select,
+    input {
+      height: 24px;
+      font-size: var(--vfu-font-size-small);
+    }
+  }
+
+  &.is-background {
+    button {
+      border: 0;
+      background: var(--vfu-color-info-light-9);
+    }
+
+    button.is-active {
+      background: var(--vfu-color-primary);
+    }
+  }
 }
-.vfu-pagination button,
-.vfu-pagination select,
-.vfu-pagination input {
-  height: 28px;
-  border: 1px solid #dcdfe6;
-  border-radius: 4px;
-  background: #fff;
-  color: inherit;
-  font: inherit;
+
+// =============================================================================
+// 主题与可访问性
+// Theme presets and accessibility
+// =============================================================================
+
+.vfu-theme-element-plus .vfu-button {
+  border-radius: var(--vfu-radius-base);
+  font-weight: 500;
 }
-.vfu-pagination button {
-  min-width: 28px;
-  padding: 0 7px;
-  cursor: pointer;
+
+.vfu-theme-ant-design-vue .vfu-button {
+  border-radius: var(--vfu-radius-base);
+  font-weight: 400;
 }
-.vfu-pagination button.is-active {
-  border-color: var(--vfu-primary, #409eff);
-  background: var(--vfu-primary, #409eff);
-  color: #fff;
+
+.vfu-button:focus-visible,
+.vfu-action:focus-visible {
+  @include vfu-focus-ring;
 }
-.vfu-pagination button:disabled {
-  color: #c0c4cc;
-  cursor: not-allowed;
-}
-.vfu-pagination select {
-  padding: 0 8px;
-}
-.vfu-pagination input {
-  width: 42px;
-  padding: 0 5px;
-  text-align: center;
-}
-.vfu-pagination__jumper {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  white-space: nowrap;
-}
-.vfu-pagination.is-large button,
-.vfu-pagination.is-large select,
-.vfu-pagination.is-large input {
-  height: 32px;
-}
-.vfu-pagination.is-small button,
-.vfu-pagination.is-small select,
-.vfu-pagination.is-small input {
-  height: 24px;
-  font-size: 12px;
-}
-.vfu-pagination.is-background button {
-  border: 0;
-  background: #f4f4f5;
-}
-.vfu-pagination.is-background button.is-active {
-  background: var(--vfu-primary, #409eff);
-}
+
+// =============================================================================
+// 响应式与动效偏好
+// Responsive layout and motion preferences
+// =============================================================================
+
 @media (max-width: 640px) {
   .vfu-list-footer {
     align-items: flex-start;
     flex-direction: column;
     gap: 10px;
   }
+
   .vfu-pagination {
     flex-wrap: wrap;
     margin-left: 0;
   }
 }
-.vfu-theme-element-plus .vfu-button {
-  border-radius: var(--vfu-radius);
-  font-weight: 500;
-}
-.vfu-theme-ant-design-vue .vfu-button {
-  border-radius: var(--vfu-radius);
-  font-weight: 400;
-}
-.vfu-dropzone:focus-visible,
-.vfu-button:focus-visible,
-.vfu-action:focus-visible {
-  outline: 2px solid var(--vfu-signal, #2f6bff);
-  outline-offset: 2px;
-}
-@media (prefers-reduced-motion: reduce) {
-  .vfu-dropzone,
-  .vfu-progress i {
-    transition: none;
-  }
-}
+
 @media (max-width: 560px) {
+  .vfu-avatar-editor__footer {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 12px 16px;
+
+    > div {
+      width: 100%;
+    }
+
+    .vfu-button {
+      flex: 1;
+    }
+  }
+
   .vfu-toolbar {
     min-height: 0;
     flex-wrap: wrap;
     padding: 10px 12px;
   }
+
   .vfu-toolbar__left,
   .vfu-toolbar__right {
     width: 100%;
     flex-basis: 100%;
   }
+
   .vfu-toolbar__right {
     justify-content: flex-end;
   }
+
   .vfu-file {
     gap: 8px;
     padding: 8px 12px;
   }
-  .vfu-list:not(.is-picture-wall) .vfu-file,
-  .vfu-list:not(.is-picture-wall) .vfu-file.has-select {
-    grid-template-columns: 41px minmax(0, 1fr);
+
+  .vfu-list:not(.is-picture-wall) {
+    .vfu-file,
+    .vfu-file.has-select {
+      grid-template-columns: var(--vfu-file-thumbnail-size) minmax(0, 1fr);
+    }
+
+    .vfu-file.has-select .vfu-select {
+      grid-row: 1 / span 2;
+    }
+
+    .vfu-file.has-select .vfu-file__visual {
+      grid-column: 2;
+    }
+
+    .vfu-file.has-select .vfu-file__body,
+    .vfu-file.has-select .vfu-file__actions {
+      grid-column: 2;
+    }
+
+    .vfu-file:not(.has-select) .vfu-file__actions {
+      grid-column: 2;
+    }
   }
-  .vfu-list:not(.is-picture-wall) .vfu-file.has-select .vfu-select {
-    grid-row: 1 / span 2;
-  }
-  .vfu-list:not(.is-picture-wall) .vfu-file.has-select .vfu-file__visual {
-    grid-column: 2;
-  }
-  .vfu-list:not(.is-picture-wall) .vfu-file.has-select .vfu-file__body,
-  .vfu-list:not(.is-picture-wall) .vfu-file.has-select .vfu-file__actions {
-    grid-column: 2;
-  }
-  .vfu-list:not(.is-picture-wall) .vfu-file:not(.has-select) .vfu-file__actions {
-    grid-column: 2;
-  }
+
   .vfu-file__actions {
     flex-basis: auto;
     justify-content: flex-start;
   }
+
   .vfu-file__headline {
     align-items: flex-start;
     flex-direction: column;
     gap: 0;
   }
+
   .vfu-file__body small {
     display: none;
   }
+
   .vfu-action {
-    width: 26px;
-    height: 26px;
-    flex-basis: 26px;
+    width: calc(var(--vfu-action-size) - 2px);
+    height: calc(var(--vfu-action-size) - 2px);
+    flex-basis: calc(var(--vfu-action-size) - 2px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vfu-progress-indicator__spinner,
+  .vfu-loading-indicator__spinner {
+    animation: none;
+  }
+
+  .vfu-progress i {
+    transition: none;
   }
 }

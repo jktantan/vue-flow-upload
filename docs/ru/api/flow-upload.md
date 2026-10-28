@@ -62,7 +62,7 @@
 | `width`                    | `string \| number`             | `'auto'`     | Ширина CSS; числа трактуются как пиксели.                                                                          |
 | `height`                   | `string \| number`             | `'600px'`    | Высота CSS; `'auto'` заполняет родителя с явно заданной высотой.                                                    |
 | `on-preview`               | `(file) => void \| Promise<void>` | —         | Свой обработчик просмотра; заменяет встроенный просмотрщик изображений.                                             |
-| `theme`                    | `UploadTheme`                  | `'default'`  | Имя встроенной темы (`default`, `element-plus`, `ant-design-vue`) или свой адаптер темы.                            |
+| `theme`                    | `UploadTheme`                  | `'default'`  | Имя встроенной темы (`default`, `element-plus`, `ant-design-vue`) или свой адаптер темы; палитра по умолчанию соответствует Element Plus, тёмный режим включается классами `dark` / `vfu-dark`. |
 | `archive-polling-interval` | `number` (мс)                  | `2000`       | Интервал опроса серверной задачи архивации.                                                                        |
 | `archive-polling-timeout`  | `number` (мс)                  | `600000`     | Максимальное время ожидания серверной задачи архивации.                                                            |
 | `all-download-scope`       | `DownloadScope`                | —            | Диапазон файлов или серверный диапазон запроса для «Скачать всё»; если не задан, используются постоянные файлы текущего списка. |

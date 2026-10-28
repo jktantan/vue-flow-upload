@@ -160,7 +160,23 @@ test('messages and built-in themes resolve without UI library dependencies', () 
   })
   assert.equal(i18n.t('VueFlowUpload.downloadAll'), 'Get every file')
   assert.equal(i18n.t('VueFlowUpload.fileCount', { count: 3 }), '3 files total')
-  assert.equal(resolveTheme('element-plus').variables['--vfu-signal'], '#409eff')
+  assert.equal(resolveTheme('element-plus').className, 'vfu-theme-element-plus')
+  assert.equal(resolveTheme('element-plus').variables?.['--vfu-radius-base'], '4px')
+  // 显式新变量优先；仅提供旧变量名时自动迁移为语义化 token。
+  // Explicit new variables win; legacy-only variables are migrated to semantic tokens.
+  assert.equal(
+    resolveTheme({
+      name: 'custom',
+      variables: { '--vfu-signal': '#123456', '--vfu-color-primary': '#abcdef' },
+    }).variables?.['--vfu-color-primary'],
+    '#abcdef',
+  )
+  assert.equal(
+    resolveTheme({ name: 'custom', variables: { '--vfu-signal': '#123456' } }).variables?.[
+      '--vfu-color-primary'
+    ],
+    '#123456',
+  )
 })
 
 test('scheduler rejects queued work for a canceled file without interrupting active work', async () => {

@@ -62,7 +62,7 @@
 | `width`                    | `string \| number`               | `'auto'`    | CSS width; numbers are treated as pixels.                                                                       |
 | `height`                   | `string \| number`               | `'600px'`   | CSS height; `'auto'` fills a parent that has an explicit height.                                                |
 | `on-preview`               | `(file) => void \| Promise<void>` | —          | Custom preview handler; replaces the built-in image viewer when provided.                                        |
-| `theme`                    | `UploadTheme`                    | `'default'` | Built-in theme name (`default`, `element-plus`, `ant-design-vue`) or a custom theme adapter.                     |
+| `theme`                    | `UploadTheme`                    | `'default'` | Built-in theme name (`default`, `element-plus`, `ant-design-vue`) or a custom theme adapter; the default palette follows Element Plus and dark mode activates under `dark` / `vfu-dark`. |
 | `archive-polling-interval` | `number` (ms)                    | `2000`      | Polling interval for a server archive task.                                                                     |
 | `archive-polling-timeout`  | `number` (ms)                    | `600000`    | Maximum wait time for a server archive task.                                                                    |
 | `all-download-scope`       | `DownloadScope`                  | —           | File range or server-query scope submitted for "download all"; without it the persisted files of the current list are used. |

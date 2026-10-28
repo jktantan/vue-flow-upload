@@ -203,6 +203,23 @@ Components reuse the host i18n instance first. Override a single component with 
 
 The legacy `locale` and flat `messages` props still work, but migrating to `i18n` is recommended. Built-in locales are `zh-CN`, `en-US`, and `ru-RU`.
 
+## Theming and styles
+
+The default palette follows Element Plus light colors and switches to its dark palette under `dark` / `vfu-dark`. When Element Plus is installed, the component inherits its `--el-*` variables directly. Every customizable value is a `--vfu-*` CSS variable, overridable on `:root` or any ancestor:
+
+```css
+:root {
+  --vfu-color-primary: #126f67;
+  --vfu-color-primary-light-3: #4a958e;
+  --vfu-color-primary-light-7: #b7d8d4;
+  --vfu-color-primary-light-9: #e7f2f0;
+  --vfu-radius-base: 10px;
+  --vfu-file-row-height: 60px;
+}
+```
+
+`theme="element-plus"` / `theme="ant-design-vue"` provide presets, and `ThemeAdapter` accepts custom class names and variables. Legacy variable names (`--vfu-signal`, `--vfu-ink`, `--vfu-muted`, `--vfu-line`, `--vfu-danger`, `--vfu-radius`) remain supported. See [Theming and styles](https://jktantan.github.io/vue-flow-upload/en/guide/theming.html) for the full token list, dark mode, and override examples.
+
 ## Common props (summary)
 
 | Prop                                                                   | Description                                                                                       | Default                                  |

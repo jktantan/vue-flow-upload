@@ -1,0 +1,77 @@
+// 组件样式共用的 Sass mixin；所有取值都来自 `_tokens.scss` 的 CSS 变量。
+// Sass mixins shared by component styles; every value comes from the CSS variables in `_tokens.scss`.
+
+/**
+ * 组件根节点的默认排版，保证 Teleport 到 body 的弹窗也能获得一致字体与配色。
+ * Default typography for component roots so dialogs teleported to body keep consistent fonts and colors.
+ */
+@mixin vfu-base-typography {
+  color: var(--vfu-color-text-primary);
+  font-family: var(--vfu-font-family);
+  font-size: var(--vfu-font-size-base);
+  line-height: var(--vfu-line-height-base);
+  text-align: left;
+}
+
+/**
+ * 单行省略；调用方负责提供确定宽度的容器。
+ * Single-line ellipsis; the caller must provide a width-constrained container.
+ */
+@mixin vfu-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/**
+ * 统一的键盘焦点环，颜色随主色 token 变化。
+ * Shared keyboard focus ring whose color follows the primary token.
+ */
+@mixin vfu-focus-ring($offset: 2px) {
+  outline: 2px solid var(--vfu-color-primary);
+  outline-offset: $offset;
+}
+
+/**
+ * 线性 SVG 图标的描边规则，覆盖文件状态、操作按钮和按钮前缀图标。
+ * Stroke rules for line SVG icons used by file states, action buttons, and button prefixes.
+ */
+@mixin vfu-line-icon($size, $stroke-width: 1.8) {
+  width: $size;
+  height: $size;
+  fill: none;
+  stroke: currentcolor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: $stroke-width;
+}
+
+/**
+ * Tooltip 的非定位视觉层；调用处只保留与触发元素形状相关的定位规则。
+ * Non-positional tooltip surface; callers keep only placement rules tied to the trigger shape.
+ */
+@mixin vfu-tooltip-surface {
+  z-index: var(--vfu-z-index-tooltip);
+  width: max-content;
+  border-radius: var(--vfu-radius-small);
+  background: var(--vfu-tooltip-bg);
+  color: var(--vfu-tooltip-color);
+  content: attr(data-tooltip);
+  font-size: var(--vfu-font-size-small);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 0.16s,
+    transform 0.16s;
+  white-space: nowrap;
+}
+
+/**
+ * 浮层表面的背景与阴影，用于确认框、编辑器和预览层。
+ * Surface background and shadow for confirm dialogs, editors, and preview layers.
+ */
+@mixin vfu-elevated-surface {
+  border-radius: var(--vfu-radius-base);
+  background: var(--vfu-bg-color-overlay);
+  box-shadow: var(--vfu-shadow-lg);
+}

@@ -203,6 +203,23 @@ createApp(App).use(createFlowUploadI18n({ locale: 'ru-RU' }))
 
 Старые свойства `locale` и плоский `messages` продолжают работать, но рекомендуется перейти на `i18n`. Встроенные языки: `zh-CN`, `en-US` и `ru-RU`.
 
+## Темы и стили
+
+По умолчанию используется светлая палитра Element Plus, а под `dark` / `vfu-dark` — её тёмная палитра. Если Element Plus установлен, компонент напрямую наследует переменные `--el-*`. Все настраиваемые значения — это CSS-переменные `--vfu-*`, которые можно переопределить на `:root` или любом родителе:
+
+```css
+:root {
+  --vfu-color-primary: #126f67;
+  --vfu-color-primary-light-3: #4a958e;
+  --vfu-color-primary-light-7: #b7d8d4;
+  --vfu-color-primary-light-9: #e7f2f0;
+  --vfu-radius-base: 10px;
+  --vfu-file-row-height: 60px;
+}
+```
+
+`theme="element-plus"` / `theme="ant-design-vue"` задают пресеты, а `ThemeAdapter` принимает свой класс и переменные. Старые имена переменных (`--vfu-signal`, `--vfu-ink`, `--vfu-muted`, `--vfu-line`, `--vfu-danger`, `--vfu-radius`) по-прежнему поддерживаются. Полный список токенов, тёмный режим и примеры переопределения: [Темы и стили](https://jktantan.github.io/vue-flow-upload/ru/guide/theming.html).
+
 ## Основные props (кратко)
 
 | Prop                                                                   | Описание                                                                                             | По умолчанию                             |

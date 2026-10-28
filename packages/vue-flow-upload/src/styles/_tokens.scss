@@ -1,0 +1,360 @@
+@use 'sass:list';
+
+// 设计 token 的唯一来源：颜色、圆角、排版、尺寸与层级都在此声明。
+// Single source of truth for design tokens: colors, radii, typography, sizing, and z-index.
+//
+// 所有 token 都以 CSS 自定义属性输出，因此宿主无需编译 Sass 即可覆盖；
+// Sass 变量只用于为每个自定义属性提供回退值，不进入公共 API。
+// Every token is emitted as a CSS custom property, so hosts can override it without compiling Sass;
+// Sass variables only provide fallbacks and are not part of the public API.
+
+// Element Plus 浅色色板的回退值；与官方 --el-* 变量同名同值。
+// Fallback values from the Element Plus light palette; names and values mirror the official --el-* variables.
+$vfu-light-tokens: (
+  // 品牌与状态色。 Brand and status colors.
+  'color-primary': ('--el-color-primary', #409eff),
+  'color-primary-light-3': ('--el-color-primary-light-3', #79bbff),
+  'color-primary-light-5': ('--el-color-primary-light-5', #a0cfff),
+  'color-primary-light-7': ('--el-color-primary-light-7', #c6e2ff),
+  'color-primary-light-8': ('--el-color-primary-light-8', #d9ecff),
+  'color-primary-light-9': ('--el-color-primary-light-9', #ecf5ff),
+  'color-success': ('--el-color-success', #67c23a),
+  'color-success-light-3': ('--el-color-success-light-3', #95d475),
+  'color-success-light-9': ('--el-color-success-light-9', #f0f9eb),
+  'color-warning': ('--el-color-warning', #e6a23c),
+  'color-warning-light-3': ('--el-color-warning-light-3', #eebe77),
+  'color-warning-light-9': ('--el-color-warning-light-9', #fdf6ec),
+  'color-danger': ('--el-color-danger', #f56c6c),
+  'color-danger-light-3': ('--el-color-danger-light-3', #f89898),
+  'color-danger-light-9': ('--el-color-danger-light-9', #fef0f0),
+  'color-info': ('--el-color-info', #909399),
+  'color-info-light-3': ('--el-color-info-light-3', #b1b3b8),
+  'color-info-light-9': ('--el-color-info-light-9', #f4f4f5),
+  // 文本层级。 Text hierarchy.
+  'color-text-primary': ('--el-text-color-primary', #303133),
+  'color-text-regular': ('--el-text-color-regular', #606266),
+  'color-text-secondary': ('--el-text-color-secondary', #909399),
+  'color-text-placeholder': ('--el-text-color-placeholder', #a8abb2),
+  'color-text-disabled': ('--el-text-color-disabled', #c0c4cc),
+  // 边框层级。 Border hierarchy.
+  'color-border': ('--el-border-color', #dcdfe6),
+  'color-border-light': ('--el-border-color-light', #e4e7ed),
+  'color-border-lighter': ('--el-border-color-lighter', #ebeef5),
+  'color-border-extra-light': ('--el-border-color-extra-light', #f2f6fc),
+  // 填充色。 Fill colors.
+  'color-fill': ('--el-fill-color', #f0f2f5),
+  'color-fill-light': ('--el-fill-color-light', #f5f7fa),
+  'color-fill-lighter': ('--el-fill-color-lighter', #fafafa),
+  'color-fill-blank': ('--el-fill-color-blank', #ffffff),
+  // 背景与黑白。 Backgrounds and monochrome colors.
+  'bg-color': ('--el-bg-color', #ffffff),
+  'bg-color-page': ('--el-bg-color-page', #f2f3f5),
+  'bg-color-overlay': ('--el-bg-color-overlay', #ffffff),
+  'color-white': ('--el-color-white', #ffffff),
+  'color-black': ('--el-color-black', #000000),
+  // 遮罩、浮层与提示。 Overlays, surfaces, and tips.
+  'mask-color-strong': (null, rgb(0 0 0 / 48%)),
+  'mask-color': (null, rgb(255 255 255 / 68%)),
+  'mask-color-light': (null, rgb(255 255 255 / 92%)),
+  'overlay-color': (null, rgb(0 0 0 / 45%)),
+  'overlay-color-strong': (null, rgb(35 45 65 / 68%)),
+  'drop-mask-color': (null, rgb(64 158 255 / 18%)),
+  'drop-mask-color-strong': (null, rgb(47 107 255 / 28%)),
+  'toast-bg': (null, rgb(0 0 0 / 72%)),
+  'toast-color': (null, #ffffff),
+  'tooltip-bg': (null, #303133),
+  'tooltip-color': (null, #ffffff),
+  'spinner-track': (null, rgb(255 255 255 / 35%)),
+  // 阴影。 Shadows.
+  'shadow-sm': (null, 0 2px 12px rgb(0 0 0 / 8%)),
+  'shadow-md': (null, 0 12px 32px rgb(0 0 0 / 20%)),
+  'shadow-lg': (null, 0 16px 48px rgb(0 0 0 / 20%)),
+  // 圆角。 Radii.
+  'radius-small': (null, 4px),
+  'radius-base': (null, 6px),
+  'radius-large': (null, 8px),
+  'radius-round': (null, 99px),
+  // 排版。 Typography.
+  'font-family': (null, (Inter, ui-sans-serif, system-ui, sans-serif)),
+  'font-size-tiny': (null, 11px),
+  'font-size-small': (null, 12px),
+  'font-size-medium': (null, 13px),
+  'font-size-base': (null, 14px),
+  'font-size-large': (null, 16px),
+  'line-height-base': (null, 1.45),
+  // 结构尺寸；宿主可据此统一到自己项目的密度。 Structural sizes so hosts can match their own density.
+  'file-row-height': (null, 52px),
+  'file-thumbnail-size': (null, 41px),
+  'file-actions-width': (null, 104px),
+  'toolbar-height': (null, 50px),
+  'footer-height': (null, 46px),
+  'action-size': (null, 28px),
+  'picture-wall-size': (null, 192px),
+  'picture-wall-caption-height': (null, 44px),
+  // 层级。 Stacking order.
+  'z-index-mask': (null, 5),
+  'z-index-overlay': (null, 10),
+  'z-index-tooltip': (null, 12),
+  'z-index-toast': (null, 20),
+  'z-index-dialog': (null, 1000),
+  'z-index-confirm': (null, 3000)
+);
+
+// Element Plus 深色色板的回退值；与官方 html.dark 下的 --el-* 变量一致。
+// Fallback values from the Element Plus dark palette, matching the official --el-* variables under html.dark.
+$vfu-dark-tokens: (
+  'color-primary': (
+    '--el-color-primary',
+    #409eff,
+  ),
+  'color-primary-light-3': (
+    '--el-color-primary-light-3',
+    #3375b9,
+  ),
+  'color-primary-light-5': (
+    '--el-color-primary-light-5',
+    #2a598a,
+  ),
+  'color-primary-light-7': (
+    '--el-color-primary-light-7',
+    #213d5b,
+  ),
+  'color-primary-light-8': (
+    '--el-color-primary-light-8',
+    #1d3043,
+  ),
+  'color-primary-light-9': (
+    '--el-color-primary-light-9',
+    #18222c,
+  ),
+  'color-success': (
+    '--el-color-success',
+    #67c23a,
+  ),
+  'color-success-light-3': (
+    '--el-color-success-light-3',
+    #4e8e2f,
+  ),
+  'color-success-light-9': (
+    '--el-color-success-light-9',
+    #1c2518,
+  ),
+  'color-warning': (
+    '--el-color-warning',
+    #e6a23c,
+  ),
+  'color-warning-light-3': (
+    '--el-color-warning-light-3',
+    #a77730,
+  ),
+  'color-warning-light-9': (
+    '--el-color-warning-light-9',
+    #292218,
+  ),
+  'color-danger': (
+    '--el-color-danger',
+    #f56c6c,
+  ),
+  'color-danger-light-3': (
+    '--el-color-danger-light-3',
+    #b25252,
+  ),
+  'color-danger-light-9': (
+    '--el-color-danger-light-9',
+    #2b1d1d,
+  ),
+  'color-info': (
+    '--el-color-info',
+    #909399,
+  ),
+  'color-info-light-3': (
+    '--el-color-info-light-3',
+    #6b6d71,
+  ),
+  'color-info-light-9': (
+    '--el-color-info-light-9',
+    #202121,
+  ),
+  'color-text-primary': (
+    '--el-text-color-primary',
+    #e5eaf3,
+  ),
+  'color-text-regular': (
+    '--el-text-color-regular',
+    #cfd3dc,
+  ),
+  'color-text-secondary': (
+    '--el-text-color-secondary',
+    #a3a6ad,
+  ),
+  'color-text-placeholder': (
+    '--el-text-color-placeholder',
+    #8d9095,
+  ),
+  'color-text-disabled': (
+    '--el-text-color-disabled',
+    #6c6e72,
+  ),
+  'color-border': (
+    '--el-border-color',
+    #4c4d4f,
+  ),
+  'color-border-light': (
+    '--el-border-color-light',
+    #414243,
+  ),
+  'color-border-lighter': (
+    '--el-border-color-lighter',
+    #363637,
+  ),
+  'color-border-extra-light': (
+    '--el-border-color-extra-light',
+    #2b2b2c,
+  ),
+  'color-fill': (
+    '--el-fill-color',
+    #303030,
+  ),
+  'color-fill-light': (
+    '--el-fill-color-light',
+    #262727,
+  ),
+  'color-fill-lighter': (
+    '--el-fill-color-lighter',
+    #1d1d1d,
+  ),
+  'color-fill-blank': (
+    '--el-fill-color-blank',
+    transparent,
+  ),
+  'bg-color': (
+    '--el-bg-color',
+    #141414,
+  ),
+  'bg-color-page': (
+    '--el-bg-color-page',
+    #0a0a0a,
+  ),
+  'bg-color-overlay': (
+    '--el-bg-color-overlay',
+    #1d1e1f,
+  ),
+  'color-white': (
+    '--el-color-white',
+    #ffffff,
+  ),
+  'color-black': (
+    '--el-color-black',
+    #000000,
+  ),
+  'mask-color-strong': (
+    null,
+    rgb(0 0 0 / 60%),
+  ),
+  'mask-color': (
+    null,
+    rgb(0 0 0 / 55%),
+  ),
+  'mask-color-light': (
+    null,
+    rgb(29 30 31 / 92%),
+  ),
+  'overlay-color': (
+    null,
+    rgb(0 0 0 / 60%),
+  ),
+  'overlay-color-strong': (
+    null,
+    rgb(0 0 0 / 72%),
+  ),
+  'drop-mask-color': (
+    null,
+    rgb(64 158 255 / 24%),
+  ),
+  'drop-mask-color-strong': (
+    null,
+    rgb(64 158 255 / 32%),
+  ),
+  'toast-bg': (
+    null,
+    rgb(0 0 0 / 82%),
+  ),
+  'toast-color': (
+    null,
+    #e5eaf3,
+  ),
+  'tooltip-bg': (
+    null,
+    #1d1e1f,
+  ),
+  'tooltip-color': (
+    null,
+    #e5eaf3,
+  ),
+  'spinner-track': (
+    null,
+    rgb(255 255 255 / 25%),
+  ),
+  'shadow-sm': (
+    null,
+    0 2px 12px rgb(0 0 0 / 45%),
+  ),
+  'shadow-md': (
+    null,
+    0 12px 32px rgb(0 0 0 / 55%),
+  ),
+  'shadow-lg': (
+    null,
+    0 16px 48px rgb(0 0 0 / 55%),
+  ),
+);
+
+/**
+ * 将 token 映射输出为 CSS 自定义属性；声明顺序与映射顺序一致，便于排查产物。
+ * Emits a token map as CSS custom properties in declaration order so the built output stays easy to audit.
+ */
+@mixin vfu-emit-tokens($tokens) {
+  @each $name, $definition in $tokens {
+    // 第一项为可继承的 Element Plus 变量名，第二项为本库回退值。
+    // The first item is the inheritable Element Plus variable name; the second is the local fallback.
+    $el-variable: list.nth($definition, 1);
+    $fallback: list.nth($definition, 2);
+
+    @if $el-variable {
+      --vfu-#{$name}: var(#{$el-variable}, #{$fallback});
+    } @else {
+      --vfu-#{$name}: #{$fallback};
+    }
+  }
+}
+
+// 使用零特异性选择器声明默认值：宿主在 :root 或任意祖先上覆盖时不需要提高选择器权重。
+// Defaults use a zero-specificity selector so hosts can override on :root or any ancestor without raising specificity.
+:where(:root) {
+  @include vfu-emit-tokens($vfu-light-tokens);
+
+  // 兼容 v0.2 及更早版本的变量名；新代码应优先使用语义化 token。
+  // Aliases for variable names exposed through v0.2 and earlier; new code should prefer the semantic tokens.
+  --vfu-ink: var(--vfu-color-text-primary);
+  --vfu-muted: var(--vfu-color-text-secondary);
+  --vfu-line: var(--vfu-color-border);
+  --vfu-signal: var(--vfu-color-primary);
+  --vfu-primary: var(--vfu-color-primary);
+  --vfu-danger: var(--vfu-color-danger);
+  --vfu-radius: var(--vfu-radius-base);
+}
+
+// 深色 token 在 html.dark、任意 .dark 祖先或组件级 .vfu-dark 容器上生效；
+// 若宿主已安装 Element Plus，仍优先读取其 --el-* 深色变量，实现无感对齐。
+// Dark tokens activate on html.dark, any .dark ancestor, or a component-level .vfu-dark wrapper;
+// when Element Plus is installed, its dark --el-* variables still win, so alignment stays automatic.
+:where(html.dark, .dark, .vfu-dark) {
+  @include vfu-emit-tokens($vfu-dark-tokens);
+
+  --vfu-ink: var(--vfu-color-text-primary);
+  --vfu-muted: var(--vfu-color-text-secondary);
+  --vfu-line: var(--vfu-color-border);
+  --vfu-signal: var(--vfu-color-primary);
+  --vfu-primary: var(--vfu-color-primary);
+  --vfu-danger: var(--vfu-color-danger);
+}
